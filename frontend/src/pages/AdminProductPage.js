@@ -1,6 +1,6 @@
 import { useState } from "react";
 import api from "../services/api";
-import Navbar from "../components/Navbar";
+import AdminSidebar from "../components/AdminSidebar";
 
 function AdminProductPage() {
   const [name, setName] = useState("");
@@ -23,13 +23,17 @@ function AdminProductPage() {
   };
 
   return (
-    <>
-      <Navbar />
+    <div className="flex">
+      {/* Sidebar */}
+      <AdminSidebar />
 
-      <div className="mx-auto max-w-xl px-8 py-20">
-        <h2 className="mb-6 text-2xl font-semibold">Add Product (Admin)</h2>
+      {/* Main Content */}
+      <div className="flex-1 px-10 py-10">
+        <h2 className="mb-6 text-2xl font-semibold">
+          Add Product
+        </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="max-w-md space-y-4">
           <input
             className="w-full rounded border px-4 py-2"
             placeholder="Product name"
@@ -60,7 +64,7 @@ function AdminProductPage() {
           </button>
         </form>
       </div>
-    </>
+    </div>
   );
 }
 

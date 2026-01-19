@@ -27,18 +27,31 @@ function Navbar() {
             Products
           </li>
 
-          {/* for v0 only */}
-          <li
-            className="cursor-pointer text-red-500 hover:text-red-600"
-            onClick={() => window.setPage("admin")}
-          >
-            Admin
+          <li className="cursor-pointer hover:text-blue-600">
+            About
+          </li>
+
+          <li className="cursor-pointer hover:text-blue-600">
+            Schedule
           </li>
         </ul>
 
-        <button className="rounded-full border border-gray-300 px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">
-          Login / Signup
-        </button>
+        {/* Auth Button */}
+        {window.user ? (
+          <button
+            onClick={window.logout}
+            className="rounded-full border px-5 py-2 text-sm hover:bg-gray-100"
+          >
+            Logout
+          </button>
+        ) : (
+          <button
+            onClick={() => window.setPage("login")}
+            className="rounded-full border px-5 py-2 text-sm hover:bg-gray-100"
+          >
+            Login
+          </button>
+        )}
       </div>
     </nav>
   );

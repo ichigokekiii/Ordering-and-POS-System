@@ -12,7 +12,7 @@ Route::post('/names', [NameController::class, 'store']);
 Route::get('/landing', function () {
     return response()->json([
         'title' => 'Landing Page JSON Test',
-        'subtitle' => 'Petal Express MVP is connected',
+        'subtitle' => 'Text is from routes/api. Laravel API is Connected',
     ]);
 });
 

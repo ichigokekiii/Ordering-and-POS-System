@@ -1,13 +1,15 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\NameController;  
+use App\Models\Product;
+use Illuminate\Http\Request;
+//use App\Http\Controllers\NameController;
 
 Route::get('/test', function () {
     return response()->json(['message' => 'API works in Laravel 11']);
 }); 
 
-Route::post('/names', [NameController::class, 'store']);
+//Route::post('/names', [NameController::class, 'store']);
 
 Route::get('/landing', function () {
     return response()->json([
@@ -16,4 +18,16 @@ Route::get('/landing', function () {
     ]);
 });
 
+// Get all products (user side)
+Route::get('/products', function () {
+    return Product::all();
+});
 
+// Add product (admin side)
+Route::post('/products', function (Request $request) {
+    return Product::create([
+        'name' => $request->name,
+        'image' => $request->image,
+        'price' => $request->price,
+    ]);
+});

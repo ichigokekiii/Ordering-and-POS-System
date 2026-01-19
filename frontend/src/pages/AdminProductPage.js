@@ -1,0 +1,67 @@
+import { useState } from "react";
+import api from "../services/api";
+import Navbar from "../components/Navbar";
+
+function AdminProductPage() {
+  const [name, setName] = useState("");
+  const [image, setImage] = useState("");
+  const [price, setPrice] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    await api.post("/products", {
+      name,
+      image,
+      price,
+    });
+
+    setName("");
+    setImage("");
+    setPrice("");
+    alert("Product added!");
+  };
+
+  return (
+    <>
+      <Navbar />
+
+      <div className="mx-auto max-w-xl px-8 py-20">
+        <h2 className="mb-6 text-2xl font-semibold">Add Product (Admin)</h2>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            className="w-full rounded border px-4 py-2"
+            placeholder="Product name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+
+          <input
+            className="w-full rounded border px-4 py-2"
+            placeholder="Image URL"
+            value={image}
+            onChange={(e) => setImage(e.target.value)}
+            required
+          />
+
+          <input
+            type="number"
+            className="w-full rounded border px-4 py-2"
+            placeholder="Price"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            required
+          />
+
+          <button className="rounded bg-blue-600 px-6 py-2 text-white hover:bg-blue-700">
+            Add Product
+          </button>
+        </form>
+      </div>
+    </>
+  );
+}
+
+export default AdminProductPage;

@@ -4,6 +4,8 @@ import ProductPage from "./pages/ProductPage";
 import AdminProductPage from "./pages/AdminProductPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import AdminOverviewPage from "./pages/AdminOverviewPage";
+
 
 
 function App() {
@@ -18,7 +20,7 @@ function App() {
 
     // Redirect based on role
     if (userData.role === "admin") {
-      setPage("admin");
+      setPage("admin-overview");
     } else {
       setPage("home");
     }
@@ -42,9 +44,16 @@ function App() {
   window.logout = handleLogout;
   window.user = user;
 
+  // 🔒 ADMIN WORLD
   if (user?.role === "admin") {
-    return <AdminProductPage />;
+    if (page === "admin-products") {
+      return <AdminProductPage />;
+    }
+
+    // default admin page
+    return <AdminOverviewPage />;
   }
+
 
   // user side
   return (

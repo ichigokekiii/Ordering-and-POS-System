@@ -20,15 +20,15 @@ function Navbar() {
             Home
           </li>
 
+          <li className="cursor-pointer hover:text-blue-600">
+            About
+          </li>
+
           <li
             className="cursor-pointer hover:text-blue-600"
             onClick={() => window.setPage("products")}
           >
             Products
-          </li>
-
-          <li className="cursor-pointer hover:text-blue-600">
-            About
           </li>
 
           <li className="cursor-pointer hover:text-blue-600">

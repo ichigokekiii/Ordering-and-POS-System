@@ -44,7 +44,6 @@ function App() {
   window.logout = handleLogout;
   window.user = user;
 
-  // 🔒 ADMIN WORLD
   if (user?.role === "admin") {
     if (page === "admin-products") {
       return <AdminProductPage />;

@@ -1,8 +1,17 @@
 import { useState } from "react";
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
+
+import { AnimatePresence } from "framer-motion";
 
 import Navbar from "./components/Navbar";
 import AdminSidebar from "./components/AdminSidebar";
+import PageTransition from "./components/PageTransition";
 
 import LandingPage from "./pages/LandingPage";
 import ProductPage from "./pages/ProductPage";
@@ -17,6 +26,7 @@ function App() {
   );
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogin = (userData) => {
     localStorage.setItem("user", JSON.stringify(userData));
@@ -38,70 +48,93 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem("user");
     setUser(null);
-    navigate("/"); 
+    navigate("/");
   };
 
   return (
     <>
-      {/* user navbar */}
+      {/* User Navbar */}
       {user?.role !== "admin" && (
         <Navbar user={user} onLogout={handleLogout} />
       )}
 
-      <Routes>
-        {/* user routes */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/products" element={<ProductPage />} />
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
 
-        <Route
-          path="/login"
-          element={<LoginPage onLogin={handleLogin} />}
-        />
+          {/* User Routes */}
+          <Route
+            path="/"
+            element={
+              <PageTransition>
+                <LandingPage />
+              </PageTransition>
+            }
+          />
 
-        <Route
-          path="/register"
-          element={<RegisterPage onRegister={handleRegister} />}
-        />
+          <Route
+            path="/products"
+            element={
+              <PageTransition>
+                <ProductPage />
+              </PageTransition>
+            }
+          />
 
-        {/* admin routes */}
-        {user?.role === "admin" ? (
-          <>
-            <Route
-              path="/admin"
-              element={
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminOverviewPage />
+          <Route
+            path="/login"
+            element={
+              <PageTransition>
+                <LoginPage onLogin={handleLogin} />
+              </PageTransition>
+            }
+          />
+
+          <Route
+            path="/register"
+            element={
+              <PageTransition>
+                <RegisterPage onRegister={handleRegister} />
+              </PageTransition>
+            }
+          />
+
+          {/* Admin Routes */}
+          {user?.role === "admin" ? (
+            <>
+              <Route
+                path="/admin"
+                element={
+                  <div className="flex min-h-screen">
+                    <AdminSidebar onLogout={handleLogout} />
+                    <div className="flex-1 p-6 bg-gray-50">
+                      <AdminOverviewPage />
+                    </div>
                   </div>
-                </div>
-              }
-            />
+                }
+              />
 
-            <Route
-              path="/admin/products"
-              element={
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminProductPage />
+              <Route
+                path="/admin/products"
+                element={
+                  <div className="flex min-h-screen">
+                    <AdminSidebar onLogout={handleLogout} />
+                    <div className="flex-1 p-6 bg-gray-50">
+                      <AdminProductPage />
+                    </div>
                   </div>
-                </div>
-              }
-            />
-          </>
-        ) : (
-          <>
-            <Route path="/admin" element={<Navigate to="/" />} />
-            <Route
-              path="/admin/products"
-              element={<Navigate to="/" />}
-            />
-          </>
-        )}
+                }
+              />
+            </>
+          ) : (
+            <>
+              <Route path="/admin" element={<Navigate to="/" />} />
+              <Route path="/admin/products" element={<Navigate to="/" />} />
+            </>
+          )}
 
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </AnimatePresence>
     </>
   );
 }

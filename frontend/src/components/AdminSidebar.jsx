@@ -10,7 +10,7 @@ function AdminSidebar({ onLogout }) {
   return (
     <div className="flex h-screen w-64 flex-col border-r bg-white px-6 py-8">
 
-      {/* Logo / Title */}
+      {/* Logo */}
       <div className="mb-10 text-lg font-semibold text-blue-600">
         Admin Panel
       </div>

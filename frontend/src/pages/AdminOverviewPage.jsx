@@ -3,9 +3,6 @@ import AdminSidebar from "../components/AdminSidebar";
 function AdminOverviewPage() {
   return (
     <div className="flex">
-      {/* Sidebar */}
-      <AdminSidebar />
-
       {/* Main Content */}
       <div className="flex-1 px-10 py-10">
         <h1 className="mb-6 text-2xl font-semibold">

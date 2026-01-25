@@ -13,7 +13,6 @@ function ProductPage() {
 
   return (
     <>
-      <Navbar />
 
       <div className="mx-auto max-w-7xl px-8 py-20">
         <h2 className="mb-10 text-2xl font-semibold">Test Products</h2>

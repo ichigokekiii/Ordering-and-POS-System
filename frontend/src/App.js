@@ -1,66 +1,107 @@
 import { useState } from "react";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+
+import Navbar from "./components/Navbar";
+import AdminSidebar from "./components/AdminSidebar";
+
 import LandingPage from "./pages/LandingPage";
 import ProductPage from "./pages/ProductPage";
-import AdminProductPage from "./pages/AdminProductPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import AdminOverviewPage from "./pages/AdminOverviewPage";
-
-
+import AdminProductPage from "./pages/AdminProductPage";
 
 function App() {
   const [user, setUser] = useState(
     JSON.parse(localStorage.getItem("user"))
   );
-  const [page, setPage] = useState("home");
+
+  const navigate = useNavigate();
 
   const handleLogin = (userData) => {
     localStorage.setItem("user", JSON.stringify(userData));
     setUser(userData);
 
-    // Redirect based on role
     if (userData.role === "admin") {
-      setPage("admin-overview");
+      navigate("/admin");
     } else {
-      setPage("home");
+      navigate("/");
     }
+  };
+
+  const handleRegister = (userData) => {
+    localStorage.setItem("user", JSON.stringify(userData));
+    setUser(userData);
+    navigate("/");
   };
 
   const handleLogout = () => {
     localStorage.removeItem("user");
     setUser(null);
-    setPage("home");
+    navigate("/"); 
   };
 
-  const handleRegister = (userData) => {
-  localStorage.setItem("user", JSON.stringify(userData));
-  setUser(userData);
-  setPage("home");
-};
-
-
-  // Make controls available to Navbar
-  window.setPage = setPage;
-  window.logout = handleLogout;
-  window.user = user;
-
-  if (user?.role === "admin") {
-    if (page === "admin-products") {
-      return <AdminProductPage />;
-    }
-
-    // default admin page
-    return <AdminOverviewPage />;
-  }
-
-
-  // user side
   return (
     <>
-      {page === "home" && <LandingPage />}
-      {page === "products" && <ProductPage />}
-      {page === "login" && <LoginPage onLogin={handleLogin} />}
-      {page === "register" && (<RegisterPage onRegister={handleRegister} />)}
+      {/* user navbar */}
+      {user?.role !== "admin" && (
+        <Navbar user={user} onLogout={handleLogout} />
+      )}
+
+      <Routes>
+        {/* user routes */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/products" element={<ProductPage />} />
+
+        <Route
+          path="/login"
+          element={<LoginPage onLogin={handleLogin} />}
+        />
+
+        <Route
+          path="/register"
+          element={<RegisterPage onRegister={handleRegister} />}
+        />
+
+        {/* admin routes */}
+        {user?.role === "admin" ? (
+          <>
+            <Route
+              path="/admin"
+              element={
+                <div className="flex min-h-screen">
+                  <AdminSidebar onLogout={handleLogout} />
+                  <div className="flex-1 p-6 bg-gray-50">
+                    <AdminOverviewPage />
+                  </div>
+                </div>
+              }
+            />
+
+            <Route
+              path="/admin/products"
+              element={
+                <div className="flex min-h-screen">
+                  <AdminSidebar onLogout={handleLogout} />
+                  <div className="flex-1 p-6 bg-gray-50">
+                    <AdminProductPage />
+                  </div>
+                </div>
+              }
+            />
+          </>
+        ) : (
+          <>
+            <Route path="/admin" element={<Navigate to="/" />} />
+            <Route
+              path="/admin/products"
+              element={<Navigate to="/" />}
+            />
+          </>
+        )}
+
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
     </>
   );
 }

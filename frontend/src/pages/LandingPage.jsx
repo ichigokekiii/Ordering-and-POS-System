@@ -18,7 +18,6 @@ function LandingPage() {
   if (!content)
     return (
       <>
-        <Navbar />
         <div className="flex h-screen items-center justify-center">
           <p className="text-gray-500">Loading...</p>
         </div>
@@ -27,7 +26,6 @@ function LandingPage() {
 
   return (
     <>
-      <Navbar />
 
       {/* Hero Section */}
       <section className="mx-auto flex max-w-7xl flex-col items-center gap-12 px-8 py-24 md:flex-row">

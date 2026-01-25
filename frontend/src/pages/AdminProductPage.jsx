@@ -24,8 +24,6 @@ function AdminProductPage() {
 
   return (
     <div className="flex">
-      {/* Sidebar */}
-      <AdminSidebar />
 
       {/* Main Content */}
       <div className="flex-1 px-10 py-10">

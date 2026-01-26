@@ -1,61 +1,90 @@
-import { useEffect, useState } from "react";
-import api from "../services/api";
+import { useState } from "react";
 import { useProducts } from "../contexts/ProductContext";
 
-
 function AdminProductPage() {
-  const { products, addProduct, setProducts } =
-  useProducts();
+  const {
+    products,
+    addProduct,
+    updateProduct,
+    deleteProduct,
+  } = useProducts();
 
   const [showModal, setShowModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentId, setCurrentId] = useState(null);
 
   const [name, setName] = useState("");
   const [image, setImage] = useState("");
   const [price, setPrice] = useState("");
-  
+
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
- useEffect(() => {
-  const fetchProducts = async () => {
-    try {
-      const res = await api.get("/products");
-      setProducts(res.data);
-    } catch (error) {
-      console.error("Failed to fetch products", error);
-    }
-  };
-
-  fetchProducts();
-}, []);
-
-  // Submit product
+  // ADD or UPDATE
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      await addProduct({ name, image, price });
+      if (isEditing) {
+        await updateProduct(currentId, { name, image, price });
+        setMessage("Product updated successfully!");
+      } else {
+        await addProduct({ name, image, price });
+        setMessage("Product added successfully!");
+      }
 
-
-      setMessage("Product added successfully!");
       setMessageType("success");
-
-      setName("");
-      setImage("");
-      setPrice("");
+      resetForm();
       setShowModal(false);
 
     } catch (error) {
-      console.error("Failed to add product", error);
-      setMessage("Failed to add product.");
+      console.error("Operation failed", error);
+      setMessage("Operation failed.");
       setMessageType("error");
     }
 
-    // Auto-hide message after 3 seconds
     setTimeout(() => {
       setMessage("");
       setMessageType("");
     }, 3000);
+  };
+
+  // DELETE
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this product?")) return;
+
+    try {
+      await deleteProduct(id);
+      setMessage("Product deleted successfully!");
+      setMessageType("success");
+    } catch (error) {
+      console.error("Delete failed", error);
+      setMessage("Failed to delete product.");
+      setMessageType("error");
+    }
+
+    setTimeout(() => {
+      setMessage("");
+      setMessageType("");
+    }, 3000);
+  };
+
+  // OPEN EDIT MODAL
+  const handleEdit = (product) => {
+    setIsEditing(true);
+    setCurrentId(product.id);
+    setName(product.name);
+    setImage(product.image);
+    setPrice(product.price);
+    setShowModal(true);
+  };
+
+  const resetForm = () => {
+    setName("");
+    setImage("");
+    setPrice("");
+    setCurrentId(null);
+    setIsEditing(false);
   };
 
   return (
@@ -78,7 +107,10 @@ function AdminProductPage() {
         <h2 className="text-2xl font-semibold">Products</h2>
 
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            resetForm();
+            setShowModal(true);
+          }}
           className="rounded bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
         >
           + Add Product
@@ -101,10 +133,17 @@ function AdminProductPage() {
             <p className="text-gray-500">₱{product.price}</p>
 
             <div className="mt-4 flex gap-2">
-              <button className="rounded border px-3 py-1 text-sm hover:bg-gray-100">
+              <button
+                onClick={() => handleEdit(product)}
+                className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+              >
                 Edit
               </button>
-              <button className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50">
+
+              <button
+                onClick={() => handleDelete(product.id)}
+                className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+              >
                 Delete
               </button>
             </div>
@@ -117,7 +156,7 @@ function AdminProductPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-lg bg-white p-6">
             <h3 className="mb-4 text-lg font-semibold">
-              Add Product
+              {isEditing ? "Edit Product" : "Add Product"}
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -159,7 +198,7 @@ function AdminProductPage() {
                   type="submit"
                   className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
                 >
-                  Add
+                  {isEditing ? "Update" : "Add"}
                 </button>
               </div>
             </form>

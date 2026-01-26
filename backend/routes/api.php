@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use App\Http\Controllers\ProductController;
 //use App\Http\Controllers\NameController;
 
 Route::get('/test', function () {
@@ -21,10 +22,12 @@ Route::get('/landing', function () {
     ]);
 });
 
-//Product Controller API
-use App\Http\Controllers\ProductController;
-
+//product api routes
 Route::apiResource('products', ProductController::class);
+Route::get('/products', [ProductController::class, 'index']);
+Route::post('/products', [ProductController::class, 'store']);
+Route::put('/products/{id}', [ProductController::class, 'update']);
+Route::delete('/products/{id}', [ProductController::class, 'destroy']);
 
 
 //login simple

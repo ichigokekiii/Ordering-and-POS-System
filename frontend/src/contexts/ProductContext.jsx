@@ -7,7 +7,7 @@ export function ProductProvider({ children }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch all product data from api
+  // Fetch all products
   const fetchProducts = async () => {
     try {
       const res = await api.get("/products");
@@ -76,7 +76,6 @@ export function ProductProvider({ children }) {
   );
 }
 
-// Custom hook
 // eslint-disable-next-line react-refresh/only-export-components
 export function useProducts() {
   return useContext(ProductContext);

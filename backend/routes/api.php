@@ -21,19 +21,11 @@ Route::get('/landing', function () {
     ]);
 });
 
-// Get all products (user side)
-Route::get('/products', function () {
-    return Product::all();
-});
+//Product Controller API
+use App\Http\Controllers\ProductController;
 
-// Add product (admin side)
-Route::post('/products', function (Request $request) {
-    return Product::create([
-        'name' => $request->name,
-        'image' => $request->image,
-        'price' => $request->price,
-    ]);
-});
+Route::apiResource('products', ProductController::class);
+
 
 //login simple
 Route::post('/login', function (Request $request) {

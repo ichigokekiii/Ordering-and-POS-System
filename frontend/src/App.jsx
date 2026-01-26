@@ -15,6 +15,8 @@ import PageTransition from "./components/PageTransition";
 
 import LandingPage from "./pages/LandingPage";
 import ProductPage from "./pages/ProductPage";
+import AboutPage from "./pages/AboutPage";
+import SchedulePage from "./pages/SchedulePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import AdminOverviewPage from "./pages/AdminOverviewPage";
@@ -71,6 +73,15 @@ function App() {
             }
           />
 
+          <Route 
+            path="/about" 
+            element={
+              <PageTransition>
+                <AboutPage />
+              </PageTransition>
+            } 
+          />
+
           <Route
             path="/products"
             element={
@@ -78,6 +89,15 @@ function App() {
                 <ProductPage />
               </PageTransition>
             }
+          />
+
+          <Route 
+            path="/schedule" 
+            element={
+              <PageTransition>
+                <SchedulePage />
+              </PageTransition>
+            } 
           />
 
           <Route

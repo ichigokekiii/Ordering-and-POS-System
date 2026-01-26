@@ -20,7 +20,7 @@ function AdminProductPage() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
-  // ADD or UPDATE
+  // add and update
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -49,7 +49,7 @@ function AdminProductPage() {
     }, 3000);
   };
 
-  // DELETE
+  // delete
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this product?")) return;
 
@@ -69,7 +69,7 @@ function AdminProductPage() {
     }, 3000);
   };
 
-  // OPEN EDIT MODAL
+  // edit modal
   const handleEdit = (product) => {
     setIsEditing(true);
     setCurrentId(product.id);
@@ -89,7 +89,6 @@ function AdminProductPage() {
 
   return (
     <div className="px-10 py-10">
-      {/* Message Alert */}
       {message && (
         <div
           className={`mb-4 rounded px-4 py-2 text-white ${
@@ -102,7 +101,7 @@ function AdminProductPage() {
         </div>
       )}
 
-      {/* Header */}
+
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Products</h2>
 
@@ -151,7 +150,7 @@ function AdminProductPage() {
         ))}
       </div>
 
-      {/* MODAL */}
+      {/* add modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-lg bg-white p-6">

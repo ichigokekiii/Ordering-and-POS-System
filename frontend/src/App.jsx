@@ -145,7 +145,7 @@ function App() {
           </>
         ) : (
           <>
-            <Route path="/admin/*" element={<Navigate to="/login" />} />
+            <Route path="/admin/*" element={<Navigate to="/" />} />
           </>
         )}
 

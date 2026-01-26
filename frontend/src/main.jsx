@@ -2,12 +2,15 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from "react-router-dom";
 import './main.css';
-import App from './App';
+import App from "./App";
+import { ProductProvider } from "./contexts/ProductContext";
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
+ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
-    <App />
+    <ProductProvider>
+      <App />
+    </ProductProvider>
   </BrowserRouter>
 );
+
 

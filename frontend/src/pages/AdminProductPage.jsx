@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
+import { useProducts } from "../contexts/ProductContext";
+
 
 function AdminProductPage() {
-  const [products, setProducts] = useState([]);
+  const { products, addProduct, setProducts } =
+  useProducts();
+
   const [showModal, setShowModal] = useState(false);
 
   const [name, setName] = useState("");
   const [image, setImage] = useState("");
   const [price, setPrice] = useState("");
-
+  
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState(""); // success | error
+  const [messageType, setMessageType] = useState("");
 
  useEffect(() => {
   const fetchProducts = async () => {
@@ -30,11 +34,8 @@ function AdminProductPage() {
     e.preventDefault();
 
     try {
-      await api.post("/products", {
-        name,
-        image,
-        price,
-      });
+      await addProduct({ name, image, price });
+
 
       setMessage("Product added successfully!");
       setMessageType("success");

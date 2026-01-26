@@ -7,7 +7,7 @@ export function ProductProvider({ children }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch all products from backend
+  // Fetch all product data from api
   const fetchProducts = async () => {
     try {
       const res = await api.get("/products");

@@ -7,20 +7,21 @@ import {
   useLocation,
 } from "react-router-dom";
 
-import { AnimatePresence } from "framer-motion";
-
 import Navbar from "./components/Navbar";
 import AdminSidebar from "./components/AdminSidebar";
-import PageTransition from "./components/PageTransition";
 
 import LandingPage from "./pages/LandingPage";
 import ProductPage from "./pages/ProductPage";
-import AboutPage from "./pages/AboutPage";
-import SchedulePage from "./pages/SchedulePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import AboutPage from "./pages/AboutPage";
+import SchedulePage from "./pages/SchedulePage";
+
 import AdminOverviewPage from "./pages/AdminOverviewPage";
 import AdminProductPage from "./pages/AdminProductPage";
+import AdminOrdersPage from "./pages/AdminOrdersPage";
+import AdminSchedulePage from "./pages/AdminSchedulePage";
+import AdminUsersPage from "./pages/AdminUsersPage";
 
 function App() {
   const [user, setUser] = useState(
@@ -29,6 +30,9 @@ function App() {
 
   const navigate = useNavigate();
   const location = useLocation();
+
+  // temporary role router
+  const isAdminRoute = location.pathname.startsWith("/admin");
 
   const handleLogin = (userData) => {
     localStorage.setItem("user", JSON.stringify(userData));
@@ -56,105 +60,97 @@ function App() {
   return (
     <>
       {/* User Navbar */}
-      {user?.role !== "admin" && (
+      {!isAdminRoute && (
         <Navbar user={user} onLogout={handleLogout} />
       )}
 
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/products" element={<ProductPage />} />
+        <Route path="/schedule" element={<SchedulePage />} />
 
-          {/* User Routes */}
-          <Route
-            path="/"
-            element={
-              <PageTransition>
-                <LandingPage />
-              </PageTransition>
-            }
-          />
+        <Route
+          path="/login"
+          element={<LoginPage onLogin={handleLogin} />}
+        />
 
-          <Route 
-            path="/about" 
-            element={
-              <PageTransition>
-                <AboutPage />
-              </PageTransition>
-            } 
-          />
+        <Route
+          path="/register"
+          element={<RegisterPage onRegister={handleRegister} />}
+        />
 
-          <Route
-            path="/products"
-            element={
-              <PageTransition>
-                <ProductPage />
-              </PageTransition>
-            }
-          />
-
-          <Route 
-            path="/schedule" 
-            element={
-              <PageTransition>
-                <SchedulePage />
-              </PageTransition>
-            } 
-          />
-
-          <Route
-            path="/login"
-            element={
-              <PageTransition>
-                <LoginPage onLogin={handleLogin} />
-              </PageTransition>
-            }
-          />
-
-          <Route
-            path="/register"
-            element={
-              <PageTransition>
-                <RegisterPage onRegister={handleRegister} />
-              </PageTransition>
-            }
-          />
-
-          {/* Admin Routes */}
-          {user?.role === "admin" ? (
-            <>
-              <Route
-                path="/admin"
-                element={
-                  <div className="flex min-h-screen">
-                    <AdminSidebar onLogout={handleLogout} />
-                    <div className="flex-1 p-6 bg-gray-50">
-                      <AdminOverviewPage />
-                    </div>
+        {/* Admin Navbar */}
+        {user?.role === "admin" ? (
+          <>
+            <Route
+              path="/admin"
+              element={
+                <div className="flex min-h-screen">
+                  <AdminSidebar onLogout={handleLogout} />
+                  <div className="flex-1 p-6 bg-gray-50">
+                    <AdminOverviewPage />
                   </div>
-                }
-              />
+                </div>
+              }
+            />
 
-              <Route
-                path="/admin/products"
-                element={
-                  <div className="flex min-h-screen">
-                    <AdminSidebar onLogout={handleLogout} />
-                    <div className="flex-1 p-6 bg-gray-50">
-                      <AdminProductPage />
-                    </div>
+            <Route
+              path="/admin/products"
+              element={
+                <div className="flex min-h-screen">
+                  <AdminSidebar onLogout={handleLogout} />
+                  <div className="flex-1 p-6 bg-gray-50">
+                    <AdminProductPage />
                   </div>
-                }
-              />
-            </>
-          ) : (
-            <>
-              <Route path="/admin" element={<Navigate to="/" />} />
-              <Route path="/admin/products" element={<Navigate to="/" />} />
-            </>
-          )}
+                </div>
+              }
+            />
 
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </AnimatePresence>
+            <Route
+              path="/admin/orders"
+              element={
+                <div className="flex min-h-screen">
+                  <AdminSidebar onLogout={handleLogout} />
+                  <div className="flex-1 p-6 bg-gray-50">
+                    <AdminOrdersPage />
+                  </div>
+                </div>
+              }
+            />
+
+            <Route
+              path="/admin/schedule"
+              element={
+                <div className="flex min-h-screen">
+                  <AdminSidebar onLogout={handleLogout} />
+                  <div className="flex-1 p-6 bg-gray-50">
+                    <AdminSchedulePage />
+                  </div>
+                </div>
+              }
+            />
+
+            <Route
+              path="/admin/users"
+              element={
+                <div className="flex min-h-screen">
+                  <AdminSidebar onLogout={handleLogout} />
+                  <div className="flex-1 p-6 bg-gray-50">
+                    <AdminUsersPage />
+                  </div>
+                </div>
+              }
+            />
+          </>
+        ) : (
+          <>
+            <Route path="/admin/*" element={<Navigate to="/login" />} />
+          </>
+        )}
+
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
     </>
   );
 }

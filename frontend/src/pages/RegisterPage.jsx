@@ -20,6 +20,7 @@ function RegisterPage({ onRegister }) {
       });
 
       onRegister(res.data);
+    // eslint-disable-next-line no-unused-vars
     } catch (err) {
       setError("Registration failed");
     }

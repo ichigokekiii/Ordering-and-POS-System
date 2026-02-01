@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../services/api";
-import Navbar from "../components/Navbar";
 
 function LoginPage({ onLogin }) {
   const [email, setEmail] = useState("");
@@ -20,42 +20,43 @@ function LoginPage({ onLogin }) {
   };
 
   return (
-    <>
+    <div className="mx-auto max-w-sm px-8 py-20">
+      <h2 className="mb-6 text-2xl font-semibold">Login</h2>
 
-      <div className="mx-auto max-w-sm px-8 py-20">
-        <h2 className="mb-6 text-2xl font-semibold">Login</h2>
+      {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
 
-        {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <input
+          className="w-full rounded border px-4 py-2"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            className="w-full rounded border px-4 py-2"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+        <input
+          type="password"
+          className="w-full rounded border px-4 py-2"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
 
-          <input
-            type="password"
-            className="w-full rounded border px-4 py-2"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+        <button className="w-full rounded bg-blue-600 py-2 text-white hover:bg-blue-700">
+          Login
+        </button>
+      </form>
 
-          <button className="w-full rounded bg-blue-600 py-2 text-white hover:bg-blue-700">
-            Login
-          </button>
-        </form>
-        <p
-          className="mt-4 cursor-pointer text-center text-sm text-blue-600 hover:underline"
-          onClick={() => window.setPage("register")}
+      {/* Register link */}
+      <p className="mt-4 text-center text-sm">
+        Don’t have an account?{" "}
+        <Link
+          to="/register"
+          className="text-blue-600 hover:underline"
         >
-          Don’t have an account? Register
-        </p>
-
-      </div>
-    </>
+          Register
+        </Link>
+      </p>
+    </div>
   );
 }
 

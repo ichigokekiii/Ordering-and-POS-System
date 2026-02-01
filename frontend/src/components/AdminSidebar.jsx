@@ -9,8 +9,7 @@ function AdminSidebar({ onLogout }) {
 
   return (
     <div className="flex h-screen w-64 flex-col border-r bg-white px-6 py-8">
-
-      {/* Logo / Title */}
+      {/* Logo */}
       <div className="mb-10 text-lg font-semibold text-blue-600">
         Admin Panel
       </div>
@@ -34,6 +33,33 @@ function AdminSidebar({ onLogout }) {
           }
         >
           Products
+        </NavLink>
+
+        <NavLink
+          to="/admin/orders"
+          className={({ isActive }) =>
+            isActive ? activeClass : baseClass
+          }
+        >
+          Orders
+        </NavLink>
+
+        <NavLink
+          to="/admin/schedule"
+          className={({ isActive }) =>
+            isActive ? activeClass : baseClass
+          }
+        >
+          Schedule
+        </NavLink>
+
+        <NavLink
+          to="/admin/users"
+          className={({ isActive }) =>
+            isActive ? activeClass : baseClass
+          }
+        >
+          Users
         </NavLink>
       </ul>
 

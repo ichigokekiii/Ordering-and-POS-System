@@ -12,6 +12,7 @@ function NameForm() {
       const res = await api.post("/names", { name });
       setMessage(res.data.message);
       setName("");
+    // eslint-disable-next-line no-unused-vars
     } catch (err) {
       setMessage("Something went wrong");
     }

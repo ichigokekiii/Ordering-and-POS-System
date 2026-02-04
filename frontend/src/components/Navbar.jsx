@@ -37,6 +37,10 @@ function Navbar({ user, onLogout }) {
           <li className="hover:text-blue-600">
             <Link to="/schedule">Schedule</Link>
           </li>
+
+          <li className="hover:text-blue-600">
+            <Link to="/order">Order</Link>
+          </li>
         </ul>
 
         {/* Login Button */}

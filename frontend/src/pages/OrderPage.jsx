@@ -1,16 +1,18 @@
 import { useProducts } from "../contexts/ProductContext";
 
-function ProductPage() {
-  const { products, loading } = useProducts();
+function OrderPage() {
+    const { products, loading } = useProducts();
+
+    const availableProducts = products.filter(p => p.isAvailable === 1);
 
   if (loading) return <p>Loading products...</p>;
 
   return (
     <div className="px-8 py-10">
-      <h2 className="mb-8 text-2xl font-semibold">Product Showcase</h2>
+      <h2 className="mb-8 text-2xl font-semibold">Order Page</h2>
 
       <div className="grid gap-6 md:grid-cols-3">
-        {products.map((product) => (
+        {availableProducts.map((product) => (
           <div
             key={product.id}
             className="rounded border p-4 shadow-sm"
@@ -27,6 +29,7 @@ function ProductPage() {
       </div>
     </div>
   );
+
 }
 
-export default ProductPage;
+export default OrderPage;

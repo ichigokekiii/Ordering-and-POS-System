@@ -16,6 +16,7 @@ function AdminProductPage() {
   const [name, setName] = useState("");
   const [image, setImage] = useState("");
   const [price, setPrice] = useState("");
+  const [isAvailable, setIsAvailable] = useState(1); 
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
@@ -26,10 +27,10 @@ function AdminProductPage() {
 
     try {
       if (isEditing) {
-        await updateProduct(currentId, { name, image, price });
+        await updateProduct(currentId, { name, image, price, isAvailable });
         setMessage("Product updated successfully!");
       } else {
-        await addProduct({ name, image, price });
+        await addProduct({ name, image, price, isAvailable });
         setMessage("Product added successfully!");
       }
 
@@ -76,6 +77,7 @@ function AdminProductPage() {
     setName(product.name);
     setImage(product.image);
     setPrice(product.price);
+    setIsAvailable(product.isAvailable);
     setShowModal(true);
   };
 
@@ -83,6 +85,7 @@ function AdminProductPage() {
     setName("");
     setImage("");
     setPrice("");
+    setIsAvailable(1); // Reset to available
     setCurrentId(null);
     setIsEditing(false);
   };
@@ -100,7 +103,6 @@ function AdminProductPage() {
           {message}
         </div>
       )}
-
 
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Products</h2>
@@ -121,13 +123,26 @@ function AdminProductPage() {
         {products.map((product) => (
           <div
             key={product.id}
-            className="rounded border p-4 shadow-sm"
+            className="relative rounded border p-4 shadow-sm"
           >
+            <div className="mb-2 flex items-center gap-1">
+              {product.isAvailable ? (
+                <span className="flex items-center text-xs font-bold text-green-600">
+                  <span className="mr-1">✓</span> Available
+                </span>
+              ) : (
+                <span className="text-xs font-bold text-red-500">
+                  Out of Stock
+                </span>
+              )}
+            </div>
+
             <img
               src={product.image}
               alt={product.name}
-              className="mb-3 h-40 w-full rounded object-cover"
+              className={`mb-3 h-40 w-full rounded object-cover ${!product.isAvailable && 'grayscale opacity-60'}`}
             />
+
             <h3 className="font-medium">{product.name}</h3>
             <p className="text-gray-500">₱{product.price}</p>
 
@@ -150,7 +165,7 @@ function AdminProductPage() {
         ))}
       </div>
 
-      {/* add modal */}
+      {/* add/edit modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-lg bg-white p-6">
@@ -183,6 +198,38 @@ function AdminProductPage() {
                 onChange={(e) => setPrice(e.target.value)}
                 required
               />
+
+              
+              <div className="rounded border p-4">
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Availability Status
+                </label>
+                <div className="flex gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="isAvailable"
+                      value={1}
+                      checked={isAvailable === 1}
+                      onChange={() => setIsAvailable(1)}
+                      className="h-4 w-4 text-blue-600"
+                    />
+                    <span className="text-sm text-green-600 font-medium">Available</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="isAvailable"
+                      value={0}
+                      checked={isAvailable === 0}
+                      onChange={() => setIsAvailable(0)}
+                      className="h-4 w-4 text-blue-600"
+                    />
+                    <span className="text-sm text-red-600 font-medium">Out of Stock</span>
+                  </label>
+                </div>
+              </div>
 
               <div className="flex justify-end gap-2 pt-2">
                 <button

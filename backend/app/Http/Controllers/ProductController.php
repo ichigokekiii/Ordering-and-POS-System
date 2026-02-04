@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PremadeProduct;
+use App\Models\CustomProduct;
 use App\Models\Product;
 use Illuminate\Http\Request;
 
@@ -20,6 +22,7 @@ class ProductController extends Controller
             'name' => 'required',
             'image' => 'required',
             'price' => 'required|numeric',
+            'isAvailable' => 'required|boolean'
         ]);
 
         $product = Product::create($request->all());
@@ -30,6 +33,13 @@ class ProductController extends Controller
     // PUT /api/products/{id}
     public function update(Request $request, $id)
     {
+         $request->validate([
+            'name' => 'sometimes|required',
+            'image' => 'sometimes|required',
+            'price' => 'sometimes|required|numeric',
+            'isAvailable' => 'sometimes|required|boolean', 
+        ]);
+
         $product = Product::findOrFail($id);
         $product->update($request->all());
 

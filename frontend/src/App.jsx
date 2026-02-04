@@ -16,6 +16,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import AboutPage from "./pages/AboutPage";
 import SchedulePage from "./pages/SchedulePage";
+import OrderPage from "./pages/OrderPage";
 
 import AdminOverviewPage from "./pages/AdminOverviewPage";
 import AdminProductPage from "./pages/AdminProductPage";
@@ -69,6 +70,7 @@ function App() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/products" element={<ProductPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
+        <Route path="/order" element={<OrderPage />} />
 
         <Route
           path="/login"

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\PremadeController;
 //use App\Http\Controllers\NameController;
 
 Route::get('/test', function () {
@@ -28,6 +29,13 @@ Route::get('/products', [ProductController::class, 'index']);
 Route::post('/products', [ProductController::class, 'store']);
 Route::put('/products/{id}', [ProductController::class, 'update']);
 Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+
+//premade api routes
+Route::apiResource('premades', PremadeController::class);
+Route::get('/premades', [PremadeController::class, 'index']);
+Route::post('/premades', [PremadeController::class, 'store']);
+Route::put('/premades/{id}', [PremadeController::class, 'update']);
+Route::delete('/premades/{id}', [PremadeController::class, 'destroy']);
 
 
 //login simple

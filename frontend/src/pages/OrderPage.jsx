@@ -1,35 +1,71 @@
-import { useProducts } from "../contexts/ProductContext";
+import { useNavigate } from "react-router-dom";
 
 function OrderPage() {
-    const { products, loading } = useProducts();
-
-    const availableProducts = products.filter(p => p.isAvailable === 1);
-
-  if (loading) return <p>Loading products...</p>;
+  const navigate = useNavigate();
 
   return (
-    <div className="px-8 py-10">
-      <h2 className="mb-8 text-2xl font-semibold">Order Page</h2>
+    <>
+      <button 
+        className="fixed right-6 bottom-6 rounded-full bg-white p-3 shadow-lg hover:shadow-xl transition-shadow"
+        onClick={() => {
+          console.log("Cart clicked");
+        }}
+      >
+        🛒
+      </button>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        {availableProducts.map((product) => (
-          <div
-            key={product.id}
-            className="rounded border p-4 shadow-sm"
+      {/* Main Content */}
+      <div className="flex min-h-screen items-center justify-center px-8 py-12">
+        <div className="flex flex-col gap-8 md:flex-row md:gap-12">
+          
+          {/* Premades Card */}
+          <button
+            onClick={() => navigate("/orderpremade")}
+            className="group relative overflow-hidden rounded-2xl bg-white shadow-lg transition-all hover:shadow-2xl hover:-translate-y-1"
           >
-            <img
-              src={product.image}
-              alt={product.name}
-              className="mb-3 h-40 w-full rounded object-cover"
-            />
-            <h3 className="font-medium">{product.name}</h3>
-            <p className="text-gray-500">₱{product.price}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+            <div className="h-80 w-80 overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1490750967868-88aa4486c946"
+                alt="Premade Bouquets"
+                className="h-full w-full object-cover transition-transform group-hover:scale-105"
+              />
+            </div>
+            <div className="p-6 text-center">
+              <h2 className="text-2xl font-semibold text-gray-800">
+                Premades
+              </h2>
+              <p className="mt-2 text-sm text-gray-500">
+                Choose from our ready-made bouquets
+              </p>
+            </div>
+          </button>
 
+          {/* Custom Made Card */}
+          <button
+            onClick={() => navigate("/ordercustom")}
+            className="group relative overflow-hidden rounded-2xl bg-white shadow-lg transition-all hover:shadow-2xl hover:-translate-y-1"
+          >
+            <div className="h-80 w-80 overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1563241527-3004b7be0ffd"
+                alt="Custom Made Bouquets"
+                className="h-full w-full object-cover transition-transform group-hover:scale-105"
+              />
+            </div>
+            <div className="p-6 text-center">
+              <h2 className="text-2xl font-semibold text-gray-800">
+                Custom Made
+              </h2>
+              <p className="mt-2 text-sm text-gray-500">
+                Create your own personalized bouquet
+              </p>
+            </div>
+          </button>
+
+        </div>
+      </div>
+    </>
+  );
 }
 
 export default OrderPage;

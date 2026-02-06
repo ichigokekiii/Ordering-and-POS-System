@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('premade_products', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+             $table->string('image');
             $table->string(column: 'description');
             $table->decimal('price', 8, 2);
             $table->boolean('isAvailable')->default(1);

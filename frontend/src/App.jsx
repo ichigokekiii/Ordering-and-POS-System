@@ -17,12 +17,15 @@ import RegisterPage from "./pages/RegisterPage";
 import AboutPage from "./pages/AboutPage";
 import SchedulePage from "./pages/SchedulePage";
 import OrderPage from "./pages/OrderPage";
+import OrderCustom from "./pages/OrderCustom";
+import OrderPremade from "./pages/OrderPremade";
 
 import AdminOverviewPage from "./pages/AdminOverviewPage";
 import AdminProductPage from "./pages/AdminProductPage";
 import AdminOrdersPage from "./pages/AdminOrdersPage";
 import AdminSchedulePage from "./pages/AdminSchedulePage";
 import AdminUsersPage from "./pages/AdminUsersPage";
+import AdminPremadePage from "./pages/AdminPremadePage";
 
 function App() {
   const [user, setUser] = useState(
@@ -71,6 +74,8 @@ function App() {
         <Route path="/products" element={<ProductPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
         <Route path="/order" element={<OrderPage />} />
+        <Route path="/ordercustom" element={<OrderCustom />} />
+        <Route path="/orderpremade" element={<OrderPremade />} />
 
         <Route
           path="/login"
@@ -104,6 +109,18 @@ function App() {
                   <AdminSidebar onLogout={handleLogout} />
                   <div className="flex-1 p-6 bg-gray-50">
                     <AdminProductPage />
+                  </div>
+                </div>
+              }
+            />
+
+            <Route
+              path="/admin/premades"
+              element={
+                <div className="flex min-h-screen">
+                  <AdminSidebar onLogout={handleLogout} />
+                  <div className="flex-1 p-6 bg-gray-50">
+                    <AdminPremadePage />
                   </div>
                 </div>
               }

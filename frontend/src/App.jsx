@@ -27,16 +27,18 @@ import AdminSchedulePage from "./pages/AdminSchedulePage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminPremadePage from "./pages/AdminPremadePage";
 
+import StaffPage from "./pages/StaffPage";
+
 function App() {
-  const [user, setUser] = useState(
-    JSON.parse(localStorage.getItem("user"))
-  );
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")));
 
   const navigate = useNavigate();
   const location = useLocation();
 
   // temporary role router
-  const isAdminRoute = location.pathname.startsWith("/admin");
+  const isAdminRoute =
+    location.pathname.startsWith("/admin") ||
+    location.pathname.startsWith("/staff");
 
   const handleLogin = (userData) => {
     localStorage.setItem("user", JSON.stringify(userData));
@@ -44,6 +46,8 @@ function App() {
 
     if (userData.role === "admin") {
       navigate("/admin");
+    } else if (userData.role === "staff") {
+      navigate("/staff");
     } else {
       navigate("/");
     }
@@ -64,9 +68,7 @@ function App() {
   return (
     <>
       {/* User Navbar */}
-      {!isAdminRoute && (
-        <Navbar user={user} onLogout={handleLogout} />
-      )}
+      {!isAdminRoute && <Navbar user={user} onLogout={handleLogout} />}
 
       <Routes>
         <Route path="/" element={<LandingPage />} />
@@ -77,10 +79,7 @@ function App() {
         <Route path="/ordercustom" element={<OrderCustom />} />
         <Route path="/orderpremade" element={<OrderPremade />} />
 
-        <Route
-          path="/login"
-          element={<LoginPage onLogin={handleLogin} />}
-        />
+        <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
 
         <Route
           path="/register"
@@ -168,6 +167,18 @@ function App() {
           </>
         )}
 
+        {user?.role === "staff" ? (
+          // ✅ IF USER IS STAFF: Render the page WITH props
+          <Route
+            path="/staff"
+            element={<StaffPage user={user} onLogout={handleLogout} />}
+          />
+        ) : (
+          // ⛔ IF USER IS NOT STAFF: Redirect them away (Security)
+          <Route path="/staff" element={<Navigate to="/" />} />
+        )}
+
+        {/* ... existing catch-all Route ... */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </>

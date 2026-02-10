@@ -168,17 +168,13 @@ function App() {
         )}
 
         {user?.role === "staff" ? (
-          // ✅ IF USER IS STAFF: Render the page WITH props
           <Route
             path="/staff"
             element={<StaffPage user={user} onLogout={handleLogout} />}
           />
         ) : (
-          // ⛔ IF USER IS NOT STAFF: Redirect them away (Security)
           <Route path="/staff" element={<Navigate to="/" />} />
         )}
-
-        {/* ... existing catch-all Route ... */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </>

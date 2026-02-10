@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PremadeController;
 //use App\Http\Controllers\NameController;
+use App\Http\Controllers\PosTransactionsController;
 
 Route::get('/test', function () {
     return response()->json(['message' => 'API works in Laravel 11']);
@@ -36,6 +37,8 @@ Route::get('/premades', [PremadeController::class, 'index']);
 Route::post('/premades', [PremadeController::class, 'store']);
 Route::put('/premades/{id}', [PremadeController::class, 'update']);
 Route::delete('/premades/{id}', [PremadeController::class, 'destroy']);
+
+Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
 
 
 //login simple

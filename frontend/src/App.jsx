@@ -18,7 +18,6 @@ import AboutPage from "./pages/AboutPage";
 import SchedulePage from "./pages/SchedulePage";
 
 import AdminOverviewPage from "./pages/AdminOverviewPage";
-import AdminAnalyticsPage from "./pages/AnalyticsPage";
 import AdminProductPage from "./pages/AdminProductPage";
 import AdminOrdersPage from "./pages/AdminOrdersPage";
 import AdminSchedulePage from "./pages/AdminSchedulePage";
@@ -91,18 +90,6 @@ function App() {
                   <AdminSidebar onLogout={handleLogout} />
                   <div className="flex-1 p-6 bg-gray-50">
                     <AdminOverviewPage />
-                  </div>
-                </div>
-              }
-            />
-
-            <Route
-              path="/admin/analytics"
-              element={
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminAnalyticsPage />
                   </div>
                 </div>
               }

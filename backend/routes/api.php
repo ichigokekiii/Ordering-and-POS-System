@@ -40,11 +40,11 @@ Route::delete('/premades/{id}', [PremadeController::class, 'destroy']);
 
 //login simple
 Route::post('/login', function (Request $request) {
-    if (!Auth::attempt($request->only('email', 'password'))) {
+    $user = User::where('email', $request->email)->first();
+
+    if (!$user || !Hash::check($request->password, $user->password)) {
         return response()->json(['message' => 'Invalid credentials'], 401);
     }
-
-    $user = Auth::user();
 
     return response()->json([
         'id' => $user->id,
@@ -52,7 +52,6 @@ Route::post('/login', function (Request $request) {
         'role' => $user->role,
     ]);
 });
-
 //logout simple
 Route::post('/logout', function () {
     Auth::logout();

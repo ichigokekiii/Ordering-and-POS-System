@@ -1,23 +1,18 @@
 import { useNavigate } from "react-router-dom";
 
+
 function OrderPage() {
   const navigate = useNavigate();
 
+
   return (
     <>
-      <button 
-        className="fixed right-6 bottom-6 rounded-full bg-white p-3 shadow-lg hover:shadow-xl transition-shadow"
-        onClick={() => {
-          console.log("Cart clicked");
-        }}
-      >
-        🛒
-      </button>
+
 
       {/* Main Content */}
       <div className="flex min-h-screen items-center justify-center px-8 py-12">
         <div className="flex flex-col gap-8 md:flex-row md:gap-12">
-          
+
           {/* Premades Card */}
           <button
             onClick={() => navigate("/orderpremade")}
@@ -31,9 +26,7 @@ function OrderPage() {
               />
             </div>
             <div className="p-6 text-center">
-              <h2 className="text-2xl font-semibold text-gray-800">
-                Premades
-              </h2>
+              <h2 className="text-2xl font-semibold text-gray-800">Premades</h2>
               <p className="mt-2 text-sm text-gray-500">
                 Choose from our ready-made bouquets
               </p>
@@ -53,9 +46,7 @@ function OrderPage() {
               />
             </div>
             <div className="p-6 text-center">
-              <h2 className="text-2xl font-semibold text-gray-800">
-                Custom Made
-              </h2>
+              <h2 className="text-2xl font-semibold text-gray-800">Custom Made</h2>
               <p className="mt-2 text-sm text-gray-500">
                 Create your own personalized bouquet
               </p>

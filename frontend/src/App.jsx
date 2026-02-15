@@ -20,6 +20,10 @@ import OrderPage from "./pages/OrderPage";
 import OrderCustom from "./pages/OrderCustom";
 import OrderPremade from "./pages/OrderPremade";
 
+import OrderLayout from "./components/OrderLayout";
+import CartPage from "./pages/CartPage";
+
+
 import AdminOverviewPage from "./pages/AdminOverviewPage";
 import AdminProductPage from "./pages/AdminProductPage";
 import AdminOrdersPage from "./pages/AdminOrdersPage";
@@ -73,9 +77,13 @@ function App() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/products" element={<ProductPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
-        <Route path="/order" element={<OrderPage />} />
-        <Route path="/ordercustom" element={<OrderCustom />} />
-        <Route path="/orderpremade" element={<OrderPremade />} />
+
+        <Route element={<OrderLayout />}>
+          <Route path="/order" element={<OrderPage />} />
+          <Route path="/ordercustom" element={<OrderCustom />} />
+          <Route path="/orderpremade" element={<OrderPremade />} />
+          <Route path="/cart" element={<CartPage />} />
+        </Route>
 
         <Route
           path="/login"

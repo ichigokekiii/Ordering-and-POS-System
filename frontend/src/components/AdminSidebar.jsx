@@ -19,45 +19,42 @@ function AdminSidebar({ onLogout }) {
         <NavLink
           to="/admin"
           end
-          className={({ isActive }) =>
-            isActive ? activeClass : baseClass
-          }
+          className={({ isActive }) => (isActive ? activeClass : baseClass)}
         >
           Overview
         </NavLink>
 
         <NavLink
+          to="/admin/analytics"
+          className={({ isActive }) => (isActive ? activeClass : baseClass)}
+        >
+          Analytics
+        </NavLink>
+
+        <NavLink
           to="/admin/products"
-          className={({ isActive }) =>
-            isActive ? activeClass : baseClass
-          }
+          className={({ isActive }) => (isActive ? activeClass : baseClass)}
         >
           Products
         </NavLink>
 
         <NavLink
           to="/admin/orders"
-          className={({ isActive }) =>
-            isActive ? activeClass : baseClass
-          }
+          className={({ isActive }) => (isActive ? activeClass : baseClass)}
         >
           Orders
         </NavLink>
 
         <NavLink
           to="/admin/schedule"
-          className={({ isActive }) =>
-            isActive ? activeClass : baseClass
-          }
+          className={({ isActive }) => (isActive ? activeClass : baseClass)}
         >
           Schedule
         </NavLink>
 
         <NavLink
           to="/admin/users"
-          className={({ isActive }) =>
-            isActive ? activeClass : baseClass
-          }
+          className={({ isActive }) => (isActive ? activeClass : baseClass)}
         >
           Users
         </NavLink>

@@ -142,7 +142,7 @@ function CartPage() {
         {/* Checkout Button */}
         <button
           className="mt-5 w-full rounded-xl bg-rose-500 py-3.5 text-sm font-semibold text-white shadow transition hover:bg-rose-600 active:scale-95"
-          onClick={() => alert("Checkout coming soon!")}
+          onClick={() => navigate("/checkout")}
         >
           Place Order — ₱{totalPrice.toLocaleString()}
         </button>

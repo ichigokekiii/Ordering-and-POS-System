@@ -22,7 +22,7 @@ import OrderPremade from "./pages/OrderPremade";
 
 import OrderLayout from "./components/OrderLayout";
 import CartPage from "./pages/CartPage";
-
+import CheckoutPage from "./pages/CheckoutPage";
 
 import AdminOverviewPage from "./pages/AdminOverviewPage";
 import AdminProductPage from "./pages/AdminProductPage";
@@ -85,6 +85,7 @@ function App() {
           <Route path="/ordercustom" element={<OrderCustom />} />
           <Route path="/orderpremade" element={<OrderPremade />} />
           <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
         </Route>
 
         <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />

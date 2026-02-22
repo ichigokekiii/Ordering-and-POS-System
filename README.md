@@ -1,2 +1,3 @@
-# Ordering-and-POS-System
-The Official Website for Petal Express PH. Currently a Requirement for Software Engineering 2
+# if may issue kayo sa code chat nyo lang ako
+
+for task delegation, refer nalang ulet sa chat ko sa gc thank you - jc

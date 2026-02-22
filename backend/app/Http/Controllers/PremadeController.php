@@ -2,59 +2,58 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CustomProduct;
+
+use App\Models\PremadeProduct;
 use Illuminate\Http\Request;
 
-class ProductController extends Controller
+class PremadeController extends Controller
 {
-    // GET /api/products
+    // GET /api/premade
     public function index()
     {
-        return CustomProduct::all();
+        return PremadeProduct::all();
     }
 
-    // POST /api/products
+    // POST /api/premade
     public function store(Request $request)
     {
         $request->validate([
             'name' => 'required',
             'image' => 'required',
-            'description' => 'required',
-            'category' => 'required',
+            'description' => 'sometimes|required',
             'price' => 'required|numeric',
             'isAvailable' => 'required|boolean'
         ]);
 
-        $product = CustomProduct::create($request->all());
+        $premade = PremadeProduct::create($request->all());
 
-        return response()->json($product, 201);
+        return response()->json($premade, 201);
     }
 
-    // PUT /api/products/{id}
+    // PUT /api/premade/{id}
     public function update(Request $request, $id)
     {
          $request->validate([
             'name' => 'sometimes|required',
+            'description' => 'sometimes|required',
             'image' => 'sometimes|required',
-            'description' => 'required',
-            'category' => 'required',
             'price' => 'sometimes|required|numeric',
             'isAvailable' => 'sometimes|required|boolean', 
         ]);
 
-        $product = CustomProduct::findOrFail($id);
-        $product->update($request->all());
+        $premade = PremadeProduct::findOrFail($id);
+        $premade->update($request->all());
 
-        return response()->json($product);
+        return response()->json($premade);
     }
 
-    // DELETE /api/products/{id}
+    // DELETE /api/premade/{id}
     public function destroy($id)
     {
-        CustomProduct::destroy($id);
+        PremadeProduct::destroy($id);
 
         return response()->json([
-            'message' => 'Product deleted'
+            'message' => 'Premade deleted'
         ]);
     }
 }

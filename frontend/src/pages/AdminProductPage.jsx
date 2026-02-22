@@ -16,6 +16,9 @@ function AdminProductPage() {
   const [name, setName] = useState("");
   const [image, setImage] = useState("");
   const [price, setPrice] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
+  const [isAvailable, setIsAvailable] = useState(1); 
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
@@ -26,10 +29,10 @@ function AdminProductPage() {
 
     try {
       if (isEditing) {
-        await updateProduct(currentId, { name, image, price });
+        await updateProduct(currentId, { name, image, price, description, category, isAvailable });
         setMessage("Product updated successfully!");
       } else {
-        await addProduct({ name, image, price });
+        await addProduct({ name, image, price, description, category, isAvailable });
         setMessage("Product added successfully!");
       }
 
@@ -76,6 +79,9 @@ function AdminProductPage() {
     setName(product.name);
     setImage(product.image);
     setPrice(product.price);
+    setDescription(product.description);
+    setCategory(product.category);
+    setIsAvailable(product.isAvailable);
     setShowModal(true);
   };
 
@@ -83,6 +89,9 @@ function AdminProductPage() {
     setName("");
     setImage("");
     setPrice("");
+    setDescription("");
+    setCategory("");
+    setIsAvailable(1); 
     setCurrentId(null);
     setIsEditing(false);
   };
@@ -101,7 +110,6 @@ function AdminProductPage() {
         </div>
       )}
 
-
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Products</h2>
 
@@ -117,40 +125,121 @@ function AdminProductPage() {
       </div>
 
       {/* Product List */}
-      <div className="grid gap-6 md:grid-cols-3">
-        {products.map((product) => (
-          <div
-            key={product.id}
-            className="rounded border p-4 shadow-sm"
-          >
-            <img
-              src={product.image}
-              alt={product.name}
-              className="mb-3 h-40 w-full rounded object-cover"
-            />
-            <h3 className="font-medium">{product.name}</h3>
-            <p className="text-gray-500">₱{product.price}</p>
+      <div className="space-y-8">
+        {/* Main Flower Section */}
+        <div>
+          <h3 className="mb-4 text-xl font-semibold text-gray-700">Main Flowers</h3>
+          <div className="grid gap-6 md:grid-cols-3">
+            {products
+              .filter((product) => product.category === "Main Flower")
+              .map((product) => (
+                <div
+                  key={product.id}
+                  className="relative rounded border p-4 shadow-sm"
+                >
+                  <div className="mb-2 flex items-center gap-1">
+                    {product.isAvailable ? (
+                      <span className="flex items-center text-xs font-bold text-green-600">
+                        <span className="mr-1">✓</span> Available
+                      </span>
+                    ) : (
+                      <span className="text-xs font-bold text-red-500">
+                        Out of Stock
+                      </span>
+                    )}
+                  </div>
 
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => handleEdit(product)}
-                className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-              >
-                Edit
-              </button>
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className={`mb-3 h-40 w-full rounded object-cover ${!product.isAvailable && 'grayscale opacity-60'}`}
+                  />
 
-              <button
-                onClick={() => handleDelete(product.id)}
-                className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
-              >
-                Delete
-              </button>
-            </div>
+                  <h1 className="font-medium">{product.name}</h1>
+                  <h3 className="text-sm text-gray-600">{product.description}</h3>
+                  <p className="text-gray-500">₱{product.price}</p>
+
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => handleEdit(product)}
+                      className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={() => handleDelete(product.id)}
+                      className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
           </div>
-        ))}
+          {products.filter((p) => p.category === "Main Flower").length === 0 && (
+            <p className="text-gray-400 text-center py-8">No main flowers yet</p>
+          )}
+        </div>
+
+        {/* Filler Section */}
+        <div>
+          <h3 className="mb-4 text-xl font-semibold text-gray-700">Fillers</h3>
+          <div className="grid gap-6 md:grid-cols-3">
+            {products
+              .filter((product) => product.category === "Filler")
+              .map((product) => (
+                <div
+                  key={product.id}
+                  className="relative rounded border p-4 shadow-sm"
+                >
+                  <div className="mb-2 flex items-center gap-1">
+                    {product.isAvailable ? (
+                      <span className="flex items-center text-xs font-bold text-green-600">
+                        <span className="mr-1">✓</span> Available
+                      </span>
+                    ) : (
+                      <span className="text-xs font-bold text-red-500">
+                        Out of Stock
+                      </span>
+                    )}
+                  </div>
+
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className={`mb-3 h-40 w-full rounded object-cover ${!product.isAvailable && 'grayscale opacity-60'}`}
+                  />
+
+                  <h1 className="font-medium">{product.name}</h1>
+                  <h3 className="text-sm text-gray-600">{product.description}</h3>
+                  <p className="text-gray-500">₱{product.price}</p>
+
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => handleEdit(product)}
+                      className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={() => handleDelete(product.id)}
+                      className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
+          {products.filter((p) => p.category === "Filler").length === 0 && (
+            <p className="text-gray-400 text-center py-8">No fillers yet</p>
+          )}
+        </div>
       </div>
 
-      {/* add modal */}
+      {/* add/edit modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-lg bg-white p-6">
@@ -164,6 +253,14 @@ function AdminProductPage() {
                 placeholder="Product name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                required
+              />
+
+              <input
+                className="w-full rounded border px-4 py-2"
+                placeholder="Description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
                 required
               />
 
@@ -183,6 +280,69 @@ function AdminProductPage() {
                 onChange={(e) => setPrice(e.target.value)}
                 required
               />
+
+              
+              <div className="rounded border p-4">
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Category
+                </label>
+                <div className="flex gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="category"
+                      value="Main Flower"
+                      checked={category === "Main Flower"}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="h-4 w-4 text-blue-600"
+                    />
+                    <span className="text-sm font-medium">Main Flower</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="category"
+                      value="Filler"
+                      checked={category === "Filler"}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="h-4 w-4 text-blue-600"
+                    />
+                    <span className="text-sm font-medium">Filler</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="rounded border p-4">
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Availability Status
+                </label>
+                <div className="flex gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="isAvailable"
+                      value={1}
+                      checked={isAvailable === 1}
+                      onChange={() => setIsAvailable(1)}
+                      className="h-4 w-4 text-blue-600"
+                    />
+                    <span className="text-sm text-green-600 font-medium">Available</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="isAvailable"
+                      value={0}
+                      checked={isAvailable === 0}
+                      onChange={() => setIsAvailable(0)}
+                      className="h-4 w-4 text-blue-600"
+                    />
+                    <span className="text-sm text-red-600 font-medium">Out of Stock</span>
+                  </label>
+                </div>
+              </div>
 
               <div className="flex justify-end gap-2 pt-2">
                 <button

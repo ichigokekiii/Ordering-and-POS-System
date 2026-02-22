@@ -7,6 +7,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\PremadeController;
+//use App\Http\Controllers\NameController;
+use App\Http\Controllers\PosTransactionsController;
 use App\Http\Controllers\UserController;
 
 // Test route - check if API works
@@ -21,28 +24,30 @@ Route::get('/landing', function () {
     ]);
 });
 
-// ========== PRODUCT ROUTES ==========
-Route::get('/products', [ProductController::class, 'index']);      // Get all products
-Route::post('/products', [ProductController::class, 'store']);     // Create new product
-Route::put('/products/{id}', [ProductController::class, 'update']); // Update product
-Route::delete('/products/{id}', [ProductController::class, 'destroy']); // Delete product
+//product api routes
+Route::apiResource('products', ProductController::class);
+Route::get('/products', [ProductController::class, 'index']);
+Route::post('/products', [ProductController::class, 'store']);
+Route::put('/products/{id}', [ProductController::class, 'update']);
+Route::delete('/products/{id}', [ProductController::class, 'destroy']);
 
-// ========== USER ROUTES (For Admin Page) ==========
-Route::get('/users', [UserController::class, 'index']);      // Get all users
-Route::post('/users', [UserController::class, 'store']);     // Create new user
-Route::get('/users/{id}', [UserController::class, 'show']);  // Get one user
-Route::put('/users/{id}', [UserController::class, 'update']); // Update user
-Route::delete('/users/{id}', [UserController::class, 'destroy']); // Delete user
+//premade api routes
+Route::apiResource('premades', PremadeController::class);
+Route::get('/premades', [PremadeController::class, 'index']);
+Route::post('/premades', [PremadeController::class, 'store']);
+Route::put('/premades/{id}', [PremadeController::class, 'update']);
+Route::delete('/premades/{id}', [PremadeController::class, 'destroy']);
 
-// ========== LOGIN & REGISTER ROUTES ==========
+Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
+
+
+//login simple
 Route::post('/login', function (Request $request) {
-    // Check if email and password are correct
-    if (!Auth::attempt($request->only('email', 'password'))) {
+    $user = User::where('email', $request->email)->first();
+
+    if (!$user || !Hash::check($request->password, $user->password)) {
         return response()->json(['message' => 'Invalid credentials'], 401);
     }
-
-    // Get the logged in user
-    $user = Auth::user();
 
     return response()->json([
         'id' => $user->id,
@@ -50,7 +55,7 @@ Route::post('/login', function (Request $request) {
         'role' => $user->role,
     ]);
 });
-
+//logout simple
 Route::post('/logout', function () {
     // Logout the user
     Auth::logout();

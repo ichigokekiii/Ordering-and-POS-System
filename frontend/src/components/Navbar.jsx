@@ -8,13 +8,6 @@ function Navbar({ user, onLogout }) {
     navigate("/");
   };
 
-  const handleOrderClick = (e) => {
-    if (!user) {
-      e.preventDefault();
-      alert("You need to be logged in to order");
-    }
-  };
-
   return (
     <nav className="w-full border-b border-gray-200 bg-white">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
@@ -45,9 +38,6 @@ function Navbar({ user, onLogout }) {
             <Link to="/schedule">Schedule</Link>
           </li>
 
-          <li className="hover:text-blue-600">
-            <Link to="/order" onClick={handleOrderClick}>Order</Link>
-          </li>
         </ul>
 
         {/* Login Button */}

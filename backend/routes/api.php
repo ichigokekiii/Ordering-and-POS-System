@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Models\Product;
+use App\Http\Controllers\ScheduleController;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +23,12 @@ Route::get('/landing', function () {
         'subtitle' => 'Text is from routes/api. Laravel API is Connected',
     ]);
 });
+
+//schedules api routes
+Route::get('/schedules', [ScheduleController::class, 'index']);
+Route::post('/schedules', [ScheduleController::class, 'store']);
+Route::put('/schedules/{id}', [ScheduleController::class, 'update']);
+Route::delete('/schedules/{id}', [ScheduleController::class, 'destroy']);
 
 //product api routes
 Route::apiResource('products', ProductController::class);

@@ -6,17 +6,18 @@ import App from "./App";
 import { ProductProvider } from "./contexts/ProductContext";
 import { PremadeProvider } from "./contexts/PremadeContext";
 import { CartProvider } from "./contexts/CartContext";
+import { ScheduleProvider } from "./contexts/ScheduleContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <CartProvider>
   <BrowserRouter>
-    <ProductProvider>
-       <PremadeProvider>
-      <App />
-      </PremadeProvider>
-    </ProductProvider>
+    <CartProvider>
+      <ProductProvider>
+        <PremadeProvider>
+          <ScheduleProvider>
+            <App />
+          </ScheduleProvider>
+        </PremadeProvider>
+      </ProductProvider>
+    </CartProvider>
   </BrowserRouter>
-  </CartProvider>
 );
-
-

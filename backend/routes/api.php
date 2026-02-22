@@ -32,6 +32,7 @@ Route::delete('/products/{id}', [ProductController::class, 'destroy']);
 
 //pos-transactions api routes
 Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
+Route::get('/pos-transactions/analytics', [PosTransactionsController::class, 'analytics']);
 
 //premade api routes
 Route::apiResource('premades', PremadeController::class);

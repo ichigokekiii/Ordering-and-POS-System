@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Search,
   Bell,
@@ -23,14 +23,31 @@ import {
 } from "recharts";
 
 const AdminAnalyticsPage = () => {
-  // Mock data matching your screenshot
-  const lineData = [
+  const [lineData, setLineData] = useState([
     { name: "Jan", value: 400 },
     { name: "Feb", value: 300 },
     { name: "Mar", value: 600 },
     { name: "Apr", value: 800 },
-  ];
+  ]);
 
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/api/pos-transactions/analytics");
+        if (response.ok) {
+          const data = await response.json();
+          setLineData(data);
+        }
+      } catch (error) {
+        console.warn("Failed to fetch analytics data:", error);
+        // Keep mock data if fetch fails
+      }
+    };
+
+    fetchAnalytics();
+  }, []);
+
+  // Mock data matching your screenshot
   const pieData = [
     { name: "Roses", value: 5709, color: "#00D1FF" },
     { name: "Tulips", value: 4095, color: "#FF99CC" },
@@ -159,9 +176,9 @@ const AdminAnalyticsPage = () => {
         {/* Revenue Report (Line Chart) */}
         <div className="bg-white p-8 rounded-[2rem] shadow-sm">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-lg">Revenue Report</h3>
+            <h3 className="font-bold text-lg">Weekly Revenue Report</h3>
             <span className="text-lg font-bold">
-              10.5k{" "}
+              {lineData.reduce((sum, item) => sum + item.value, 0).toLocaleString()}{" "}
               <span className="text-green-500 text-xs font-bold">+7%</span>
             </span>
           </div>
@@ -179,19 +196,18 @@ const AdminAnalyticsPage = () => {
                   tickLine={false}
                   tick={{ fontSize: 12, fill: "#A0AEC0" }}
                 />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: "#A0AEC0" }}
+                />
+                <Tooltip />
                 <Line
                   type="monotone"
                   dataKey="value"
                   stroke="#4A3AFF"
                   strokeWidth={3}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#FF8A00"
-                  strokeWidth={3}
-                  dot={false}
+                  dot={{ fill: "#4A3AFF", strokeWidth: 2, r: 4 }}
                 />
               </LineChart>
             </ResponsiveContainer>

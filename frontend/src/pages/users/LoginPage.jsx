@@ -20,7 +20,7 @@ function LoginPage({ onLogin }) {
   };
 
   return (
-    <div className="mx-auto max-w-sm px-8 py-20">
+    <div className="mx-auto max-w-sm px-8 pt-28 pb-32">
       <h2 className="mb-6 text-2xl font-semibold">Login</h2>
 
       {error && <p className="mb-4 text-sm text-red-500">{error}</p>}

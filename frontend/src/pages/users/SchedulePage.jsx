@@ -123,50 +123,66 @@ function SchedulePage() {
       </div>
       {/* MODAL */}
       {selectedSchedule && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl w-[90%] max-w-3xl overflow-hidden shadow-lg relative">
-            
-            {/* Close Button */}
+  <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+    <div className="bg-white rounded-3xl w-[90%] max-w-3xl h-[420px] shadow-xl relative overflow-hidden">
+      
+      {/* Close Button */}
+      <button
+        onClick={handleCloseModal}
+        className="absolute top-4 right-6 text-gray-400 hover:text-black text-2xl"
+      >
+        ✕
+      </button>
+
+      <div className="grid md:grid-cols-2 h-full">
+        
+        {/* IMAGE SIDE (Fixed Size) */}
+        <div className="h-full w-full">
+          <img
+            src={selectedSchedule.image}
+            alt={selectedSchedule.schedule_name}
+            className="h-full w-full object-cover"
+          />
+        </div>
+
+        {/* CONTENT SIDE */}
+        <div className="flex flex-col justify-center px-12">
+          <h2 className="text-4xl font-bold text-gray-800">
+            {selectedSchedule.schedule_name}
+          </h2>
+
+          <p className="mt-6 text-gray-600">
+            Visit Us
+          </p>
+
+          <p className="text-gray-500">
+            {new Date(selectedSchedule.event_date).toLocaleDateString()}
+          </p>
+
+          <p className="mt-2 text-gray-500">
+            {selectedSchedule.schedule_description}
+          </p>
+
+          <div className="mt-8 flex flex-col gap-4 w-48">
             <button
-              onClick={handleCloseModal}
-              className="absolute top-3 right-4 text-gray-500 hover:text-black text-xl"
+              className="border border-gray-300 rounded-full py-2 hover:bg-gray-100 transition"
             >
-              ✕
+              Book Now
             </button>
 
-            <div className="grid md:grid-cols-2">
-              {selectedSchedule.image && (
-                <img
-                  src={selectedSchedule.image}
-                  alt={selectedSchedule.schedule_name}
-                  className="h-full w-full object-cover"
-                />
-              )}
-
-              <div className="p-8 flex flex-col justify-center">
-                <h2 className="text-2xl font-bold">
-                  {selectedSchedule.schedule_name}
-                </h2>
-
-                <p className="text-sm text-gray-500 mt-2">
-                  {new Date(selectedSchedule.event_date).toLocaleDateString()}
-                </p>
-
-                <p className="mt-4 text-gray-600">
-                  {selectedSchedule.schedule_description}
-                </p>
-
-                <button
-                  onClick={handleOrderNow}
-                  className="mt-6 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-                >
-                  Order Now
-                </button>
-              </div>
-            </div>
+            <button
+              onClick={handleOrderNow}
+              className="border border-gray-300 rounded-full py-2 hover:bg-gray-100 transition"
+            >
+              Order Now
+            </button>
           </div>
         </div>
-      )}
+
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

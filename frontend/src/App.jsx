@@ -9,6 +9,7 @@ import {
 
 import Navbar from "./components/Navbar";
 import AdminSidebar from "./components/AdminSidebar";
+import Footer from "./components/Footer";
 
 // USER PAGES
 import LandingPage from "./pages/users/LandingPage";
@@ -196,6 +197,9 @@ function App() {
         )}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+
+      {/* User Footer */}
+      {!isAdminRoute && <Footer />}
     </>
   );
 }

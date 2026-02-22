@@ -25,6 +25,7 @@ import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 
 import AdminOverviewPage from "./pages/AdminOverviewPage";
+import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
 import AdminProductPage from "./pages/AdminProductPage";
 import AdminOrdersPage from "./pages/AdminOrdersPage";
 import AdminSchedulePage from "./pages/AdminSchedulePage";
@@ -109,6 +110,19 @@ function App() {
                 </div>
               }
             />
+
+            <Route
+              path="/admin/analytics"
+              element={
+                <div className="flex min-h-screen">
+                  <AdminSidebar onLogout={handleLogout} />
+                  <div className="flex-1 p-6 bg-gray-50">
+                    <AdminAnalyticsPage />
+                  </div>
+                </div>
+              }
+            />
+
 
             <Route
               path="/admin/products"

@@ -1,4 +1,4 @@
-import { usePremades } from "../contexts/PremadeContext";
+import { usePremades } from "../../contexts/PremadeContext";
 
 function ProductPage() {
   const { premades, loading } = usePremades();

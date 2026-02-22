@@ -10,29 +10,29 @@ import {
 import Navbar from "./components/Navbar";
 import AdminSidebar from "./components/AdminSidebar";
 
-import LandingPage from "./pages/LandingPage";
-import ProductPage from "./pages/ProductPage";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import AboutPage from "./pages/AboutPage";
-import SchedulePage from "./pages/SchedulePage";
-import OrderPage from "./pages/OrderPage";
-import OrderCustom from "./pages/OrderCustom";
-import OrderPremade from "./pages/OrderPremade";
+// USER PAGES
+import LandingPage from "./pages/users/LandingPage";
+import ProductPage from "./pages/users/ProductPage";
+import LoginPage from "./pages/users/LoginPage";
+import RegisterPage from "./pages/users/RegisterPage";
+import AboutPage from "./pages/users/AboutPage";
+import SchedulePage from "./pages/users/SchedulePage";
+import OrderPage from "./pages/users/OrderPage";
+import OrderCustom from "./pages/users/OrderCustom";
+import OrderPremade from "./pages/users/OrderPremade";
+import CartPage from "./pages/users/CartPage";
 
-import OrderLayout from "./components/OrderLayout";
-import CartPage from "./pages/CartPage";
+// ADMIN PAGES
+import AdminOverviewPage from "./pages/admin/AdminOverviewPage";
+import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage";
+import AdminProductPage from "./pages/admin/AdminProductPage";
+import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
+import AdminSchedulePage from "./pages/admin/AdminSchedulePage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
+import AdminPremadePage from "./pages/admin/AdminPremadePage";
 
-
-import AdminOverviewPage from "./pages/AdminOverviewPage";
-import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
-import AdminProductPage from "./pages/AdminProductPage";
-import AdminOrdersPage from "./pages/AdminOrdersPage";
-import AdminSchedulePage from "./pages/AdminSchedulePage";
-import AdminUsersPage from "./pages/AdminUsersPage";
-import AdminPremadePage from "./pages/AdminPremadePage";
-
-import StaffPage from "./pages/StaffPage";
+// STAFF PAGE
+import StaffPage from "./pages/staff/StaffPage";
 
 function App() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")));
@@ -81,12 +81,10 @@ function App() {
         <Route path="/products" element={<ProductPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
 
-        <Route element={<OrderLayout />}>
-          <Route path="/order" element={<OrderPage />} />
-          <Route path="/ordercustom" element={<OrderCustom />} />
-          <Route path="/orderpremade" element={<OrderPremade />} />
-          <Route path="/cart" element={<CartPage />} />
-        </Route>
+        <Route path="/order" element={<OrderPage />} />
+        <Route path="/ordercustom" element={<OrderCustom />} />
+        <Route path="/orderpremade" element={<OrderPremade />} />
+        <Route path="/cart" element={<CartPage />} />
 
         <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
 
@@ -121,7 +119,6 @@ function App() {
                 </div>
               }
             />
-
 
             <Route
               path="/admin/products"

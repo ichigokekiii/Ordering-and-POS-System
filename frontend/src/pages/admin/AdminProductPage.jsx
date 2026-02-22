@@ -1,13 +1,8 @@
 import { useState } from "react";
-import { useProducts } from "../contexts/ProductContext";
+import { useProducts } from "../../contexts/ProductContext";
 
 function AdminProductPage() {
-  const {
-    products,
-    addProduct,
-    updateProduct,
-    deleteProduct,
-  } = useProducts();
+  const { products, addProduct, updateProduct, deleteProduct } = useProducts();
 
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -18,7 +13,7 @@ function AdminProductPage() {
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
-  const [isAvailable, setIsAvailable] = useState(1); 
+  const [isAvailable, setIsAvailable] = useState(1);
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
@@ -29,17 +24,30 @@ function AdminProductPage() {
 
     try {
       if (isEditing) {
-        await updateProduct(currentId, { name, image, price, description, category, isAvailable });
+        await updateProduct(currentId, {
+          name,
+          image,
+          price,
+          description,
+          category,
+          isAvailable,
+        });
         setMessage("Product updated successfully!");
       } else {
-        await addProduct({ name, image, price, description, category, isAvailable });
+        await addProduct({
+          name,
+          image,
+          price,
+          description,
+          category,
+          isAvailable,
+        });
         setMessage("Product added successfully!");
       }
 
       setMessageType("success");
       resetForm();
       setShowModal(false);
-
     } catch (error) {
       console.error("Operation failed", error);
       setMessage("Operation failed.");
@@ -54,7 +62,8 @@ function AdminProductPage() {
 
   // delete
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
+    if (!window.confirm("Are you sure you want to delete this product?"))
+      return;
 
     try {
       await deleteProduct(id);
@@ -91,7 +100,7 @@ function AdminProductPage() {
     setPrice("");
     setDescription("");
     setCategory("");
-    setIsAvailable(1); 
+    setIsAvailable(1);
     setCurrentId(null);
     setIsEditing(false);
   };
@@ -101,9 +110,7 @@ function AdminProductPage() {
       {message && (
         <div
           className={`mb-4 rounded px-4 py-2 text-white ${
-            messageType === "success"
-              ? "bg-green-500"
-              : "bg-red-500"
+            messageType === "success" ? "bg-green-500" : "bg-red-500"
           }`}
         >
           {message}
@@ -128,7 +135,9 @@ function AdminProductPage() {
       <div className="space-y-8">
         {/* Main Flower Section */}
         <div>
-          <h3 className="mb-4 text-xl font-semibold text-gray-700">Main Flowers</h3>
+          <h3 className="mb-4 text-xl font-semibold text-gray-700">
+            Main Flowers
+          </h3>
           <div className="grid gap-6 md:grid-cols-3">
             {products
               .filter((product) => product.category === "Main Flower")
@@ -152,11 +161,13 @@ function AdminProductPage() {
                   <img
                     src={product.image}
                     alt={product.name}
-                    className={`mb-3 h-40 w-full rounded object-cover ${!product.isAvailable && 'grayscale opacity-60'}`}
+                    className={`mb-3 h-40 w-full rounded object-cover ${!product.isAvailable && "grayscale opacity-60"}`}
                   />
 
                   <h1 className="font-medium">{product.name}</h1>
-                  <h3 className="text-sm text-gray-600">{product.description}</h3>
+                  <h3 className="text-sm text-gray-600">
+                    {product.description}
+                  </h3>
                   <p className="text-gray-500">₱{product.price}</p>
 
                   <div className="mt-4 flex gap-2">
@@ -177,8 +188,11 @@ function AdminProductPage() {
                 </div>
               ))}
           </div>
-          {products.filter((p) => p.category === "Main Flower").length === 0 && (
-            <p className="text-gray-400 text-center py-8">No main flowers yet</p>
+          {products.filter((p) => p.category === "Main Flower").length ===
+            0 && (
+            <p className="text-gray-400 text-center py-8">
+              No main flowers yet
+            </p>
           )}
         </div>
 
@@ -208,11 +222,13 @@ function AdminProductPage() {
                   <img
                     src={product.image}
                     alt={product.name}
-                    className={`mb-3 h-40 w-full rounded object-cover ${!product.isAvailable && 'grayscale opacity-60'}`}
+                    className={`mb-3 h-40 w-full rounded object-cover ${!product.isAvailable && "grayscale opacity-60"}`}
                   />
 
                   <h1 className="font-medium">{product.name}</h1>
-                  <h3 className="text-sm text-gray-600">{product.description}</h3>
+                  <h3 className="text-sm text-gray-600">
+                    {product.description}
+                  </h3>
                   <p className="text-gray-500">₱{product.price}</p>
 
                   <div className="mt-4 flex gap-2">
@@ -281,7 +297,6 @@ function AdminProductPage() {
                 required
               />
 
-              
               <div className="rounded border p-4">
                 <label className="mb-2 block text-sm font-medium text-gray-700">
                   Category
@@ -327,7 +342,9 @@ function AdminProductPage() {
                       onChange={() => setIsAvailable(1)}
                       className="h-4 w-4 text-blue-600"
                     />
-                    <span className="text-sm text-green-600 font-medium">Available</span>
+                    <span className="text-sm text-green-600 font-medium">
+                      Available
+                    </span>
                   </label>
 
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -339,7 +356,9 @@ function AdminProductPage() {
                       onChange={() => setIsAvailable(0)}
                       className="h-4 w-4 text-blue-600"
                     />
-                    <span className="text-sm text-red-600 font-medium">Out of Stock</span>
+                    <span className="text-sm text-red-600 font-medium">
+                      Out of Stock
+                    </span>
                   </label>
                 </div>
               </div>

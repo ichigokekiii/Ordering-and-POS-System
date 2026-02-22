@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { usePremades } from "../contexts/PremadeContext";
-import { useCart } from "../contexts/CartContext";
+import { usePremades } from "../../contexts/PremadeContext";
+import { useCart } from "../../contexts/CartContext";
 
 function OrderModal({ product, onClose, onConfirm }) {
   const [quantity, setQuantity] = useState(1);

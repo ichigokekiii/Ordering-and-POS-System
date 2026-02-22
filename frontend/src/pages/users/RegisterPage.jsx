@@ -1,6 +1,6 @@
 import { useState } from "react";
-import api from "../services/api";
-import Navbar from "../components/Navbar";
+import api from "../../services/api";
+import Navbar from "../../components/Navbar";
 
 function RegisterPage({ onRegister }) {
   const [name, setName] = useState("");

@@ -1,7 +1,8 @@
+/* eslint-disable react-hooks/purity */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useProducts } from "../contexts/ProductContext";
-import { useCart } from "../contexts/CartContext";
+import { useProducts } from "../../contexts/ProductContext";
+import { useCart } from "../../contexts/CartContext";
 
 function QuantityControl({ quantity, onIncrease, onDecrease }) {
   return (

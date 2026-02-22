@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import api from "../services/api";
-import Navbar from "../components/Navbar";
+import api from "../../services/api";
+import Navbar from "../../components/Navbar";
 
 function LandingPage() {
   const [content, setContent] = useState(null);

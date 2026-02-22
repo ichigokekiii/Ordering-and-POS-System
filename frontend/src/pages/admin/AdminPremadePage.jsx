@@ -1,13 +1,8 @@
 import { useState } from "react";
-import { usePremades } from "../contexts/PremadeContext";
+import { usePremades } from "../../contexts/PremadeContext";
 
 function AdminPremadePage() {
-  const {
-    premades,
-    addPremade,
-    updatePremade,
-    deletePremade,
-  } = usePremades();
+  const { premades, addPremade, updatePremade, deletePremade } = usePremades();
 
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -17,7 +12,7 @@ function AdminPremadePage() {
   const [description, setDescription] = useState("");
   const [image, setImage] = useState("");
   const [price, setPrice] = useState("");
-  const [isAvailable, setIsAvailable] = useState(1); 
+  const [isAvailable, setIsAvailable] = useState(1);
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
@@ -28,7 +23,13 @@ function AdminPremadePage() {
 
     try {
       if (isEditing) {
-        await updatePremade(currentId, { name, image, price, description, isAvailable });
+        await updatePremade(currentId, {
+          name,
+          image,
+          price,
+          description,
+          isAvailable,
+        });
         setMessage("Premade updated successfully!");
       } else {
         await addPremade({ name, image, price, description, isAvailable });
@@ -38,7 +39,6 @@ function AdminPremadePage() {
       setMessageType("success");
       resetForm();
       setShowModal(false);
-
     } catch (error) {
       console.error("Operation failed", error);
       setMessage("Operation failed.");
@@ -53,7 +53,8 @@ function AdminPremadePage() {
 
   // delete
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this Premade?")) return;
+    if (!window.confirm("Are you sure you want to delete this Premade?"))
+      return;
 
     try {
       await deletePremade(id);
@@ -88,7 +89,7 @@ function AdminPremadePage() {
     setImage("");
     setPrice("");
     setDescription("");
-    setIsAvailable(1); 
+    setIsAvailable(1);
     setCurrentId(null);
     setIsEditing(false);
   };
@@ -98,9 +99,7 @@ function AdminPremadePage() {
       {message && (
         <div
           className={`mb-4 rounded px-4 py-2 text-white ${
-            messageType === "success"
-              ? "bg-green-500"
-              : "bg-red-500"
+            messageType === "success" ? "bg-green-500" : "bg-red-500"
           }`}
         >
           {message}
@@ -143,7 +142,7 @@ function AdminPremadePage() {
             <img
               src={premade.image}
               alt={premade.name}
-              className={`mb-3 h-40 w-full rounded object-cover ${!premade.isAvailable && 'grayscale opacity-60'}`}
+              className={`mb-3 h-40 w-full rounded object-cover ${!premade.isAvailable && "grayscale opacity-60"}`}
             />
 
             <h1 className="font-medium">{premade.name}</h1>
@@ -211,7 +210,6 @@ function AdminPremadePage() {
                 required
               />
 
-              
               <div className="rounded border p-4">
                 <label className="mb-2 block text-sm font-medium text-gray-700">
                   Availability Status
@@ -226,7 +224,9 @@ function AdminPremadePage() {
                       onChange={() => setIsAvailable(1)}
                       className="h-4 w-4 text-blue-600"
                     />
-                    <span className="text-sm text-green-600 font-medium">Available</span>
+                    <span className="text-sm text-green-600 font-medium">
+                      Available
+                    </span>
                   </label>
 
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -238,7 +238,9 @@ function AdminPremadePage() {
                       onChange={() => setIsAvailable(0)}
                       className="h-4 w-4 text-blue-600"
                     />
-                    <span className="text-sm text-red-600 font-medium">Out of Stock</span>
+                    <span className="text-sm text-red-600 font-medium">
+                      Out of Stock
+                    </span>
                   </label>
                 </div>
               </div>

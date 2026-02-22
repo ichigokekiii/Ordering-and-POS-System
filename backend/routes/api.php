@@ -62,34 +62,4 @@ Route::post('/logout', function () {
     return response()->json(['message' => 'Logged out']);
 });
 
-Route::post('/register', function (Request $request) {
-    // Get data from request
-    $name = $request->input('name');
-    $email = $request->input('email');
-    $password = $request->input('password');
-
-    // Check if all fields are provided
-    if (empty($name) || empty($email) || empty($password)) {
-        return response()->json(['message' => 'All fields are required'], 400);
-    }
-
-    // Check if email already exists
-    $existingUser = User::where('email', $email)->first();
-    if ($existingUser) {
-        return response()->json(['message' => 'Email already registered'], 400);
-    }
-
-    // Create new user
-    $user = new User();
-    $user->name = $name;
-    $user->email = $email;
-    $user->password = Hash::make($password);  // Hash password for security
-    $user->role = 'user';  // Default role
-    $user->save();
-
-    return response()->json([
-        'id' => $user->id,
-        'name' => $user->name,
-        'role' => $user->role,
-    ]);
-});
+Route::post('/register', [UserController::class, 'register']);

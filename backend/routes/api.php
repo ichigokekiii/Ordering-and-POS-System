@@ -30,6 +30,16 @@ Route::post('/products', [ProductController::class, 'store']);
 Route::put('/products/{id}', [ProductController::class, 'update']);
 Route::delete('/products/{id}', [ProductController::class, 'destroy']);
 
+//pos-transactions api routes
+Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
+
+//premade api routes
+Route::apiResource('premades', PremadeController::class);
+Route::get('/premades', [PremadeController::class, 'index']);
+Route::post('/premades', [PremadeController::class, 'store']);
+Route::put('/premades/{id}', [PremadeController::class, 'update']);
+Route::delete('/premades/{id}', [PremadeController::class, 'destroy']);
+
 
 //login simple
 Route::post('/login', function (Request $request) {

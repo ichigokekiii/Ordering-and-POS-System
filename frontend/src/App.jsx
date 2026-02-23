@@ -22,6 +22,7 @@ import OrderPage from "./pages/users/OrderPage";
 import OrderCustom from "./pages/users/OrderCustom";
 import OrderPremade from "./pages/users/OrderPremade";
 import CartPage from "./pages/users/CartPage";
+import CheckoutPage from "./pages/users/CheckoutPage";
 
 // ADMIN PAGES
 import AdminOverviewPage from "./pages/admin/AdminOverviewPage";
@@ -86,6 +87,7 @@ function App() {
         <Route path="/ordercustom" element={<OrderCustom />} />
         <Route path="/orderpremade" element={<OrderPremade />} />
         <Route path="/cart" element={<CartPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
 
         <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
 

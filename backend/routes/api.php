@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PremadeController;
-//use App\Http\Controllers\NameController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PosTransactionsController;
 use App\Http\Controllers\UserController;
 
@@ -44,6 +44,13 @@ Route::post('/premades', [PremadeController::class, 'store']);
 Route::put('/premades/{id}', [PremadeController::class, 'update']);
 Route::delete('/premades/{id}', [PremadeController::class, 'destroy']);
 
+//order api routes
+Route::get('/orders', [OrderController::class, 'index']);
+Route::get('/orders/user/{user_id}', [OrderController::class, 'userOrders']);
+Route::post('/orders', [OrderController::class, 'store']);
+Route::put('/orders/{id}', [OrderController::class, 'update']);
+
+//pos api routes
 Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
 
 

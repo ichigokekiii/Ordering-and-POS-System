@@ -14,6 +14,8 @@ function AdminUsersPage() {
   const [filterStatus, setFilterStatus] = useState('all');  // Filter by status
   const [showSortMenu, setShowSortMenu] = useState(false);  // Show/hide sort dropdown
   const [showFilterMenu, setShowFilterMenu] = useState(false);  // Show/hide filter dropdown
+  const [updatingUserId, setUpdatingUserId] = useState(null);
+  const [updateError, setUpdateError] = useState(null);
 
   // This runs once when page loads
   useEffect(() => {
@@ -62,17 +64,65 @@ function AdminUsersPage() {
       });
   };
 
+  // Normalize/display role labels (backwards-compatible)
+  const formatRole = (role) => {
+    const r = (role || '').toLowerCase();
+    if (r === 'admin') return 'Admin';
+    if (r === 'staff') return 'Staff';
+    if (r === 'customer' || r === 'user') return 'Customer';
+    return role || '';
+  };
+
+  // Map UI role to backend role value
+  const roleToBackend = (uiRole) => {
+    const r = (uiRole || '').toLowerCase();
+    if (r === 'customer') return 'user';
+    return r;
+  };
+
+  // Update a user's role on the backend
+  const handleRoleChange = (userId, selectedUiRole) => {
+    setUpdatingUserId(userId);
+    setUpdateError(null);
+
+    const backendRole = roleToBackend(selectedUiRole);
+
+    fetch(`http://localhost:8000/api/users/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ role: backendRole }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to update user role');
+        return res.json();
+      })
+      .then((updatedUser) => {
+        setUsers((prev) => prev.map((u) => (u.id === userId ? updatedUser : u)));
+      })
+      .catch((err) => {
+        console.error(err);
+        setUpdateError(err.message);
+      })
+      .finally(() => setUpdatingUserId(null));
+  };
+
   // Function to filter and sort users
   const getFilteredAndSortedUsers = () => {
-    // Step 1: Filter by role
+    // Step 1: Filter by role (use normalized UI labels)
     let filteredUsers = users;
     if (filterRole !== 'all') {
-      filteredUsers = filteredUsers.filter(user => user.role === filterRole);
+      filteredUsers = filteredUsers.filter((user) => {
+        const normalized = formatRole(user.role).toLowerCase();
+        return normalized === filterRole;
+      });
     }
 
     // Step 2: Filter by status
     if (filterStatus !== 'all') {
-      filteredUsers = filteredUsers.filter(user => user.status === filterStatus);
+      filteredUsers = filteredUsers.filter((user) => user.status === filterStatus);
     }
 
     // Step 3: Sort the list
@@ -195,10 +245,16 @@ function AdminUsersPage() {
                       Admin
                     </button>
                     <button
-                      onClick={() => setFilterRole('user')}
-                      className={`w-full text-left px-3 py-1 text-sm hover:bg-blue-50 ${filterRole === 'user' ? 'bg-blue-100 text-[#5A78A6]' : ''}`}
+                      onClick={() => setFilterRole('staff')}
+                      className={`w-full text-left px-3 py-1 text-sm hover:bg-blue-50 ${filterRole === 'staff' ? 'bg-blue-100 text-[#5A78A6]' : ''}`}
                     >
-                      User
+                      Staff
+                    </button>
+                    <button
+                      onClick={() => setFilterRole('customer')}
+                      className={`w-full text-left px-3 py-1 text-sm hover:bg-blue-50 ${filterRole === 'customer' ? 'bg-blue-100 text-[#5A78A6]' : ''}`}
+                    >
+                      Customer
                     </button>
                   </div>
 
@@ -260,7 +316,23 @@ function AdminUsersPage() {
                       <td className="py-5">{user.id}</td>
                       <td className="py-5 font-medium">{user.name}</td>
                       <td className="py-5">{user.email}</td>
-                      <td className="py-5 capitalize">{user.role}</td>
+                      <td className="py-5">
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={formatRole(user.role).toLowerCase()}
+                            onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                            disabled={updatingUserId === user.id}
+                            className="px-3 py-1 border rounded text-sm"
+                          >
+                            <option value="customer">Customer</option>
+                            <option value="staff">Staff</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                          {updatingUserId === user.id && (
+                            <span className="text-xs text-gray-500">Saving...</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-5">
                         {user.status === 'Active' ? (
                           <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">

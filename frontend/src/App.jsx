@@ -1,4 +1,5 @@
-import { useState } from "react";
+/* eslint-disable no-unused-vars */
+import { useContext, useEffect } from "react";
 import {
   Routes,
   Route,
@@ -6,6 +7,8 @@ import {
   useNavigate,
   useLocation,
 } from "react-router-dom";
+
+import { AuthContext } from "./contexts/AuthContext";
 
 import Navbar from "./components/Navbar";
 import AdminSidebar from "./components/AdminSidebar";
@@ -16,6 +19,7 @@ import LandingPage from "./pages/users/LandingPage";
 import ProductPage from "./pages/users/ProductPage";
 import LoginPage from "./pages/users/LoginPage";
 import RegisterPage from "./pages/users/RegisterPage";
+import VerifyOtpPage from "./pages/users/VerifyOtpPage";
 import AboutPage from "./pages/users/AboutPage";
 import SchedulePage from "./pages/users/SchedulePage";
 import OrderPage from "./pages/users/OrderPage";
@@ -36,48 +40,39 @@ import AdminPremadePage from "./pages/admin/AdminPremadePage";
 // STAFF PAGE
 import StaffPage from "./pages/staff/StaffPage";
 
-function App() {
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")));
 
+function App() {
   const navigate = useNavigate();
   const location = useLocation();
+
+  const { user, handleLogin, handleLogout } = useContext(AuthContext);
+
+  useEffect(() => {
+    if (!user) return;
+
+    // If admin refreshes on "/", redirect to /admin
+    if (user.role === "admin" && location.pathname === "/") {
+      navigate("/admin");
+    }
+
+    // If staff refreshes on "/", redirect to /staff
+    if (user.role === "staff" && location.pathname === "/") {
+      navigate("/staff");
+    }
+  }, [user, location.pathname]);
 
   // temporary role router
   const isAdminRoute =
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/staff");
 
-  const handleLogin = (userData) => {
-    localStorage.setItem("user", JSON.stringify(userData));
-    setUser(userData);
-
-    if (userData.role === "admin") {
-      navigate("/admin");
-    } else if (userData.role === "staff") {
-      navigate("/staff");
-    } else {
-      navigate("/");
-    }
-  };
-
-  const handleRegister = (userData) => {
-    localStorage.setItem("user", JSON.stringify(userData));
-    setUser(userData);
-    navigate("/");
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    setUser(null);
-    navigate("/");
-  };
 
   return (
     <>
-      {/* User Navbar */}
-      {!isAdminRoute && <Navbar user={user} onLogout={handleLogout} />}
+        {/* User Navbar */}
+        {!isAdminRoute && <Navbar user={user} onLogout={handleLogout} />}
 
-      <Routes>
+        <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/products" element={<ProductPage />} />
@@ -93,7 +88,11 @@ function App() {
 
         <Route
           path="/register"
-          element={<RegisterPage onRegister={handleRegister} />}
+          element={<RegisterPage />}
+        />
+        <Route
+          path="/verify-otp"
+          element={<VerifyOtpPage />}
         />
 
         {/* Admin Navbar */}
@@ -200,9 +199,9 @@ function App() {
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
 
-      {/* User Footer */}
-      {!isAdminRoute && <Footer />}
-    </>
+        {/* User Footer */}
+        {!isAdminRoute && <Footer />}
+      </>
   );
 }
 

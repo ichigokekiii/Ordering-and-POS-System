@@ -1,26 +1,32 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 
-function RegisterPage({ onRegister }) {
+function RegisterPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [error, setError] = useState("");
+
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
     try {
-      const res = await api.post("/register", {
+      await api.post("/register", {
         first_name: firstName,
         last_name: lastName,
         email,
         password,
+        phone_number: phoneNumber,
       });
 
-      onRegister(res.data);
+      // Redirect to OTP verification page and pass email
+      navigate("/verify-otp", { state: { email } });
 
     } catch (err) {
       console.log("Full error:", err.response);
@@ -66,6 +72,14 @@ function RegisterPage({ onRegister }) {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+
+        <input
+          className="w-full rounded border px-4 py-2"
+          placeholder="Phone Number"
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
           required
         />
 

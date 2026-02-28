@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../../services/api";
 
 function LoginPage({ onLogin }) {
@@ -7,13 +7,27 @@ function LoginPage({ onLogin }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  const navigate = useNavigate();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
     try {
       const res = await api.post("/login", { email, password });
-      onLogin(res.data);
+
+      const loggedInUser = res.data.user;
+
+      onLogin(loggedInUser);
+
+      // Role-based redirect
+      if (loggedInUser.role === "admin") {
+        navigate("/admin");
+      } else if (loggedInUser.role === "staff") {
+        navigate("/staff");
+      } else {
+        navigate("/");
+      }
     } catch {
       setError("Invalid credentials");
     }

@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use App\Models\Otp;
+use App\Mail\SendOtpMail;
+use Illuminate\Support\Facades\Mail;
+use Carbon\Carbon;
 
 class UserController extends Controller
 {
@@ -70,7 +74,22 @@ class UserController extends Controller
 
         $user->save();
 
-        return response()->json($user, 201);
+        // Generate 6-digit OTP
+        $otpCode = rand(100000, 999999);
+
+        Otp::create([
+            'user_id' => $user->id,
+            'code' => $otpCode,
+            'expires_at' => Carbon::now()->addMinutes(5),
+        ]);
+
+        // Send OTP email
+        Mail::to($user->email)->send(new SendOtpMail($otpCode));
+
+        return response()->json([
+            'message' => 'User registered successfully. OTP sent to email.',
+            'email' => $user->email
+        ], 201);
     }
 
     // Get one user

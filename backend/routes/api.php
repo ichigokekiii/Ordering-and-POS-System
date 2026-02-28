@@ -11,6 +11,7 @@ use App\Http\Controllers\PremadeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PosTransactionsController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\AuthController;
 
 // Test route - check if API works
 Route::get('/test', function () {
@@ -68,6 +69,12 @@ Route::post('/login', function (Request $request) {
         'role' => $user->role,
     ]);
 });
+
+//verify otp
+Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
+
 //logout simple
 Route::post('/logout', function () {
     // Logout the user

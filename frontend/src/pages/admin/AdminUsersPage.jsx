@@ -1,98 +1,80 @@
 /* eslint-disable react-hooks/immutability */
 import React, { useState, useEffect } from "react";
-import { Search, Bell, Settings, User, Plus, ChevronDown } from "lucide-react"; // for icons
+import { ChevronDown } from "lucide-react";
 
 function AdminUsersPage() {
-  // State variables to store data
-  const [users, setUsers] = useState([]);  
-  const [loading, setLoading] = useState(true); 
-  const [error, setError] = useState(null);  
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // State for sort and filter
-  const [sortBy, setSortBy] = useState('name');  // Sort by name, email, role, etc
-  const [filterRole, setFilterRole] = useState('all');  // Filter by role
-  const [filterStatus, setFilterStatus] = useState('all');  // Filter by status
-  const [showSortMenu, setShowSortMenu] = useState(false);  // Show/hide sort dropdown
-  const [showFilterMenu, setShowFilterMenu] = useState(false);  // Show/hide filter dropdown
+  const [sortBy, setSortBy] = useState("name");
+  const [filterRole, setFilterRole] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
 
-  // This runs once when page loads
   useEffect(() => {
     fetchUsersFromDatabase();
   }, []);
 
-  // Function to fetch users from backend
   const fetchUsersFromDatabase = () => {
-    // Set loading to true before fetching
     setLoading(true);
 
-    // Make HTTP GET request to backend
     fetch("http://localhost:8000/api/users", {
       method: "GET",
       headers: {
-        "Accept": "application/json",
+        Accept: "application/json",
         "Content-Type": "application/json",
       },
     })
-      // First .then() - check if response is ok
-      .then(response => {
+      .then((response) => {
         if (!response.ok) {
           throw new Error("Failed to fetch users from database");
         }
-        // Convert response to JSON format and pass to next .then()
         return response.json();
       })
-      // Second .then() - receive the JSON data
-      .then(data => {
-        // Update state with user data
+      .then((data) => {
         setUsers(data);
-        // Clear any previous errors
         setError(null);
       })
-      // .catch() - run if any error occurs
-      .catch(err => {
-        // Store the error message in state
+      .catch((err) => {
         setError(err.message);
-        // Log error to browser console for debugging
         console.log(err);
       })
-      // .finally() - always runs at the end
       .finally(() => {
-        // Always set loading to false when done (success or error)
         setLoading(false);
       });
   };
 
-  // Function to filter and sort users
   const getFilteredAndSortedUsers = () => {
-    // Step 1: Filter by role
     let filteredUsers = users;
-    if (filterRole !== 'all') {
-      filteredUsers = filteredUsers.filter(user => user.role === filterRole);
+
+    if (filterRole !== "all") {
+      filteredUsers = filteredUsers.filter(
+        (user) => user.role === filterRole
+      );
     }
 
-    // Step 2: Filter by status
-    if (filterStatus !== 'all') {
-      filteredUsers = filteredUsers.filter(user => user.status === filterStatus);
+    if (filterStatus !== "all") {
+      filteredUsers = filteredUsers.filter(
+        (user) => user.status === filterStatus
+      );
     }
 
-    // Step 3: Sort the list
     filteredUsers.sort((a, b) => {
       let valueA = a[sortBy];
       let valueB = b[sortBy];
 
-      // Handle dates
-      if (sortBy === 'created_at') {
+      if (sortBy === "created_at") {
         valueA = new Date(valueA);
         valueB = new Date(valueB);
         return valueA - valueB;
       }
 
-      // Handle strings (name, email, role)
-      if (typeof valueA === 'string') {
+      if (typeof valueA === "string") {
         return valueA.localeCompare(valueB);
       }
 
-      // Handle numbers
       return valueA - valueB;
     });
 
@@ -100,66 +82,61 @@ function AdminUsersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-blue-50/30 p-8 font-sans text-[#4A5568]">
-      {/* Header Section */}
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-[#5A78A6]">Users</h1>
-        <div className="flex items-center space-x-6">
-          <Search className="w-5 h-5 text-gray-400 cursor-pointer" />
-          <div className="relative">
-            <Bell className="w-5 h-5 text-gray-400 cursor-pointer" />
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-              0
-            </span>
-          </div>
-          <Settings className="w-5 h-5 text-gray-400 cursor-pointer" />
-          <div className="flex items-center space-x-2 border-l pl-6 border-gray-300">
-            <span className="text-sm font-medium">User Admin</span>
-            <div className="bg-white border-2 border-gray-300 rounded-full p-1">
-              <User className="w-5 h-5 text-gray-600" />
-            </div>
-          </div>
-        </div>
+    <div className="px-10 py-10">
+      <div className="mb-8">
+        <h1 className="text-3xl font-semibold text-black">Users</h1>
       </div>
 
-      {/* Main Table Card */}
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+      <div className="rounded border p-6 shadow-sm">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-xl font-bold">Profiles list</h2>
+          <h2 className="text-xl font-semibold text-gray-800">
+            Profiles list
+          </h2>
+
           <div className="flex space-x-3">
-            {/* SORT BY BUTTON */}
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowSortMenu(!showSortMenu)}
-                className="px-6 py-2 border border-[#5A78A6] text-[#5A78A6] rounded-full text-sm font-medium hover:bg-blue-50 flex items-center gap-2"
+                className="px-5 py-2 border rounded text-sm hover:bg-gray-100 flex items-center gap-2"
               >
                 Sort By <ChevronDown className="w-4 h-4" />
               </button>
 
-              {/* Sort dropdown menu */}
               {showSortMenu && (
-                <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-300 rounded-lg shadow-lg z-10">
+                <div className="absolute right-0 mt-2 w-40 bg-white border rounded shadow-md z-10">
                   <button
-                    onClick={() => { setSortBy('name'); setShowSortMenu(false); }}
-                    className={`w-full text-left px-4 py-2 hover:bg-blue-50 ${sortBy === 'name' ? 'bg-blue-100 text-[#5A78A6]' : ''}`}
+                    onClick={() => {
+                      setSortBy("name");
+                      setShowSortMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
                   >
                     Name
                   </button>
                   <button
-                    onClick={() => { setSortBy('email'); setShowSortMenu(false); }}
-                    className={`w-full text-left px-4 py-2 hover:bg-blue-50 ${sortBy === 'email' ? 'bg-blue-100 text-[#5A78A6]' : ''}`}
+                    onClick={() => {
+                      setSortBy("email");
+                      setShowSortMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
                   >
                     Email
                   </button>
                   <button
-                    onClick={() => { setSortBy('role'); setShowSortMenu(false); }}
-                    className={`w-full text-left px-4 py-2 hover:bg-blue-50 ${sortBy === 'role' ? 'bg-blue-100 text-[#5A78A6]' : ''}`}
+                    onClick={() => {
+                      setSortBy("role");
+                      setShowSortMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
                   >
                     Role
                   </button>
                   <button
-                    onClick={() => { setSortBy('created_at'); setShowSortMenu(false); }}
-                    className={`w-full text-left px-4 py-2 hover:bg-blue-50 ${sortBy === 'created_at' ? 'bg-blue-100 text-[#5A78A6]' : ''}`}
+                    onClick={() => {
+                      setSortBy("created_at");
+                      setShowSortMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
                   >
                     Created Date
                   </button>
@@ -167,59 +144,59 @@ function AdminUsersPage() {
               )}
             </div>
 
-            {/* FILTER BY BUTTON */}
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowFilterMenu(!showFilterMenu)}
-                className="px-6 py-2 border border-[#5A78A6] text-[#5A78A6] rounded-full text-sm font-medium hover:bg-blue-50 flex items-center gap-2"
+                className="px-5 py-2 border rounded text-sm hover:bg-gray-100 flex items-center gap-2"
               >
                 Filter By <ChevronDown className="w-4 h-4" />
               </button>
 
-              {/* Filter dropdown menu */}
               {showFilterMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-10">
-                  {/* Role Filter */}
+                <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow-md z-10">
                   <div className="px-4 py-3 border-b">
-                    <p className="text-xs font-bold text-gray-700 mb-2">ROLE</p>
+                    <p className="text-xs font-semibold text-gray-600 mb-2">
+                      ROLE
+                    </p>
                     <button
-                      onClick={() => setFilterRole('all')}
-                      className={`w-full text-left px-3 py-1 text-sm hover:bg-blue-50 ${filterRole === 'all' ? 'bg-blue-100 text-[#5A78A6]' : ''}`}
+                      onClick={() => setFilterRole("all")}
+                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
                     >
                       All
                     </button>
                     <button
-                      onClick={() => setFilterRole('admin')}
-                      className={`w-full text-left px-3 py-1 text-sm hover:bg-blue-50 ${filterRole === 'admin' ? 'bg-blue-100 text-[#5A78A6]' : ''}`}
+                      onClick={() => setFilterRole("admin")}
+                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
                     >
                       Admin
                     </button>
                     <button
-                      onClick={() => setFilterRole('user')}
-                      className={`w-full text-left px-3 py-1 text-sm hover:bg-blue-50 ${filterRole === 'user' ? 'bg-blue-100 text-[#5A78A6]' : ''}`}
+                      onClick={() => setFilterRole("user")}
+                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
                     >
                       User
                     </button>
                   </div>
 
-                  {/* Status Filter */}
                   <div className="px-4 py-3">
-                    <p className="text-xs font-bold text-gray-700 mb-2">STATUS</p>
+                    <p className="text-xs font-semibold text-gray-600 mb-2">
+                      STATUS
+                    </p>
                     <button
-                      onClick={() => setFilterStatus('all')}
-                      className={`w-full text-left px-3 py-1 text-sm hover:bg-blue-50 ${filterStatus === 'all' ? 'bg-blue-100 text-[#5A78A6]' : ''}`}
+                      onClick={() => setFilterStatus("all")}
+                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
                     >
                       All
                     </button>
                     <button
-                      onClick={() => setFilterStatus('Active')}
-                      className={`w-full text-left px-3 py-1 text-sm hover:bg-blue-50 ${filterStatus === 'Active' ? 'bg-blue-100 text-[#5A78A6]' : ''}`}
+                      onClick={() => setFilterStatus("Active")}
+                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
                     >
                       Active
                     </button>
                     <button
-                      onClick={() => setFilterStatus('Inactive')}
-                      className={`w-full text-left px-3 py-1 text-sm hover:bg-blue-50 ${filterStatus === 'Inactive' ? 'bg-blue-100 text-[#5A78A6]' : ''}`}
+                      onClick={() => setFilterStatus("Inactive")}
+                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
                     >
                       Inactive
                     </button>
@@ -230,49 +207,70 @@ function AdminUsersPage() {
           </div>
         </div>
 
-        {loading && <div className="text-center py-8 text-gray-500">Loading users...</div>}
-        {error && <div className="text-center py-8 text-red-500">Error: {error}</div>}
+        {loading && (
+          <div className="text-center py-8 text-gray-500">
+            Loading users...
+          </div>
+        )}
+
+        {error && (
+          <div className="text-center py-8 text-red-500">
+            Error: {error}
+          </div>
+        )}
 
         {!loading && !error && getFilteredAndSortedUsers().length === 0 && (
-          <div className="text-center py-8 text-gray-500">No users found</div>
+          <div className="text-center py-8 text-gray-500">
+            No users found
+          </div>
         )}
 
         {!loading && !error && getFilteredAndSortedUsers().length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="text-gray-400 text-sm uppercase tracking-wider border-b border-gray-100">
-                  <th className="pb-4 font-semibold">ID</th>
-                  <th className="pb-4 font-semibold">Name</th>
-                  <th className="pb-4 font-semibold">Email</th>
-                  <th className="pb-4 font-semibold">Role</th>
-                  <th className="pb-4 font-semibold">Status</th>
-                  <th className="pb-4 font-semibold">Created Date</th>
+                <tr className="text-gray-500 text-sm uppercase border-b">
+                  <th className="pb-4">ID</th>
+                  <th className="pb-4">Name</th>
+                  <th className="pb-4">Email</th>
+                  <th className="pb-4">Role</th>
+                  <th className="pb-4">Status</th>
+                  <th className="pb-4">Created Date</th>
                 </tr>
               </thead>
-              <tbody className="text-sm text-gray-600">
+              <tbody className="text-sm text-gray-700">
                 {getFilteredAndSortedUsers().map((user) => {
-                  // Format the date to readable format
-                  const createdDate = new Date(user.created_at).toLocaleDateString('en-US');
-                  
+                  const createdDate = new Date(
+                    user.created_at
+                  ).toLocaleDateString("en-US");
+
                   return (
-                    <tr key={user.id} className="hover:bg-gray-50 transition-colors border-b border-gray-50">
-                      <td className="py-5">{user.id}</td>
-                      <td className="py-5 font-medium">{user.name}</td>
-                      <td className="py-5">{user.email}</td>
-                      <td className="py-5 capitalize">{user.role}</td>
-                      <td className="py-5">
-                        {user.status === 'Active' ? (
-                          <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                    <tr
+                      key={user.id}
+                      className="border-b hover:bg-gray-50"
+                    >
+                      <td className="py-4">{user.id}</td>
+                      <td className="py-4 font-medium">
+                        {user.name}
+                      </td>
+                      <td className="py-4">{user.email}</td>
+                      <td className="py-4 capitalize">
+                        {user.role}
+                      </td>
+                      <td className="py-4">
+                        {user.status === "Active" ? (
+                          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs">
                             Active
                           </span>
                         ) : (
-                          <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
+                          <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
                             Inactive
                           </span>
                         )}
                       </td>
-                      <td className="py-5 text-gray-400">{createdDate}</td>
+                      <td className="py-4 text-gray-400">
+                        {createdDate}
+                      </td>
                     </tr>
                   );
                 })}

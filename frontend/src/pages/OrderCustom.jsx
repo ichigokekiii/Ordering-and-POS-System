@@ -35,7 +35,7 @@ function ProductCard({ product, quantity, onIncrease, onDecrease }) {
     >
       <div className="relative h-40 overflow-hidden">
         <img
-          src={product.image}
+          src={`http://localhost:8000${product.image}`}
           alt={product.name}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
@@ -74,7 +74,7 @@ function OrderCustom() {
   const [quantities, setQuantities] = useState({});
   const [added, setAdded] = useState(false);
 
-  const availableProducts = products.filter((p) => p.isAvailable === 1);
+  const availableProducts = products.filter((p) => p.isAvailable);
   const mainFlowers = availableProducts.filter((p) => p.category === "Main Flower");
   const fillers = availableProducts.filter((p) => p.category === "Filler");
 

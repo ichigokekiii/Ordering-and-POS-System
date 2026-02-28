@@ -24,30 +24,55 @@ export function ProductProvider({ children }) {
   }, []);
 
   // Add product
-  const addProduct = async (productData) => {
-    try {
-      const res = await api.post("/products", productData);
-      setProducts((prev) => [res.data, ...prev]);
-      return res.data;
-    } catch (error) {
-      console.error("Failed to add product", error);
-      throw error;
+const addProduct = async (productData) => {
+  try {
+    const formData = new FormData();
+    formData.append("name", productData.name);
+    formData.append("description", productData.description);
+    formData.append("price", productData.price);
+    formData.append("category", productData.category);
+    formData.append("isAvailable", Number(productData.isAvailable));
+    if (productData.image) {
+      formData.append("image", productData.image);
     }
-  };
 
-  // Update product
-  const updateProduct = async (id, updatedData) => {
-    try {
-      const res = await api.put(`/products/${id}`, updatedData);
-      setProducts((prev) =>
-        prev.map((p) => (p.id === id ? res.data : p))
-      );
-      return res.data;
-    } catch (error) {
-      console.error("Failed to update product", error);
-      throw error;
+    const res = await api.post("/products", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    setProducts((prev) => [res.data, ...prev]);
+    return res.data;
+  } catch (error) {
+    console.error("Failed to add product", error);
+    throw error;
+  }
+};
+
+// Update product
+const updateProduct = async (id, updatedData) => {
+  try {
+    const formData = new FormData();
+    formData.append("_method", "PUT");
+    formData.append("name", updatedData.name);
+    formData.append("description", updatedData.description);
+    formData.append("price", updatedData.price);
+    formData.append("category", updatedData.category);
+    formData.append("isAvailable", Number(updatedData.isAvailable));
+    if (updatedData.image) {
+      formData.append("image", updatedData.image);
     }
-  };
+
+    const res = await api.post(`/products/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    setProducts((prev) =>
+      prev.map((p) => (p.id === id ? res.data : p))
+    );
+    return res.data;
+  } catch (error) {
+    console.error("Failed to update product", error);
+    throw error;
+  }
+};
 
   // Delete product
   const deleteProduct = async (id) => {

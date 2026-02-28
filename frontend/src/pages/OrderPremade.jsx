@@ -12,9 +12,11 @@ function OrderModal({ product, onClose, onConfirm }) {
   };
 
   return (
+    
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
       onClick={onClose}
+      
     >
       <div
         className="relative mx-4 w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
@@ -23,7 +25,7 @@ function OrderModal({ product, onClose, onConfirm }) {
         {/* Product Image */}
         <div className="relative h-56 w-full overflow-hidden">
           <img
-            src={product.image}
+            src={`http://localhost:8000${product.image}`}
             alt={product.name}
             className="h-full w-full object-cover"
           />
@@ -97,7 +99,7 @@ function OrderPremadePage() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [addedId, setAddedId] = useState(null);
 
-  const availableProducts = premades.filter((p) => p.isAvailable === 1);
+const availableProducts = premades.filter((p) => p.isAvailable);
 
   const handleConfirm = (product, quantity) => {
     addToCart(product, quantity);
@@ -145,7 +147,7 @@ function OrderPremadePage() {
               >
                 <div className="relative h-44 overflow-hidden">
                   <img
-                    src={product.image}
+                    src={`http://localhost:8000${product.image}`}
                     alt={product.name}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />

@@ -16,24 +16,33 @@ function AdminPremadePage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState("");
+
   const [price, setPrice] = useState("");
   const [isAvailable, setIsAvailable] = useState(1); 
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
-  // add and update
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  //image
+  const handleImageChange = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    setImage(file);
+  }
+};
 
-    try {
-      if (isEditing) {
-        await updatePremade(currentId, { name, image, price, description, isAvailable });
-        setMessage("Premade updated successfully!");
-      } else {
-        await addPremade({ name, image, price, description, isAvailable });
-        setMessage("Premade added successfully!");
-      }
+
+  // add and update
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    if (isEditing) {
+      await updatePremade(currentId, { name, image, price, description, isAvailable });
+      setMessage("Premade updated successfully!");
+    } else {
+      await addPremade({ name, image, price, description, isAvailable });
+      setMessage("Premade added successfully!");
+    }
 
       setMessageType("success");
       resetForm();
@@ -76,7 +85,7 @@ function AdminPremadePage() {
     setIsEditing(true);
     setCurrentId(premade.id);
     setName(premade.name);
-    setImage(premade.image);
+    setImage(null);
     setPrice(premade.price);
     setDescription(premade.description);
     setIsAvailable(premade.isAvailable);
@@ -85,7 +94,7 @@ function AdminPremadePage() {
 
   const resetForm = () => {
     setName("");
-    setImage("");
+    setImage(null);
     setPrice("");
     setDescription("");
     setIsAvailable(1); 
@@ -141,7 +150,7 @@ function AdminPremadePage() {
             </div>
 
             <img
-              src={premade.image}
+              src={`http://localhost:8000${premade.image}`}
               alt={premade.name}
               className={`mb-3 h-40 w-full rounded object-cover ${!premade.isAvailable && 'grayscale opacity-60'}`}
             />
@@ -186,13 +195,21 @@ function AdminPremadePage() {
                 required
               />
 
-              <input
-                className="w-full rounded border px-4 py-2"
-                placeholder="Image URL"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                required
-              />
+              <div className="rounded border px-4 py-2">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Product Image
+                </label>
+
+                
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="w-full text-sm"
+                  required={!isEditing}
+                />
+              </div>
 
               <input
                 className="w-full rounded border px-4 py-2"

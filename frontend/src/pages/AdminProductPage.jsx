@@ -14,7 +14,8 @@ function AdminProductPage() {
   const [currentId, setCurrentId] = useState(null);
 
   const [name, setName] = useState("");
-  const [image, setImage] = useState("");
+  const [image, setImage] = useState(null);
+
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
@@ -22,6 +23,14 @@ function AdminProductPage() {
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
+
+  //image
+  const handleImageChange = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    setImage(file);
+  }
+};
 
   // add and update
   const handleSubmit = async (e) => {
@@ -74,20 +83,20 @@ function AdminProductPage() {
 
   // edit modal
   const handleEdit = (product) => {
-    setIsEditing(true);
-    setCurrentId(product.id);
-    setName(product.name);
-    setImage(product.image);
-    setPrice(product.price);
-    setDescription(product.description);
-    setCategory(product.category);
-    setIsAvailable(product.isAvailable);
-    setShowModal(true);
-  };
+  setIsEditing(true);
+  setCurrentId(product.id);
+  setName(product.name);
+  setImage(null);
+  setPrice(product.price);
+  setDescription(product.description);
+  setCategory(product.category);
+  setIsAvailable(product.isAvailable);
+  setShowModal(true);
+};
 
   const resetForm = () => {
     setName("");
-    setImage("");
+    setImage(null);
     setPrice("");
     setDescription("");
     setCategory("");
@@ -150,7 +159,7 @@ function AdminProductPage() {
                   </div>
 
                   <img
-                    src={product.image}
+                    src={`http://localhost:8000${product.image}`}
                     alt={product.name}
                     className={`mb-3 h-40 w-full rounded object-cover ${!product.isAvailable && 'grayscale opacity-60'}`}
                   />
@@ -206,7 +215,7 @@ function AdminProductPage() {
                   </div>
 
                   <img
-                    src={product.image}
+                    src={`http://localhost:8000${product.image}`}
                     alt={product.name}
                     className={`mb-3 h-40 w-full rounded object-cover ${!product.isAvailable && 'grayscale opacity-60'}`}
                   />
@@ -264,13 +273,19 @@ function AdminProductPage() {
                 required
               />
 
-              <input
-                className="w-full rounded border px-4 py-2"
-                placeholder="Image URL"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                required
-              />
+              <div className="rounded border px-4 py-2">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Product Image
+                </label>
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="w-full text-sm"
+                  required={!isEditing}
+                />
+              </div>
 
               <input
                 type="number"

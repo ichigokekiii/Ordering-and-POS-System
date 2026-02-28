@@ -9,4 +9,8 @@ class CustomProduct extends Model
     protected $table = 'custom_products';
     
     protected $fillable = ['name', 'image', 'description', 'category', 'price', 'isAvailable'];
+
+        protected $casts = [
+            'isAvailable' => 'boolean',
+        ];
 }

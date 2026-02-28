@@ -6,6 +6,7 @@ function LandingPage() {
   const [landing, setLanding] = useState(null);
   const [products, setProducts] = useState([]);
   const [schedules, setSchedules] = useState([]);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
     // Load landing content
@@ -24,6 +25,14 @@ function LandingPage() {
       .catch(() => console.error("Failed to load schedules"));
   }, []);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev === 2 ? 0 : prev + 1));
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   if (!landing) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -36,27 +45,57 @@ function LandingPage() {
     <div className="bg-white">
 
       {/* HERO SECTION */}
-      <section
-        className="relative flex h-[70vh] items-center justify-center bg-cover bg-center text-center"
-        style={{
-          backgroundImage: `url(${landing.hero_image || "https://images.unsplash.com/photo-1490750967868-88aa4486c946"})`
-        }}
-      >
-        <div className="absolute inset-0 bg-black/50"></div>
+      <section className="relative h-[80vh] overflow-hidden">
 
-        <div className="relative z-10 max-w-2xl px-6 text-white">
-          <h1 className="text-4xl font-bold md:text-5xl">
-            {landing.title}
-          </h1>
+        {/* Slides Wrapper */}
+        <div
+          className="flex h-full transition-transform duration-700 ease-in-out"
+          style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+        >
+          {[ 
+            landing.hero_image || "https://images.unsplash.com/photo-1490750967868-88aa4486c946",
+            "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9",
+            "https://images.unsplash.com/photo-1501004318641-b39e6451bec6"
+          ].map((image, index) => (
+            <div
+              key={index}
+              className="relative flex h-[80vh] w-full flex-shrink-0 items-center justify-center bg-cover bg-center"
+              style={{ backgroundImage: `url(${image})` }}
+            >
+              <div className="absolute inset-0 bg-black/50"></div>
 
-          <p className="mt-4 text-lg opacity-90">
-            {landing.subtitle}
-          </p>
+              <div className="relative z-10 max-w-2xl px-6 text-center text-white">
+                <h1 className="text-4xl font-bold md:text-5xl">
+                  {landing.title}
+                </h1>
 
-          <button className="mt-8 rounded-full bg-white px-6 py-3 text-sm font-semibold text-gray-800 hover:bg-gray-200">
-            Browse Flowers
-          </button>
+                <p className="mt-4 text-lg opacity-90">
+                  {landing.subtitle}
+                </p>
+
+                <button className="mt-8 rounded-full bg-white px-6 py-3 text-sm font-semibold text-gray-800 hover:bg-gray-200">
+                  Browse Flowers
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
+
+        {/* Pagination Dots */}
+        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-3">
+          {[0, 1, 2].map((index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentSlide(index)}
+              className={`h-3 w-3 rounded-full transition ${
+                currentSlide === index
+                  ? "bg-white"
+                  : "bg-white/40 hover:bg-white/70"
+              }`}
+            />
+          ))}
+        </div>
+
       </section>
 
       {/* POPULAR PRODUCTS */}

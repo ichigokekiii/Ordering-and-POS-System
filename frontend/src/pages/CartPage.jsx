@@ -54,7 +54,7 @@ function CartPage() {
             >
               {/* Image */}
               <img
-                src={item.image}
+                src={`http://localhost:8000${item.image}`}
                 alt={item.name}
                 className="h-16 w-16 rounded-xl object-cover flex-shrink-0"
               />

@@ -20,6 +20,7 @@ class ProductController extends Controller
             'image'       => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
             'description' => 'required|string',
             'category'    => 'required|string',
+            'type'        => 'nullable|string',
             'price'       => 'required|numeric',
             'isAvailable' => 'required|boolean',
         ]);
@@ -31,6 +32,7 @@ class ProductController extends Controller
             'image'       => Storage::url($imagePath),
             'description' => $request->description,
             'category'    => $request->category,
+            'type'        => $request->type,
             'price'       => $request->price,
             'isAvailable' => $request->isAvailable,
         ]);
@@ -45,12 +47,13 @@ class ProductController extends Controller
             'image'       => 'sometimes|image|mimes:jpeg,png,jpg,webp|max:2048',
             'description' => 'sometimes|required|string',
             'category'    => 'sometimes|required|string',
+            'type'        => 'nullable|string',
             'price'       => 'sometimes|required|numeric',
             'isAvailable' => 'sometimes|required|boolean',
         ]);
 
         $product = CustomProduct::findOrFail($id);
-        $data = $request->only(['name', 'description', 'price', 'category', 'isAvailable']);
+        $data = $request->only(['name', 'description', 'price', 'category', 'type', 'isAvailable']);
 
         if ($request->hasFile('image')) {
             $oldPath = str_replace('/storage/', 'public/', $product->image);

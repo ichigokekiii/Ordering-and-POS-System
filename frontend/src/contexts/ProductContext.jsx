@@ -31,6 +31,7 @@ const addProduct = async (productData) => {
     formData.append("description", productData.description);
     formData.append("price", productData.price);
     formData.append("category", productData.category);
+    formData.append("type", productData.type || "");
     formData.append("isAvailable", Number(productData.isAvailable));
     if (productData.image) {
       formData.append("image", productData.image);
@@ -56,6 +57,7 @@ const updateProduct = async (id, updatedData) => {
     formData.append("description", updatedData.description);
     formData.append("price", updatedData.price);
     formData.append("category", updatedData.category);
+    formData.append("type", updatedData.type || "");
     formData.append("isAvailable", Number(updatedData.isAvailable));
     if (updatedData.image) {
       formData.append("image", updatedData.image);

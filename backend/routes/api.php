@@ -10,6 +10,10 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PremadeController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PosTransactionsController;
+use App\Http\Controllers\OrderController;
+
+
+Route::post('/orders', [OrderController::class, 'store']);
 
 // Test route - check if API works
 Route::get('/test', function () {
@@ -25,10 +29,6 @@ Route::get('/landing', function () {
 
 //product api routes
 Route::apiResource('products', ProductController::class);
-Route::get('/products', [ProductController::class, 'index']);
-Route::post('/products', [ProductController::class, 'store']);
-Route::put('/products/{id}', [ProductController::class, 'update']);
-Route::delete('/products/{id}', [ProductController::class, 'destroy']);
 
 //pos-transactions api routes
 Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
@@ -36,10 +36,6 @@ Route::get('/pos-transactions/analytics', [PosTransactionsController::class, 'an
 
 //premade api routes
 Route::apiResource('premades', PremadeController::class);
-Route::get('/premades', [PremadeController::class, 'index']);
-Route::post('/premades', [PremadeController::class, 'store']);
-Route::put('/premades/{id}', [PremadeController::class, 'update']);
-Route::delete('/premades/{id}', [PremadeController::class, 'destroy']);
 
 
 //login simple
@@ -53,6 +49,7 @@ Route::post('/login', function (Request $request) {
     return response()->json([
         'id' => $user->id,
         'name' => $user->name,
+        'email' => $user->email,
         'role' => $user->role,
     ]);
 });

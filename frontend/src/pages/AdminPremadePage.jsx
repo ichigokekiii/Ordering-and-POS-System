@@ -239,7 +239,7 @@ const handleSubmit = async (e) => {
                       type="radio"
                       name="isAvailable"
                       value={1}
-                      checked={isAvailable === 1}
+                      checked={isAvailable}
                       onChange={() => setIsAvailable(1)}
                       className="h-4 w-4 text-blue-600"
                     />
@@ -251,7 +251,7 @@ const handleSubmit = async (e) => {
                       type="radio"
                       name="isAvailable"
                       value={0}
-                      checked={isAvailable === 0}
+                      checked={!isAvailable}
                       onChange={() => setIsAvailable(0)}
                       className="h-4 w-4 text-blue-600"
                     />

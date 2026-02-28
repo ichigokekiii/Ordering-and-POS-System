@@ -73,13 +73,13 @@ function CartPage() {
                 {item.type === "custom" && item.items ? (
                   <ul className="mt-0.5 space-y-0.5">
                     {item.items.map((flower) => (
-                      <li key={flower.id} className="text-xs text-gray-400">
-                        {flower.name} ×{flower.quantity}
-                        <span className="ml-1 text-gray-300">
-                          — ₱{(flower.price * flower.quantity).toLocaleString()}
-                        </span>
-                      </li>
-                    ))}
+                        <li key={flower.id} className="text-xs text-gray-400">
+                          {flower.name} ×{flower.quantity}
+                          <span className="ml-1 text-gray-300">
+                            {flower.free ? "— Free" : `— ₱${(flower.price * flower.quantity).toLocaleString()}`}
+                          </span>
+                        </li>
+                      ))}
                   </ul>
                 ) : (
                   <p className="text-xs text-gray-400 truncate">{item.description}</p>

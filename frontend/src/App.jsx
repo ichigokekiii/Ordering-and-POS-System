@@ -18,6 +18,7 @@ import AboutPage from "./pages/AboutPage";
 import SchedulePage from "./pages/SchedulePage";
 import OrderPage from "./pages/OrderPage";
 import OrderCustom from "./pages/OrderCustom";
+import OrderCustomAdditional from "./pages/OrderCustomAdditional";
 import OrderPremade from "./pages/OrderPremade";
 
 import OrderLayout from "./components/OrderLayout";
@@ -84,6 +85,7 @@ function App() {
         <Route element={<OrderLayout />}>
           <Route path="/order" element={<OrderPage />} />
           <Route path="/ordercustom" element={<OrderCustom />} />
+          <Route path="/order/custom/additional" element={<OrderCustomAdditional />} />
           <Route path="/orderpremade" element={<OrderPremade />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />

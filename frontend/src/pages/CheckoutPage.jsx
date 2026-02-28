@@ -1,63 +1,96 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCart } from "../contexts/CartContext"; // Assuming this path exists based on your files
+import { useCart } from "../contexts/CartContext";
+import api from "../services/api";
 
 function CheckoutPage() {
   const navigate = useNavigate();
   const { cartItems, totalPrice, clearCart } = useCart();
 
-  const [deliveryMode, setDeliveryMode] = useState("pickup"); 
+  const [deliveryMode, setDeliveryMode] = useState("pickup");
   const [paymentProof, setPaymentProof] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
-  
-  // Form State
-  const [formData, setFormData] = useState({
-    name: "",
-    phone: "",
-    address: "",
-    notes: "",
-  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Constants
-  const DELIVERY_FEE = deliveryMode === "delivery" ? 50 : 0; // Example fee: 50
-  const GRAND_TOTAL = totalPrice + DELIVERY_FEE;
+  // Auto-filled from logged in user
+  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [userId, setUserId] = useState(null);
 
-  // Handlers
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  // Manual inputs
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [notes, setNotes] = useState("");
+
+  // Payment inputs
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [referenceNumber, setReferenceNumber] = useState("");
+
+  const GRAND_TOTAL = totalPrice;
+
+  // Load user info from localStorage (set during login)
+  useEffect(() => {
+  const stored = JSON.parse(localStorage.getItem("user") || "{}");
+  setUserName(stored.name  || "");
+  setUserEmail(stored.email || "");
+  setUserId(stored.id || null);
+}, []);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setPaymentProof(file);
-      // Create a temporary URL to preview the uploaded image
       setPreviewUrl(URL.createObjectURL(file));
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!paymentProof) {
       alert("Please upload your payment screenshot to proceed.");
       return;
     }
 
-    // Logic to send data to backend would go here
-    console.log("Order Submitted:", { ...formData, deliveryMode, cartItems, paymentProof });
-    
-    alert("Order placed successfully! We will verify your payment.");
-    clearCart();
-    navigate("/"); // Redirect home or to a success page
+    if (deliveryMode === "delivery" && !address.trim()) {
+      alert("Please enter your delivery address.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("user_id",          userId);
+      formData.append("address",          deliveryMode === "pickup" ? "Pickup" : address);
+      formData.append("phone",            phone);
+      formData.append("delivery_method",  deliveryMode);
+      formData.append("payment_method",   paymentMethod);
+      formData.append("reference_number", referenceNumber);
+      formData.append("reference_image",  paymentProof);
+      formData.append("total_amount",     GRAND_TOTAL);
+      formData.append("special_message",  notes);
+
+      const res = await api.post("/orders", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      alert(`Order placed! Your Order ID is ${res.data.order_id}`);
+      clearCart();
+      navigate("/");
+    } catch (error) {
+      console.error("Order failed", error);
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10 md:px-8">
       <div className="mx-auto max-w-4xl">
-        
-        {/* Header with Back Button */}
+
+        {/* Header */}
         <div className="mb-6 flex items-center gap-4">
           <button
             onClick={() => navigate("/cart")}
@@ -69,11 +102,11 @@ function CheckoutPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="grid gap-8 md:grid-cols-12">
-          
-          {/* LEFT COLUMN: Details & Payment */}
+
+          {/* LEFT COLUMN */}
           <div className="md:col-span-7 space-y-6">
-            
-            {/* 1. Delivery Mode */}
+
+            {/* 1. Delivery Method */}
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               <h2 className="mb-4 text-lg font-semibold text-gray-700">1. Delivery Method</h2>
               <div className="flex gap-4">
@@ -86,7 +119,7 @@ function CheckoutPage() {
                       : "border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200"
                   }`}
                 >
-                   Pickup
+                  Pickup
                 </button>
                 <button
                   type="button"
@@ -97,103 +130,142 @@ function CheckoutPage() {
                       : "border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200"
                   }`}
                 >
-                   Delivery
+                  Delivery
                 </button>
               </div>
+              {deliveryMode === "delivery" && (
+                <p className="mt-3 text-xs text-gray-400">
+                  Delivery is handled by a third-party courier. Fees are settled separately.
+                </p>
+              )}
             </div>
 
-            {/* 2. Customer Details */}
+            {/* 2. Contact Details */}
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               <h2 className="mb-4 text-lg font-semibold text-gray-700">2. Contact Details</h2>
               <div className="space-y-4">
+
+                {/* Auto-filled — read only */}
                 <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-1 block text-xs text-gray-400">Full Name</label>
+                    <input
+                      readOnly
+                      value={userName}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-500 cursor-not-allowed"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-gray-400">Email</label>
+                    <input
+                      readOnly
+                      value={userEmail}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-500 cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+
+                {/* Manual inputs */}
+                <div>
+                  <label className="mb-1 block text-xs text-gray-400">Contact Number *</label>
                   <input
                     required
-                    name="name"
-                    placeholder="Full Name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                  />
-                  <input
-                    required
-                    name="phone"
-                    placeholder="Phone Number"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="e.g. 09123456789"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
                   />
                 </div>
-                
+
                 {deliveryMode === "delivery" && (
-                  <textarea
-                    required
-                    name="address"
-                    placeholder="Complete Delivery Address"
-                    rows="2"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                  />
+                  <div>
+                    <label className="mb-1 block text-xs text-gray-400">Delivery Address *</label>
+                    <textarea
+                      required
+                      rows="2"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Complete delivery address"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    />
+                  </div>
                 )}
-                
-                <textarea
-                  name="notes"
-                  placeholder="Special instructions or notes (optional)"
-                  rows="2"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  className="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                />
+
+                <div>
+                  <label className="mb-1 block text-xs text-gray-400">Special Instructions (optional)</label>
+                  <textarea
+                    rows="2"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Any special requests..."
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* 3. Payment Section */}
+            {/* 3. Payment */}
             <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-lg font-semibold text-gray-700">3. Payment (GCash)</h2>
-              
-              <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
-                {/* QR Code Display */}
-                <div className="flex flex-col items-center">
-                  <div className="mb-2 h-40 w-40 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 p-2">
-                    {/* REPLACE THE SRC BELOW WITH YOUR ACTUAL GCASH QR IMAGE */}
-                    <img 
-                      src="https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg" 
-                      alt="GCash QR" 
-                      className="h-full w-full object-contain"
-                    />
+              <h2 className="mb-4 text-lg font-semibold text-gray-700">3. Payment</h2>
+
+              <div className="space-y-4">
+                {/* QR Code */}
+                <div className="flex justify-center">
+                  <div className="flex flex-col items-center">
+                    <div className="mb-2 h-40 w-40 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 p-2">
+                      <img
+                        src="http://localhost:8000/storage/qr_payment.jpg"
+                        alt="GCash QR"
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400">Scan to pay</p>
                   </div>
-                  <p className="text-xs text-gray-400">Scan to pay</p>
                 </div>
 
-                {/* Upload Section */}
-                <div className="flex-1 w-full">
-                  <div className="mb-2 text-sm text-gray-600">
-                    <p>Total Amount: <span className="font-bold text-rose-500">₱{GRAND_TOTAL.toLocaleString()}</span></p>
-                    <p className="text-xs text-gray-400">Please attach a screenshot of your payment.</p>
-                  </div>
+                {/* Payment Method */}
+                <div>
+                  <label className="mb-1 block text-xs text-gray-400">Payment Method *</label>
+                  <input
+                    required
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    placeholder="e.g. GCash, PayMaya, BDO, BPI"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  />
+                </div>
 
+                {/* Reference Number */}
+                <div>
+                  <label className="mb-1 block text-xs text-gray-400">Reference Number *</label>
+                  <input
+                    required
+                    value={referenceNumber}
+                    onChange={(e) => setReferenceNumber(e.target.value)}
+                    placeholder="Transaction reference number"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  />
+                </div>
+
+                {/* Screenshot Upload */}
+                <div>
+                  <label className="mb-1 block text-xs text-gray-400">Payment Screenshot *</label>
                   <label className="flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 py-6 transition hover:bg-gray-100">
-                    <div className="flex flex-col items-center justify-center pb-2 pt-2">
-                      <span className="text-2xl">📎</span>
-                      <p className="mb-1 text-sm text-gray-500">
-                        <span className="font-semibold">Click to upload</span> screenshot
-                      </p>
-                      <p className="text-xs text-gray-500">PNG, JPG (MAX. 5MB)</p>
-                    </div>
+                    <span className="text-2xl">📎</span>
+                    <p className="mb-1 text-sm text-gray-500">
+                      <span className="font-semibold">Click to upload</span> screenshot
+                    </p>
+                    <p className="text-xs text-gray-400">PNG, JPG (MAX. 5MB)</p>
                     <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
                   </label>
 
-                  {/* Preview of Uploaded File */}
                   {paymentProof && (
                     <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-200 bg-green-50 p-2">
                       {previewUrl && (
                         <img src={previewUrl} alt="Preview" className="h-10 w-10 rounded object-cover" />
                       )}
                       <div className="overflow-hidden">
-                        <p className="truncate text-sm font-medium text-green-700">
-                          {paymentProof.name}
-                        </p>
+                        <p className="truncate text-sm font-medium text-green-700">{paymentProof.name}</p>
                         <p className="text-xs text-green-600">Ready to submit</p>
                       </div>
                     </div>
@@ -207,9 +279,8 @@ function CheckoutPage() {
           <div className="md:col-span-5">
             <div className="sticky top-6 rounded-2xl bg-white p-6 shadow-sm">
               <h3 className="mb-4 text-lg font-semibold text-gray-700">Order Summary</h3>
-              
-              {/* Receipt Items */}
-              <div className="mb-4 max-h-64 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+
+              <div className="mb-4 max-h-64 overflow-y-auto pr-2 space-y-3">
                 {cartItems.map((item) => (
                   <div key={item.id} className="flex justify-between text-sm">
                     <div className="flex gap-3">
@@ -218,9 +289,8 @@ function CheckoutPage() {
                       </span>
                       <div className="flex flex-col">
                         <span className="text-gray-700">{item.name}</span>
-                        {/* If custom, showing abbreviated details */}
-                        {item.type === 'custom' && (
-                           <span className="text-[10px] text-gray-400">Custom Bouquet</span>
+                        {item.type === "custom" && (
+                          <span className="text-[10px] text-gray-400">Custom Bouquet</span>
                         )}
                       </div>
                     </div>
@@ -229,46 +299,45 @@ function CheckoutPage() {
                 ))}
               </div>
 
-              <div className="my-4 border-t border-dashed border-gray-200"></div>
+              <div className="my-4 border-t border-dashed border-gray-200" />
 
-              {/* Calculations */}
               <div className="space-y-2 text-sm text-gray-600">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
                   <span>₱{totalPrice.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Delivery Fee</span>
-                  <span>{DELIVERY_FEE === 0 ? "Free" : `₱${DELIVERY_FEE}`}</span>
+                  <span>Delivery</span>
+                  <span className="text-gray-400">
+                    {deliveryMode === "delivery" ? "Third-Party Delivery" : "Free (Pickup)"}
+                  </span>
                 </div>
               </div>
 
-              <div className="my-4 border-t border-gray-200"></div>
+              <div className="my-4 border-t border-gray-200" />
 
               <div className="flex justify-between text-lg font-bold text-gray-800">
                 <span>Total</span>
                 <span className="text-rose-500">₱{GRAND_TOTAL.toLocaleString()}</span>
               </div>
 
-              {/* Checkout Button */}
               <button
                 type="submit"
-                disabled={!paymentProof}
-                className={`mt-6 w-full rounded-xl py-4 text-sm font-semibold text-white shadow transition 
-                  ${paymentProof 
-                    ? "bg-rose-500 hover:bg-rose-600 active:scale-95" 
+                disabled={!paymentProof || isSubmitting}
+                className={`mt-6 w-full rounded-xl py-4 text-sm font-semibold text-white shadow transition
+                  ${paymentProof && !isSubmitting
+                    ? "bg-rose-500 hover:bg-rose-600 active:scale-95"
                     : "cursor-not-allowed bg-gray-300"
                   }`}
               >
-                {paymentProof ? "Complete Order" : "Upload Payment to Proceed"}
+                {isSubmitting ? "Placing Order..." : paymentProof ? "Complete Order" : "Upload Payment to Proceed"}
               </button>
-              
+
               <p className="mt-3 text-center text-xs text-gray-400">
                 By placing this order, you agree to our terms of service.
               </p>
             </div>
           </div>
-
         </form>
       </div>
     </div>

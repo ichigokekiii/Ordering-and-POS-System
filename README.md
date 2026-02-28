@@ -1,3 +1,3 @@
-# if may issue kayo sa code chat nyo lang ako
+# WAG MO PAG PUSH SA MAIN PLEASE LANG 
 
-for task delegation, refer nalang ulet sa chat ko sa gc thank you - jc
+hindi mo madali magbalik ng code

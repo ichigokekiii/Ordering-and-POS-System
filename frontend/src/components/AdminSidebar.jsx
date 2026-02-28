@@ -38,14 +38,6 @@ function AdminSidebar({ onLogout }) {
           Products
         </NavLink>
 
-        <NavLink
-          to="/admin/premades"
-          className={({ isActive }) =>
-            isActive ? activeClass : baseClass
-          }
-        >
-          Premades
-        </NavLink>
 
         <NavLink
           to="/admin/orders"

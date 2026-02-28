@@ -1,7 +1,8 @@
-import { useState } from "react";
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useState, useEffect, useRef } from "react";
 import { usePremades } from "../../contexts/PremadeContext";
 
-function AdminPremadePage() {
+function AdminPremadePage({ openModalTrigger }) {
   const { premades, addPremade, updatePremade, deletePremade } = usePremades();
 
   const [showModal, setShowModal] = useState(false);
@@ -16,6 +17,8 @@ function AdminPremadePage() {
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
+
+  const isFirstRender = useRef(true);
 
   // add and update
   const handleSubmit = async (e) => {
@@ -94,8 +97,20 @@ function AdminPremadePage() {
     setIsEditing(false);
   };
 
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    if (openModalTrigger > 0) {
+      resetForm();
+      setShowModal(true);
+    }
+  }, [openModalTrigger]);
+
   return (
-    <div className="px-10 py-10">
+    <div>
       {message && (
         <div
           className={`mb-4 rounded px-4 py-2 text-white ${
@@ -105,20 +120,6 @@ function AdminPremadePage() {
           {message}
         </div>
       )}
-
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Premades</h2>
-
-        <button
-          onClick={() => {
-            resetForm();
-            setShowModal(true);
-          }}
-          className="rounded bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
-        >
-          + Add Premade
-        </button>
-      </div>
 
       {/* Premade List */}
       <div className="grid gap-6 md:grid-cols-3">

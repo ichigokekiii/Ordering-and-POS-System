@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { useProducts } from "../../contexts/ProductContext";
+import AdminPremadePage from "./AdminPremadePage";
 
 function AdminProductPage() {
   const { products, addProduct, updateProduct, deleteProduct } = useProducts();
+  const [activeTab, setActiveTab] = useState("custom");
+  const [openPremadeModalTrigger, setOpenPremadeModalTrigger] = useState(0);
 
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -118,142 +121,191 @@ function AdminProductPage() {
       )}
 
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Products</h2>
-
-        <button
-          onClick={() => {
-            resetForm();
-            setShowModal(true);
-          }}
-          className="rounded bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
-        >
-          + Add Product
-        </button>
-      </div>
-
-      {/* Product List */}
-      <div className="space-y-8">
-        {/* Main Flower Section */}
         <div>
-          <h3 className="mb-4 text-xl font-semibold text-gray-700">
-            Main Flowers
-          </h3>
-          <div className="grid gap-6 md:grid-cols-3">
-            {products
-              .filter((product) => product.category === "Main Flower")
-              .map((product) => (
-                <div
-                  key={product.id}
-                  className="relative rounded border p-4 shadow-sm"
-                >
-                  <div className="mb-2 flex items-center gap-1">
-                    {product.isAvailable ? (
-                      <span className="flex items-center text-xs font-bold text-green-600">
-                        <span className="mr-1">✓</span> Available
-                      </span>
-                    ) : (
-                      <span className="text-xs font-bold text-red-500">
-                        Out of Stock
-                      </span>
-                    )}
-                  </div>
+          <h2 className="text-2xl font-semibold mb-4">Products</h2>
 
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className={`mb-3 h-40 w-full rounded object-cover ${!product.isAvailable && "grayscale opacity-60"}`}
-                  />
+          {/* Toggle Tabs */}
+          <div className="flex gap-4">
+            <button
+              onClick={() => setActiveTab("custom")}
+              className={`px-4 py-2 rounded-full text-sm font-medium ${
+                activeTab === "custom"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200 hover:bg-gray-300"
+              }`}
+            >
+              Custom Flowers
+            </button>
 
-                  <h1 className="font-medium">{product.name}</h1>
-                  <h3 className="text-sm text-gray-600">
-                    {product.description}
-                  </h3>
-                  <p className="text-gray-500">₱{product.price}</p>
-
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={() => handleEdit(product)}
-                      className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
+            <button
+              onClick={() => setActiveTab("premade")}
+              className={`px-4 py-2 rounded-full text-sm font-medium ${
+                activeTab === "premade"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200 hover:bg-gray-300"
+              }`}
+            >
+              Premade Bouquets
+            </button>
           </div>
-          {products.filter((p) => p.category === "Main Flower").length ===
-            0 && (
-            <p className="text-gray-400 text-center py-8">
-              No main flowers yet
-            </p>
-          )}
         </div>
 
-        {/* Filler Section */}
-        <div>
-          <h3 className="mb-4 text-xl font-semibold text-gray-700">Fillers</h3>
-          <div className="grid gap-6 md:grid-cols-3">
-            {products
-              .filter((product) => product.category === "Filler")
-              .map((product) => (
-                <div
-                  key={product.id}
-                  className="relative rounded border p-4 shadow-sm"
-                >
-                  <div className="mb-2 flex items-center gap-1">
-                    {product.isAvailable ? (
-                      <span className="flex items-center text-xs font-bold text-green-600">
-                        <span className="mr-1">✓</span> Available
-                      </span>
-                    ) : (
-                      <span className="text-xs font-bold text-red-500">
-                        Out of Stock
-                      </span>
-                    )}
-                  </div>
+    {/* Add Button (Dynamic per Tab) */}
+    {activeTab === "custom" && (
+      <button
+        onClick={() => {
+          resetForm();
+          setShowModal(true);
+        }}
+        className="rounded bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
+      >
+        + Add Product
+      </button>
+    )}
 
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className={`mb-3 h-40 w-full rounded object-cover ${!product.isAvailable && "grayscale opacity-60"}`}
-                  />
-
-                  <h1 className="font-medium">{product.name}</h1>
-                  <h3 className="text-sm text-gray-600">
-                    {product.description}
-                  </h3>
-                  <p className="text-gray-500">₱{product.price}</p>
-
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={() => handleEdit(product)}
-                      className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-          </div>
-          {products.filter((p) => p.category === "Filler").length === 0 && (
-            <p className="text-gray-400 text-center py-8">No fillers yet</p>
-          )}
-        </div>
+    {activeTab === "premade" && (
+      <button
+        onClick={() =>
+          setOpenPremadeModalTrigger((prev) => prev + 1)
+        }
+        className="rounded bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
+      >
+        + Add Premade
+      </button>
+    )}
       </div>
+
+      {activeTab === "custom" && (
+        <>
+          {/* Product List */}
+          <div className="space-y-8">
+            {/* Main Flower Section */}
+            <div>
+              <h3 className="mb-4 text-xl font-semibold text-gray-700">
+                Main Flowers
+              </h3>
+              <div className="grid gap-6 md:grid-cols-3">
+                {products
+                  .filter((product) => product.category === "Main Flower")
+                  .map((product) => (
+                    <div
+                      key={product.id}
+                      className="relative rounded border p-4 shadow-sm"
+                    >
+                      <div className="mb-2 flex items-center gap-1">
+                        {product.isAvailable ? (
+                          <span className="flex items-center text-xs font-bold text-green-600">
+                            <span className="mr-1">✓</span> Available
+                          </span>
+                        ) : (
+                          <span className="text-xs font-bold text-red-500">
+                            Out of Stock
+                          </span>
+                        )}
+                      </div>
+
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className={`mb-3 h-40 w-full rounded object-cover ${!product.isAvailable && "grayscale opacity-60"}`}
+                      />
+
+                      <h1 className="font-medium">{product.name}</h1>
+                      <h3 className="text-sm text-gray-600">
+                        {product.description}
+                      </h3>
+                      <p className="text-gray-500">₱{product.price}</p>
+
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          onClick={() => handleEdit(product)}
+                          className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          onClick={() => handleDelete(product.id)}
+                          className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+              {products.filter((p) => p.category === "Main Flower").length ===
+                0 && (
+                <p className="text-gray-400 text-center py-8">
+                  No main flowers yet
+                </p>
+              )}
+            </div>
+
+            {/* Filler Section */}
+            <div>
+              <h3 className="mb-4 text-xl font-semibold text-gray-700">Fillers</h3>
+              <div className="grid gap-6 md:grid-cols-3">
+                {products
+                  .filter((product) => product.category === "Filler")
+                  .map((product) => (
+                    <div
+                      key={product.id}
+                      className="relative rounded border p-4 shadow-sm"
+                    >
+                      <div className="mb-2 flex items-center gap-1">
+                        {product.isAvailable ? (
+                          <span className="flex items-center text-xs font-bold text-green-600">
+                            <span className="mr-1">✓</span> Available
+                          </span>
+                        ) : (
+                          <span className="text-xs font-bold text-red-500">
+                            Out of Stock
+                          </span>
+                        )}
+                      </div>
+
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className={`mb-3 h-40 w-full rounded object-cover ${!product.isAvailable && "grayscale opacity-60"}`}
+                      />
+
+                      <h1 className="font-medium">{product.name}</h1>
+                      <h3 className="text-sm text-gray-600">
+                        {product.description}
+                      </h3>
+                      <p className="text-gray-500">₱{product.price}</p>
+
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          onClick={() => handleEdit(product)}
+                          className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          onClick={() => handleDelete(product.id)}
+                          className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+              {products.filter((p) => p.category === "Filler").length === 0 && (
+                <p className="text-gray-400 text-center py-8">No fillers yet</p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {activeTab === "premade" && (
+        <AdminPremadePage openModalTrigger={openPremadeModalTrigger} />
+      )}
 
       {/* add/edit modal */}
       {showModal && (

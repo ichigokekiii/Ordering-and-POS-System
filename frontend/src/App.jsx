@@ -17,6 +17,7 @@ import Footer from "./components/Footer";
 // USER PAGES
 import LandingPage from "./pages/users/LandingPage";
 import ProductPage from "./pages/users/ProductPage";
+import Feedback from "./pages/users/Feedback";
 import LoginPage from "./pages/users/LoginPage";
 import RegisterPage from "./pages/users/RegisterPage";
 import VerifyOtpPage from "./pages/users/VerifyOtpPage";
@@ -77,6 +78,7 @@ function App() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/products" element={<ProductPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
+        <Route path="/feedback" element={<Feedback />} />
 
         <Route path="/order" element={<OrderPage />} />
         <Route path="/ordercustom" element={<OrderCustom />} />

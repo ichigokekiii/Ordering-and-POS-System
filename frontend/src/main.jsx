@@ -4,13 +4,26 @@ import { BrowserRouter } from "react-router-dom";
 import './main.css';
 import App from "./App";
 import { ProductProvider } from "./contexts/ProductContext";
+import { PremadeProvider } from "./contexts/PremadeContext";
+import { CartProvider } from "./contexts/CartContext";
+import { ScheduleProvider } from "./contexts/ScheduleContext";
+import { AuthProvider } from "./contexts/AuthContext";
+import { LoadingProvider } from "./contexts/LoadingContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
-    <ProductProvider>
-      <App />
-    </ProductProvider>
+    <LoadingProvider>
+      <CartProvider>
+        <ProductProvider>
+          <PremadeProvider>
+            <ScheduleProvider>
+              <AuthProvider>
+                <App />
+              </AuthProvider>
+            </ScheduleProvider>
+          </PremadeProvider>
+        </ProductProvider>
+      </CartProvider>
+    </LoadingProvider>
   </BrowserRouter>
 );
-
-

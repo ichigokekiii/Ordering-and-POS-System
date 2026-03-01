@@ -1,13 +1,17 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Models\Product;
+use App\Http\Controllers\ScheduleController;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\PremadeController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PosTransactionsController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\AuthController;
 
 // Test route - check if API works
 Route::get('/test', function () {
@@ -21,70 +25,59 @@ Route::get('/landing', function () {
     ]);
 });
 
-// ========== PRODUCT ROUTES ==========
-Route::get('/products', [ProductController::class, 'index']);      // Get all products
-Route::post('/products', [ProductController::class, 'store']);     // Create new product
-Route::put('/products/{id}', [ProductController::class, 'update']); // Update product
-Route::delete('/products/{id}', [ProductController::class, 'destroy']); // Delete product
+//schedules api routes
+Route::get('/schedules', [ScheduleController::class, 'index']);
+Route::post('/schedules', [ScheduleController::class, 'store']);
+Route::put('/schedules/{id}', [ScheduleController::class, 'update']);
+Route::delete('/schedules/{id}', [ScheduleController::class, 'destroy']);
 
-// ========== USER ROUTES (For Admin Page) ==========
-Route::get('/users', [UserController::class, 'index']);      // Get all users
-Route::post('/users', [UserController::class, 'store']);     // Create new user
-Route::get('/users/{id}', [UserController::class, 'show']);  // Get one user
-Route::put('/users/{id}', [UserController::class, 'update']); // Update user
-Route::delete('/users/{id}', [UserController::class, 'destroy']); // Delete user
+//schedule email route
+Route::post('/schedules/{id}/book', [ScheduleController::class, 'book']);
 
-// ========== LOGIN & REGISTER ROUTES ==========
-Route::post('/login', function (Request $request) {
-    // Check if email and password are correct
-    if (!Auth::attempt($request->only('email', 'password'))) {
-        return response()->json(['message' => 'Invalid credentials'], 401);
-    }
+//product api routes
+Route::apiResource('products', ProductController::class);
+Route::get('/products', [ProductController::class, 'index']);
+Route::post('/products', [ProductController::class, 'store']);
+Route::put('/products/{id}', [ProductController::class, 'update']);
+Route::delete('/products/{id}', [ProductController::class, 'destroy']);
 
-    // Get the logged in user
-    $user = Auth::user();
+//premade api routes
+Route::apiResource('premades', PremadeController::class);
+Route::get('/premades', [PremadeController::class, 'index']);
+Route::post('/premades', [PremadeController::class, 'store']);
+Route::put('/premades/{id}', [PremadeController::class, 'update']);
+Route::delete('/premades/{id}', [PremadeController::class, 'destroy']);
 
-    return response()->json([
-        'id' => $user->id,
-        'name' => $user->name,
-        'role' => $user->role,
-    ]);
-});
+//order api routes
+Route::get('/orders', [OrderController::class, 'index']);
+Route::get('/orders/user/{user_id}', [OrderController::class, 'userOrders']);
+Route::post('/orders', [OrderController::class, 'store']);
+Route::put('/orders/{id}', [OrderController::class, 'update']);
 
-Route::post('/logout', function () {
-    // Logout the user
-    Auth::logout();
-    return response()->json(['message' => 'Logged out']);
-});
+//pos api routes
+Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
 
-Route::post('/register', function (Request $request) {
-    // Get data from request
-    $name = $request->input('name');
-    $email = $request->input('email');
-    $password = $request->input('password');
+//verify otp
+Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 
-    // Check if all fields are provided
-    if (empty($name) || empty($email) || empty($password)) {
-        return response()->json(['message' => 'All fields are required'], 400);
-    }
+Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
 
-    // Check if email already exists
-    $existingUser = User::where('email', $email)->first();
-    if ($existingUser) {
-        return response()->json(['message' => 'Email already registered'], 400);
-    }
+Route::post('/register', [UserController::class, 'register']);
 
-    // Create new user
-    $user = new User();
-    $user->name = $name;
-    $user->email = $email;
-    $user->password = Hash::make($password);  // Hash password for security
-    $user->role = 'user';  // Default role
-    $user->save();
+// ================= ADMIN ROUTES =================
+Route::middleware(['auth:sanctum', 'admin.owner'])->group(function () {
 
-    return response()->json([
-        'id' => $user->id,
-        'name' => $user->name,
-        'role' => $user->role,
-    ]);
+    // Admin & Owner can VIEW users
+    Route::get('/users', [UserController::class, 'index']);
+    Route::get('/users/{id}', [UserController::class, 'show']);
+
+    // Only Admin can MODIFY users
+    Route::middleware('admin.only')->group(function () {
+        Route::post('/users', [UserController::class, 'store']);
+        Route::put('/users/{id}', [UserController::class, 'update']);
+        Route::delete('/users/{id}', [UserController::class, 'destroy']);
+    });
+
 });

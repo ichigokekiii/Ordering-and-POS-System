@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
+use App\Models\CustomProduct;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
@@ -10,7 +10,7 @@ class ProductController extends Controller
     // GET /api/products
     public function index()
     {
-        return Product::all();
+        return CustomProduct::all();
     }
 
     // POST /api/products
@@ -19,10 +19,13 @@ class ProductController extends Controller
         $request->validate([
             'name' => 'required',
             'image' => 'required',
+            'description' => 'required',
+            'category' => 'required',
             'price' => 'required|numeric',
+            'isAvailable' => 'required|boolean'
         ]);
 
-        $product = Product::create($request->all());
+        $product = CustomProduct::create($request->all());
 
         return response()->json($product, 201);
     }
@@ -30,7 +33,16 @@ class ProductController extends Controller
     // PUT /api/products/{id}
     public function update(Request $request, $id)
     {
-        $product = Product::findOrFail($id);
+         $request->validate([
+            'name' => 'sometimes|required',
+            'image' => 'sometimes|required',
+            'description' => 'required',
+            'category' => 'required',
+            'price' => 'sometimes|required|numeric',
+            'isAvailable' => 'sometimes|required|boolean', 
+        ]);
+
+        $product = CustomProduct::findOrFail($id);
         $product->update($request->all());
 
         return response()->json($product);
@@ -39,7 +51,7 @@ class ProductController extends Controller
     // DELETE /api/products/{id}
     public function destroy($id)
     {
-        Product::destroy($id);
+        CustomProduct::destroy($id);
 
         return response()->json([
             'message' => 'Product deleted'

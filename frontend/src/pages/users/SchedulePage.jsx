@@ -1,15 +1,24 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSchedules } from "../../contexts/ScheduleContext";
+import api from "../../services/api";
 
 function SchedulePage() {
   const { schedules, loading } = useSchedules();
 
   const navigate = useNavigate();
   const [selectedSchedule, setSelectedSchedule] = useState(null);
+  const [isBooking, setIsBooking] = useState(false);
+  const [bookingEmail, setBookingEmail] = useState("");
 
   const [currentPage, setCurrentPage] = useState(1);
   const schedulesPerPage = 6;
+
+  // Booking feedback state
+  const [bookingStatus, setBookingStatus] = useState(null); 
+  // values: "success" | "error"
+  const [bookingMessage, setBookingMessage] = useState("");
+
 
   if (loading) {
     return (
@@ -33,11 +42,42 @@ function SchedulePage() {
 
   const handleCloseModal = () => {
     setSelectedSchedule(null);
+    setIsBooking(false);
+    setBookingEmail("");
   };
 
   const handleOrderNow = () => {
     if (selectedSchedule) {
       navigate(`/order?schedule_id=${selectedSchedule.id}`);
+    }
+  };
+
+  const handleBookClick = () => {
+    setIsBooking(true);
+  };
+
+  const handleSubmitBooking = async (e) => {
+    e.preventDefault();
+
+    try {
+      const res = await api.post(
+        `/schedules/${selectedSchedule.id}/book`,
+        { email: bookingEmail }
+      );
+
+      setBookingStatus("success");
+      setBookingMessage(res.data.message);
+
+      setBookingEmail("");
+      setIsBooking(false);
+    } catch (error) {
+      if (error.response && error.response.data?.message) {
+        setBookingStatus("error");
+        setBookingMessage(error.response.data.message);
+      } else {
+        setBookingStatus("error");
+        setBookingMessage("Something went wrong. Please try again.");
+      }
     }
   };
 
@@ -73,26 +113,24 @@ function SchedulePage() {
                 <div
                   key={schedule.id}
                   onClick={() => handleOpenModal(schedule)}
-                  className="rounded-xl border shadow-sm overflow-hidden hover:shadow-md transition cursor-pointer"
+                  className="group cursor-pointer"
                 >
-                  {schedule.image && (
-                    <img
-                      src={schedule.image}
-                      alt={schedule.schedule_name}
-                      className="h-48 w-full object-cover"
-                    />
-                  )}
+                  <div className="overflow-hidden rounded-2xl">
+                    {schedule.image && (
+                      <img
+                        src={schedule.image}
+                        alt={schedule.schedule_name}
+                        className="h-56 w-full object-cover transition duration-500 group-hover:scale-105"
+                      />
+                    )}
+                  </div>
 
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg">
+                  <div className="mt-3">
+                    <h3 className="font-semibold text-lg text-gray-900">
                       {schedule.schedule_name}
                     </h3>
 
                     <p className="text-sm text-gray-500 mt-1">
-                      {schedule.schedule_description}
-                    </p>
-
-                    <p className="text-sm text-blue-600 mt-2">
                       {new Date(schedule.event_date).toLocaleDateString()}
                     </p>
                   </div>
@@ -107,10 +145,10 @@ function SchedulePage() {
                   <button
                     key={index}
                     onClick={() => paginate(index + 1)}
-                    className={`px-3 py-1 rounded ${
+                    className={`w-9 h-9 rounded-full text-sm font-medium transition ${
                       currentPage === index + 1
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-200 hover:bg-gray-300"
+                        ? "bg-[#5C6F9E] text-white"
+                        : "bg-gray-200 text-gray-600 hover:bg-[#5C6F9E]/20"
                     }`}
                   >
                     {index + 1}
@@ -136,51 +174,113 @@ function SchedulePage() {
 
       <div className="grid md:grid-cols-2 h-full">
         
-        {/* IMAGE SIDE (Fixed Size) */}
-        <div className="h-full w-full">
+        {/* IMAGE SIDE (Fixed Size with consistent cropping) */}
+        <div className="h-full w-full bg-gray-100 overflow-hidden flex items-center justify-center">
           <img
             src={selectedSchedule.image}
             alt={selectedSchedule.schedule_name}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover object-center"
           />
         </div>
 
         {/* CONTENT SIDE */}
         <div className="flex flex-col justify-center px-12">
-          <h2 className="text-4xl font-bold text-gray-800">
+          {isBooking && (
+            <button
+              onClick={() => setIsBooking(false)}
+              className="text-sm text-gray-500 hover:text-[#5C6F9E] mb-4 text-left"
+            >
+              ← Back
+            </button>
+          )}
+          <h2 className="text-4xl font-bold text-gray-900 leading-tight">
             {selectedSchedule.schedule_name}
           </h2>
 
-          <p className="mt-6 text-gray-600">
-            Visit Us
+          <p className="mt-5 text-gray-600 text-base">
+            {selectedSchedule.schedule_description || "Join us for a special floral pop-up experience."}
           </p>
 
-          <p className="text-gray-500">
-            {new Date(selectedSchedule.event_date).toLocaleDateString()}
-          </p>
+          <div className="mt-6 space-y-2 text-sm text-gray-500">
+            <p>
+              <span className="font-medium text-gray-700">Date:</span>{" "}
+              {new Date(selectedSchedule.event_date).toLocaleDateString()}
+            </p>
+            <p>
+              <span className="font-medium text-gray-700">Location:</span>{" "}
+              {selectedSchedule.location || "Location coming soon"}
+            </p>
+          </div>
 
-          <p className="mt-2 text-gray-500">
-            {selectedSchedule.schedule_description}
-          </p>
+          <div className="mt-8 w-full max-w-xs">
+            {!isBooking ? (
+              <div className="flex flex-col gap-4">
+                <button
+                  onClick={handleBookClick}
+                  className="w-full border border-gray-300 rounded-xl py-3 text-center font-medium transition-all duration-500 hover:bg-[#5C6F9E] hover:text-white hover:border-[#5C6F9E]"
+                >
+                  Book Now
+                </button>
 
-          <div className="mt-8 flex flex-col gap-4 w-48">
-            <button
-              className="border border-gray-300 rounded-full py-2 hover:bg-gray-100 transition"
-            >
-              Book Now
-            </button>
+                <button
+                  onClick={handleOrderNow}
+                  className="w-full border border-gray-300 rounded-xl py-3 text-center font-medium transition-all duration-500 hover:bg-[#5C6F9E] hover:text-white hover:border-[#5C6F9E]"
+                >
+                  Order Now
+                </button>
+              </div>
+            ) : (
+              <form
+                onSubmit={handleSubmitBooking}
+                className="flex flex-col gap-4 w-full"
+              >
+                <input
+                  type="email"
+                  required
+                  value={bookingEmail}
+                  onChange={(e) => setBookingEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#5C6F9E]"
+                />
 
-            <button
-              onClick={handleOrderNow}
-              className="border border-gray-300 rounded-full py-2 hover:bg-gray-100 transition"
-            >
-              Order Now
-            </button>
+                <button
+                  type="submit"
+                  className="w-full border border-gray-300 rounded-xl py-3 text-center font-medium transition-all duration-500 hover:bg-[#5C6F9E] hover:text-white hover:border-[#5C6F9E]"
+                >
+                  Book Now
+                </button>
+              </form>
+            )}
           </div>
         </div>
 
       </div>
     </div>
+    {/* Toast Notification */}
+    {bookingStatus && (
+      <div className="fixed top-6 right-6 z-[100]">
+        <div
+          className={`min-w-[280px] max-w-sm rounded-2xl px-5 py-4 shadow-xl border text-sm font-medium transition-all duration-300 ${
+            bookingStatus === "success"
+              ? "bg-white text-green-700 border-green-200"
+              : "bg-white text-red-700 border-red-200"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <span>{bookingMessage}</span>
+            <button
+              onClick={() => {
+                setBookingStatus(null);
+                setBookingMessage("");
+              }}
+              className="text-gray-400 hover:text-gray-600 text-xs"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </div>
 )}
     </div>

@@ -31,6 +31,9 @@ Route::post('/schedules', [ScheduleController::class, 'store']);
 Route::put('/schedules/{id}', [ScheduleController::class, 'update']);
 Route::delete('/schedules/{id}', [ScheduleController::class, 'destroy']);
 
+//schedule email route
+Route::post('/schedules/{id}/book', [ScheduleController::class, 'book']);
+
 //product api routes
 Route::apiResource('products', ProductController::class);
 Route::get('/products', [ProductController::class, 'index']);

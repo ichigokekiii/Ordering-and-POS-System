@@ -55,7 +55,7 @@ function LoginPage({ onLogin }) {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button className="w-full rounded bg-blue-600 py-2 text-white hover:bg-blue-700">
+        <button className="w-full rounded bg-[#4f6fa5] py-2 text-white hover:bg-[#3f5b89] transition">
           Login
         </button>
       </form>
@@ -65,7 +65,7 @@ function LoginPage({ onLogin }) {
         Don’t have an account?{" "}
         <Link
           to="/register"
-          className="text-blue-600 hover:underline"
+          className="text-[#4f6fa5] hover:underline"
         >
           Register
         </Link>

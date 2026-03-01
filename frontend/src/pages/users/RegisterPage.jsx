@@ -83,7 +83,7 @@ function RegisterPage() {
           required
         />
 
-        <button className="w-full rounded bg-blue-600 py-2 text-white hover:bg-blue-700">
+        <button className="w-full rounded bg-[#4f6fa5] py-2.5 text-white transition-all duration-200 hover:bg-[#3f5b89] hover:shadow-md">
           Register
         </button>
       </form>

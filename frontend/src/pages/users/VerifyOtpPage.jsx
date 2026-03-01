@@ -87,7 +87,7 @@ function VerifyOtpPage() {
         </p>
         <button
           onClick={() => navigate("/register")}
-          className="w-full rounded bg-blue-600 py-2 text-white hover:bg-blue-700"
+          className="w-full rounded bg-[#5C6F9E] py-2 text-white hover:bg-[#4E5F88]"
         >
           Go to Register
         </button>
@@ -119,14 +119,14 @@ function VerifyOtpPage() {
           value={otp}
           onChange={(e) => setOtp(e.target.value)}
           placeholder="Enter OTP"
-          className="w-full rounded border px-4 py-2 text-center tracking-widest"
+          className="w-full rounded border border-gray-300 px-4 py-2 text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-[#5C6F9E] focus:border-[#5C6F9E] transition"
           required
         />
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded bg-blue-600 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+          className="w-full rounded bg-[#5C6F9E] py-2 text-white hover:bg-[#4E5F88] disabled:opacity-50"
         >
           {loading ? "Verifying..." : "Verify OTP"}
         </button>
@@ -141,7 +141,7 @@ function VerifyOtpPage() {
           <button
             onClick={handleResend}
             disabled={resendLoading}
-            className="text-blue-600 hover:underline disabled:opacity-50"
+            className="text-[#5C6F9E] hover:underline disabled:opacity-50"
           >
             {resendLoading ? "Resending..." : "Resend OTP"}
           </button>
@@ -180,7 +180,7 @@ function VerifyOtpPage() {
 
             {/* Loading indicator */}
             <div className="mt-4 flex justify-center">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#5C6F9E] border-t-transparent"></div>
             </div>
           </div>
         </div>

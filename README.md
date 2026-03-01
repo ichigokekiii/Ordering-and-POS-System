@@ -14,9 +14,9 @@ Do not skip steps 😊
 
 This system has 3 parts:
 
-1️⃣ Database (MySQL)
-2️⃣ Backend (Laravel)
-3️⃣ Frontend (React Website)
+- Database (MySQL)
+- Backend (Laravel)
+- Frontend (React Website)
 
 All three must be running.
 
@@ -26,12 +26,12 @@ All three must be running.
 
 Please make sure you already installed:
 
-• XAMPP or MySQL Server
-• MySQL Workbench
-• PHP (8.2+)
-• Composer
-• Node.js (v18+)
-• VS Code
+- XAMPP or MySQL Server
+- MySQL Workbench
+- PHP (8.2+)
+- Composer
+- Node.js (v18+)
+- VS Code
 
 If something is missing, ask first before continuing.
 

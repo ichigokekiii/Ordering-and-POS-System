@@ -39,9 +39,14 @@ class AuthController extends Controller
             ], 403);
         }
 
+        // Create Sanctum token
+        $user->tokens()->delete();
+        $token = $user->createToken('auth_token')->plainTextToken;
+
         return response()->json([
             'message' => 'Login successful',
-            'user' => $user
+            'user' => $user,
+            'token' => $token
         ]);
     }
 public function verifyOtp(Request $request)
@@ -71,9 +76,14 @@ public function verifyOtp(Request $request)
 
     $otp->delete();
 
+    // Create Sanctum token for auto-login after verification
+    $user->tokens()->delete();
+    $token = $user->createToken('auth_token')->plainTextToken;
+
     return response()->json([
         'message' => 'Account verified successfully',
-        'user' => $user
+        'user' => $user,
+        'token' => $token
     ]);
 }
 
@@ -107,5 +117,16 @@ public function resendOtp(Request $request)
     Mail::to($user->email)->send(new SendOtpMail($otpCode));
 
     return response()->json(['message' => 'OTP resent successfully']);
+}
+
+public function logout(Request $request)
+{
+    if ($request->user() && $request->user()->currentAccessToken()) {
+        $request->user()->currentAccessToken()->delete();
+    }
+
+    return response()->json([
+        'message' => 'Logged out successfully'
+    ]);
 }
 }

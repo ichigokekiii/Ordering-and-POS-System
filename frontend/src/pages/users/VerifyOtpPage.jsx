@@ -38,15 +38,18 @@ function VerifyOtpPage() {
         otp,
       });
 
-      // Store verified user and auto login
+      // 🔥 Store Sanctum token
+      localStorage.setItem("token", res.data.token);
+
+      // Store verified user
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
       setModalMessage("Account verified successfully! Logging you in...");
       setShowModal(true);
 
-      // Force app to reload so Navbar picks up new user state
+      // Redirect normally (no hard reload needed)
       setTimeout(() => {
-        window.location.href = "/";
+        navigate("/");
       }, 1500);
 
     } catch (err) {

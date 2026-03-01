@@ -9,7 +9,7 @@ function Navbar({ user, onLogout }) {
   };
 
   return (
-    <nav className="w-full border-b border-gray-200 bg-white">
+    <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
         
         <Link

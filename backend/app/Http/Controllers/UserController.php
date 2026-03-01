@@ -9,35 +9,31 @@ use App\Models\Otp;
 use App\Mail\SendOtpMail;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
     // Get all users
     public function index()
     {
+        // Only admin and owner can view users
+        if (!Auth::check() || !in_array(Auth::user()->role, ['admin', 'owner'])) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
         $users = User::all();
         return response()->json($users);
     }
 
-    // Register (for /api/register route)
+    // Public Registration (with OTP)
     public function register(Request $request)
-    {
-        return $this->store($request);
-    }
-
-    // Create new user
-    public function store(Request $request)
     {
         $firstName = $request->input('first_name');
         $lastName = $request->input('last_name');
-
         $email = $request->input('email');
         $password = $request->input('password');
-        $role = 'user';
-        $status = $request->input('status', 'active');
         $phoneNumber = $request->input('phone_number');
 
-        // Basic validation
         if (empty($email)) {
             return response()->json(['error' => 'Email is required'], 400);
         }
@@ -46,7 +42,6 @@ class UserController extends Controller
             return response()->json(['error' => 'Password must be at least 6 characters'], 400);
         }
 
-        // Check duplicate email
         if (User::where('email', $email)->exists()) {
             return response()->json(['error' => 'Email already exists'], 400);
         }
@@ -56,25 +51,19 @@ class UserController extends Controller
         }
 
         $user = new User();
-
         $user->first_name = $firstName;
         $user->last_name = $lastName;
-
         $user->email = $email;
         $user->password = Hash::make($password);
-        $user->role = $role;
-        $user->status = $status;
+        $user->role = 'user';
+        $user->status = 'active';
         $user->phone_number = $phoneNumber;
-
-        // Security defaults
         $user->failed_attempt_count = 0;
         $user->last_failed_attempt_at = null;
         $user->is_locked = false;
         $user->priority = 0;
-
         $user->save();
 
-        // Generate 6-digit OTP
         $otpCode = rand(100000, 999999);
 
         Otp::create([
@@ -83,7 +72,6 @@ class UserController extends Controller
             'expires_at' => Carbon::now()->addMinutes(5),
         ]);
 
-        // Send OTP email
         Mail::to($user->email)->send(new SendOtpMail($otpCode));
 
         return response()->json([
@@ -92,9 +80,65 @@ class UserController extends Controller
         ], 201);
     }
 
+    // Admin Create User (NO OTP)
+    public function store(Request $request)
+    {
+        if (!Auth::check() || Auth::user()->role !== 'admin') {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $firstName = $request->input('first_name');
+        $lastName = $request->input('last_name');
+        $email = $request->input('email');
+        $password = $request->input('password');
+        $role = $request->input('role', 'user');
+        $status = $request->input('status', 'active');
+        $phoneNumber = $request->input('phone_number');
+
+        if (empty($email)) {
+            return response()->json(['error' => 'Email is required'], 400);
+        }
+
+        if (empty($password) || strlen($password) < 6) {
+            return response()->json(['error' => 'Password must be at least 6 characters'], 400);
+        }
+
+        if (User::where('email', $email)->exists()) {
+            return response()->json(['error' => 'Email already exists'], 400);
+        }
+
+        if (empty($firstName) || empty($lastName)) {
+            return response()->json(['error' => 'First name and last name are required'], 400);
+        }
+
+        $user = new User();
+        $user->first_name = $firstName;
+        $user->last_name = $lastName;
+        $user->email = $email;
+        $user->password = Hash::make($password);
+        $user->role = $role;
+        $user->status = $status;
+        $user->phone_number = $phoneNumber;
+        $user->is_verified = true; // Admin-created users bypass OTP
+        $user->failed_attempt_count = 0;
+        $user->last_failed_attempt_at = null;
+        $user->is_locked = false;
+        $user->priority = 0;
+        $user->save();
+
+        return response()->json([
+            'message' => 'User created successfully.',
+            'user' => $user
+        ], 201);
+    }
+
     // Get one user
     public function show($id)
     {
+        // Only admin and owner can view user details
+        if (!Auth::check() || !in_array(Auth::user()->role, ['admin', 'owner'])) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
         $user = User::find($id);
 
         if (!$user) {
@@ -107,6 +151,20 @@ class UserController extends Controller
     // Update user
     public function update(Request $request, $id)
     {
+        if (!Auth::check()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // Admin can update everything
+        // Owner can update basic info but NOT role
+        if (Auth::user()->role === 'owner') {
+            if ($request->filled('role')) {
+                return response()->json(['error' => 'Owner cannot change roles'], 403);
+            }
+        } elseif (Auth::user()->role !== 'admin') {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
         $user = User::find($id);
 
         if (!$user) {
@@ -157,6 +215,10 @@ class UserController extends Controller
     // Soft delete user
     public function destroy($id)
     {
+        // Only admin can delete users
+        if (!Auth::check() || Auth::user()->role !== 'admin') {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
         $user = User::find($id);
 
         if (!$user) {

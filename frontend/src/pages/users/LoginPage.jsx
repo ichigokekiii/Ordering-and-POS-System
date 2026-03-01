@@ -16,18 +16,34 @@ function LoginPage({ onLogin }) {
     try {
       const res = await api.post("/login", { email, password });
 
-      const loggedInUser = res.data.user;
+      const loggedInUser = res.data.user || res.data;
+
+      // Store Sanctum token
+      if (res.data.token) {
+        localStorage.setItem("token", res.data.token);
+      }
 
       onLogin(loggedInUser);
 
-      // Role-based redirect
-      if (loggedInUser.role === "admin") {
-        navigate("/admin");
-      } else if (loggedInUser.role === "staff") {
-        navigate("/staff");
-      } else {
-        navigate("/");
+      // Role-based redirect (normalize role to lowercase)
+      const role = (loggedInUser?.role || "").toString().toLowerCase().trim();
+
+      if (role === "owner") {
+        navigate("/admin", { replace: true });
+        return;
       }
+
+      if (role === "admin") {
+        navigate("/admin", { replace: true });
+        return;
+      }
+
+      if (role === "staff") {
+        navigate("/staff", { replace: true });
+        return;
+      }
+
+      navigate("/", { replace: true });
     } catch {
       setError("Invalid credentials");
     }

@@ -1,4 +1,4 @@
-import { usePremades } from "../../contexts/PremadeContext";
+{/*import { usePremades } from "../../contexts/PremadeContext";
 
 function ProductPage() {
   const { premades, loading } = usePremades();
@@ -25,6 +25,31 @@ function ProductPage() {
             <p className="text-gray-500">₱{product.price}</p>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+*/}
+function ProductPage() {
+  return (
+    <div className="flex items-center justify-center min-h-[70vh] px-6">
+      <div className="bg-white rounded-2xl shadow-lg p-10 text-center max-w-md w-full border border-gray-200">
+        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+          In Progress
+        </h2>
+
+        <p className="text-gray-600 mb-8">
+          Our product showcase is currently under development.
+          <br />
+          Please check back later.
+        </p>
+
+        <button
+          onClick={() => window.history.back()}
+          className="w-full border border-gray-300 rounded-xl py-3 text-center font-medium transition-all duration-500 hover:bg-[#5C6F9E] hover:text-white hover:border-[#5C6F9E]"
+        >
+          Go Back
+        </button>
       </div>
     </div>
   );

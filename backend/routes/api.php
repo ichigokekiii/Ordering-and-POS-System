@@ -57,39 +57,27 @@ Route::put('/orders/{id}', [OrderController::class, 'update']);
 //pos api routes
 Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
 
-
-//login simple
-Route::post('/login', function (Request $request) {
-    $user = User::where('email', $request->email)->first();
-
-    if (!$user || !Hash::check($request->password, $user->password)) {
-        return response()->json(['message' => 'Invalid credentials'], 401);
-    }
-
-    return response()->json([
-        'id' => $user->id,
-        'name' => $user->name,
-        'role' => $user->role,
-    ]);
-});
-
 //verify otp
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 
-//logout simple
-Route::post('/logout', function () {
-    // Logout the user
-    Auth::logout();
-    return response()->json(['message' => 'Logged out']);
-});
+Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
 
 Route::post('/register', [UserController::class, 'register']);
 
-// user management routes
-Route::get('/users', [UserController::class, 'index']);
-Route::get('/users/{id}', [UserController::class, 'show']);
-Route::post('/users', [UserController::class, 'store']);
-Route::put('/users/{id}', [UserController::class, 'update']);
-Route::delete('/users/{id}', [UserController::class, 'destroy']);
+// ================= ADMIN ROUTES =================
+Route::middleware(['auth:sanctum', 'admin.owner'])->group(function () {
+
+    // Admin & Owner can VIEW users
+    Route::get('/users', [UserController::class, 'index']);
+    Route::get('/users/{id}', [UserController::class, 'show']);
+
+    // Only Admin can MODIFY users
+    Route::middleware('admin.only')->group(function () {
+        Route::post('/users', [UserController::class, 'store']);
+        Route::put('/users/{id}', [UserController::class, 'update']);
+        Route::delete('/users/{id}', [UserController::class, 'destroy']);
+    });
+
+});

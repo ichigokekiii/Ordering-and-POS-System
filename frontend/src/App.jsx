@@ -51,8 +51,11 @@ function App() {
   useEffect(() => {
     if (!user) return;
 
-    // If admin refreshes on "/", redirect to /admin
-    if (user.role === "admin" && location.pathname === "/") {
+    // If admin or owner refreshes on "/", redirect to /admin
+    if (
+      (user.role === "admin" || user.role === "owner") &&
+      location.pathname === "/"
+    ) {
       navigate("/admin");
     }
 
@@ -98,7 +101,7 @@ function App() {
         />
 
         {/* Admin Navbar */}
-        {user?.role === "admin" ? (
+        {user?.role === "admin" || user?.role === "owner" ? (
           <>
             <Route
               path="/admin"

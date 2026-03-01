@@ -1,4 +1,6 @@
-import { useState } from "react";
+/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable no-unused-vars */
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSchedules } from "../../contexts/ScheduleContext";
 import api from "../../services/api";
@@ -18,6 +20,34 @@ function SchedulePage() {
   const [bookingStatus, setBookingStatus] = useState(null); 
   // values: "success" | "error"
   const [bookingMessage, setBookingMessage] = useState("");
+
+  // Order temporary notification state
+  const [orderStatus, setOrderStatus] = useState(null);
+  const [orderMessage, setOrderMessage] = useState("");
+  const [showNotification, setShowNotification] = useState(false);
+
+  // Smooth fade-out logic
+  useEffect(() => {
+    if (bookingStatus || orderStatus) {
+      setShowNotification(true);
+
+      const fadeTimer = setTimeout(() => {
+        setShowNotification(false); // start fade
+      }, 4500); // start fading slightly before removal
+
+      const removeTimer = setTimeout(() => {
+        setBookingStatus(null);
+        setBookingMessage("");
+        setOrderStatus(null);
+        setOrderMessage("");
+      }, 5000); // fully remove after fade
+
+      return () => {
+        clearTimeout(fadeTimer);
+        clearTimeout(removeTimer);
+      };
+    }
+  }, [bookingStatus, orderStatus]);
 
 
   if (loading) {
@@ -47,9 +77,8 @@ function SchedulePage() {
   };
 
   const handleOrderNow = () => {
-    if (selectedSchedule) {
-      navigate(`/order?schedule_id=${selectedSchedule.id}`);
-    }
+    setOrderStatus("info");
+    setOrderMessage("Ordering for this schedule is currently in progress. Please check back later.");
   };
 
   const handleBookClick = () => {
@@ -258,7 +287,7 @@ function SchedulePage() {
     </div>
     {/* Toast Notification */}
     {bookingStatus && (
-      <div className="fixed top-6 right-6 z-[100]">
+      <div className={`fixed top-6 right-6 z-[100] transition-opacity duration-500 ${showNotification ? "opacity-100" : "opacity-0"}`}>
         <div
           className={`min-w-[280px] max-w-sm rounded-2xl px-5 py-4 shadow-xl border text-sm font-medium transition-all duration-300 ${
             bookingStatus === "success"
@@ -283,6 +312,25 @@ function SchedulePage() {
     )}
   </div>
 )}
+    {/* Order In-Progress Notification */}
+    {orderStatus && (
+      <div className={`fixed top-6 right-6 z-[200] transition-opacity duration-500 ${showNotification ? "opacity-100" : "opacity-0"}`}>
+        <div className="min-w-[280px] max-w-sm rounded-2xl px-5 py-4 shadow-xl border text-sm font-medium bg-white text-[#5C6F9E] border-[#5C6F9E]/30">
+          <div className="flex items-start justify-between gap-4">
+            <span>{orderMessage}</span>
+            <button
+              onClick={() => {
+                setOrderStatus(null);
+                setOrderMessage("");
+              }}
+              className="text-gray-400 hover:text-[#5C6F9E] text-xs"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 }

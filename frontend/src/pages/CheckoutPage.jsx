@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
 import api from "../services/api";
@@ -6,11 +6,13 @@ import api from "../services/api";
 function CheckoutPage() {
   const navigate = useNavigate();
   const { cartItems, totalPrice, clearCart } = useCart();
+  const fileInputRef = useRef(null);
 
   const [deliveryMode, setDeliveryMode] = useState("pickup");
   const [paymentProof, setPaymentProof] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fileInputKey, setFileInputKey] = useState(0);
 
   // Auto-filled from logged in user
   const [userName, setUserName] = useState("");
@@ -28,26 +30,36 @@ function CheckoutPage() {
 
   const GRAND_TOTAL = totalPrice;
 
-  // Load user info from localStorage (set during login)
   useEffect(() => {
-  const stored = JSON.parse(localStorage.getItem("user") || "{}");
-  setUserName(stored.name  || "");
-  setUserEmail(stored.email || "");
-  setUserId(stored.id || null);
-}, []);
+    const stored = JSON.parse(localStorage.getItem("user") || "{}");
+    setUserName(stored.name || "");
+    setUserEmail(stored.email || "");
+    setUserId(stored.id || null);
+  }, []);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setPaymentProof(file);
       setPreviewUrl(URL.createObjectURL(file));
+    } else {
+      setPaymentProof(null);
+      setPreviewUrl(null);
     }
+  };
+
+  const resetFileInput = () => {
+    setPaymentProof(null);
+    setPreviewUrl(null);
+    setFileInputKey(prev => prev + 1);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!paymentProof) {
+    const freshFile = fileInputRef.current?.files[0];
+
+    if (!freshFile) {
       alert("Please upload your payment screenshot to proceed.");
       return;
     }
@@ -67,7 +79,7 @@ function CheckoutPage() {
       formData.append("delivery_method",  deliveryMode);
       formData.append("payment_method",   paymentMethod);
       formData.append("reference_number", referenceNumber);
-      formData.append("reference_image",  paymentProof);
+      formData.append("reference_image",  freshFile);
       formData.append("total_amount",     GRAND_TOTAL);
       formData.append("special_message",  notes);
 
@@ -77,10 +89,13 @@ function CheckoutPage() {
 
       alert(`Order placed! Your Order ID is ${res.data.order_id}`);
       clearCart();
+      resetFileInput();
       navigate("/");
     } catch (error) {
       console.error("Order failed", error);
+      console.error("Validation errors:", error.response?.data);
       alert("Something went wrong. Please try again.");
+      resetFileInput();
     } finally {
       setIsSubmitting(false);
     }
@@ -145,7 +160,6 @@ function CheckoutPage() {
               <h2 className="mb-4 text-lg font-semibold text-gray-700">2. Contact Details</h2>
               <div className="space-y-4">
 
-                {/* Auto-filled — read only */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="mb-1 block text-xs text-gray-400">Full Name</label>
@@ -165,7 +179,6 @@ function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* Manual inputs */}
                 <div>
                   <label className="mb-1 block text-xs text-gray-400">Contact Number *</label>
                   <input
@@ -207,9 +220,8 @@ function CheckoutPage() {
             {/* 3. Payment */}
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               <h2 className="mb-4 text-lg font-semibold text-gray-700">3. Payment</h2>
-
               <div className="space-y-4">
-                {/* QR Code */}
+
                 <div className="flex justify-center">
                   <div className="flex flex-col items-center">
                     <div className="mb-2 h-40 w-40 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 p-2">
@@ -223,7 +235,6 @@ function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* Payment Method */}
                 <div>
                   <label className="mb-1 block text-xs text-gray-400">Payment Method *</label>
                   <input
@@ -235,7 +246,6 @@ function CheckoutPage() {
                   />
                 </div>
 
-                {/* Reference Number */}
                 <div>
                   <label className="mb-1 block text-xs text-gray-400">Reference Number *</label>
                   <input
@@ -247,7 +257,6 @@ function CheckoutPage() {
                   />
                 </div>
 
-                {/* Screenshot Upload */}
                 <div>
                   <label className="mb-1 block text-xs text-gray-400">Payment Screenshot *</label>
                   <label className="flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 py-6 transition hover:bg-gray-100">
@@ -256,7 +265,14 @@ function CheckoutPage() {
                       <span className="font-semibold">Click to upload</span> screenshot
                     </p>
                     <p className="text-xs text-gray-400">PNG, JPG (MAX. 5MB)</p>
-                    <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                    <input
+                      key={fileInputKey}
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                    />
                   </label>
 
                   {paymentProof && (
@@ -275,14 +291,14 @@ function CheckoutPage() {
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Order Summary */}
+          {/* RIGHT COLUMN */}
           <div className="md:col-span-5">
             <div className="sticky top-6 rounded-2xl bg-white p-6 shadow-sm">
               <h3 className="mb-4 text-lg font-semibold text-gray-700">Order Summary</h3>
 
               <div className="mb-4 max-h-64 overflow-y-auto pr-2 space-y-3">
-                {cartItems.map((item) => (
-                  <div key={item.id} className="flex justify-between text-sm">
+                {cartItems.map((item, index) => (
+                  <div key={`${item.id}-${index}`} className="flex justify-between text-sm">
                     <div className="flex gap-3">
                       <span className="font-medium text-gray-600 text-xs h-5 w-5 flex items-center justify-center bg-gray-100 rounded-full">
                         {item.quantity}

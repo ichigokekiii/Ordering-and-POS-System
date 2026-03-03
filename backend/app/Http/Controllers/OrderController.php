@@ -3,91 +3,102 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Models\OrderItem;
+use App\Models\Payment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
+
+use App\Mail\OrderReceipt;
+use Illuminate\Support\Facades\Mail;
 
 class OrderController extends Controller
 {
-    // Create Order (Checkout)
     public function store(Request $request)
     {
-        // Basic validation (allow empty optional fields for now)
-        $data = $request->all();
 
-        $items = $data['items'] ?? [];
+        $request->validate([
+            'user_id'          => 'required|integer|exists:users,id',
+            'address'          => 'required|string',
+            'phone'            => 'required|string',
+            'delivery_method'  => 'required|in:pickup,delivery',
+            'payment_method'   => 'required|string',
+            'reference_number' => 'required|string',
+            'reference_image'  => 'required|image|mimes:jpeg,png,jpg|max:5120',
+            'total_amount'     => 'required|numeric',
+            'special_message'  => 'nullable|string',
+        ]);
 
-        if (empty($items)) {
+        $now = Carbon::now();
+        $datePart = $now->format('Ymd');
+
+        $orderId   = 'ORD-' . $datePart . '-' . strtoupper(substr(uniqid(), -4));
+        $paymentId = 'PAY-' . $datePart . '-' . strtoupper(substr(uniqid(), -4));
+
+        // Store image before transaction to avoid doing I/O inside DB transaction
+        // Store image before transaction
+        $imagePath = $request->file('reference_image')->store('payments', 'public');
+
+        try {
+            DB::transaction(function () use ($request, $now, $orderId, $paymentId, $imagePath) {
+
+                // 1. Create order with payment_id null
+                $order = new Order();
+                $order->order_id        = $orderId;
+                $order->user_id         = $request->input('user_id');
+                $order->payment_id      = null;
+                $order->order_date      = $now->toDateString();
+                $order->total_amount    = $request->total_amount;
+                $order->order_status    = 'pending';
+                $order->special_message = $request->special_message;
+                $order->address         = $request->address;
+                $order->delivery_method = $request->delivery_method;
+                $order->save();
+
+                // 2. Create payment
+                $payment = new Payment();
+                $payment->payment_id           = $paymentId;
+                $payment->order_id             = $orderId;
+                $payment->payment_method       = $request->payment_method;
+                $payment->payment_date         = $now->toDateString();
+                $payment->payment_status       = 'pending';
+                $payment->reference_number     = $request->reference_number;
+                $payment->reference_image_path = Storage::url($imagePath);
+                $payment->save();
+
+                // 3. Link payment to order
+                $order->payment_id = $paymentId;
+                $order->save();
+            });
+            } catch (\Exception $e) {
+                Storage::disk('public')->delete($imagePath);
+
+                return response()->json([
+                    'message' => 'Order could not be placed. Please try again.',
+                    'error'   => $e->getMessage(),
+                ], 500);
+            }
+
+            // 4. Send email AFTER transaction succeeds — outside the try/catch
+            //    so a mail failure doesn't affect the order response
+            $user = \App\Models\User::find($request->input('user_id'));
+
+            // try {
+            //     Mail::to($user->email)->send(new OrderReceipt(
+            //         orderId:        $orderId,
+            //         paymentId:      $paymentId,
+            //         totalAmount:    $request->total_amount,
+            //         deliveryMethod: $request->delivery_method,
+            //         userName:       $user->name,
+            //     ));
+            // } catch (\Throwable $e) {
+            //     \Log::warning('Order receipt email failed: ' . $e->getMessage());
+            // }
+
             return response()->json([
-                'message' => 'Cart is empty'
-            ], 400);
-        }
-
-        $total = 0;
-
-        foreach ($items as $item) {
-            $price = $item['price'] ?? 0;
-            $quantity = $item['quantity'] ?? 1;
-            $total += $price * $quantity;
-        }
-
-        $order = Order::create([
-            'user_id' => $data['user_id'] ?? 1, // temporary fallback
-            'schedule_id' => $data['schedule_id'] ?? null,
-            'total_amount' => $total,
-            'order_status' => 'pending'
-        ]);
-
-        foreach ($items as $item) {
-
-            // Frontend cart uses "id" as product id
-            $productId = $item['product_id'] ?? $item['id'] ?? null;
-
-            OrderItem::create([
-                'order_id' => $order->order_id ?? $order->id,
-                'product_id' => $productId,
-                'quantity' => $item['quantity'] ?? 1,
-                'price_at_purchase' => $item['price'] ?? 0
-            ]);
-        }
-
-        return response()->json([
-            'message' => 'Order created successfully',
-            'order' => $order
-        ], 201);
-    }
-
-    // Get All Orders (Admin)
-    public function index()
-    {
-        $orders = Order::with('items')->latest()->get();
-
-        return response()->json($orders);
-    }
-
-    // Get Orders By User
-    public function userOrders($user_id)
-    {
-        $orders = Order::with('items')
-            ->where('user_id', $user_id)
-            ->latest()
-            ->get();
-
-        return response()->json($orders);
-    }
-
-    // Update Order Status (Admin)
-    public function update(Request $request, $id)
-    {
-        // If your primary key is order_id, use where instead of findOrFail
-        $order = Order::where('order_id', $id)->firstOrFail();
-
-        $order->update([
-            'order_status' => $request->order_status ?? $order->order_status
-        ]);
-
-        return response()->json([
-            'message' => 'Order updated successfully',
-            'order' => $order
-        ]);
-    }
+                'message'    => 'Order placed successfully',
+                'order_id'   => $orderId,
+                'payment_id' => $paymentId,
+            ], 201);
+            }
 }

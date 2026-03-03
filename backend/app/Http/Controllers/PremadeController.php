@@ -2,58 +2,80 @@
 
 namespace App\Http\Controllers;
 
-
 use App\Models\PremadeProduct;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class PremadeController extends Controller
 {
-    // GET /api/premade
     public function index()
     {
         return PremadeProduct::all();
     }
 
-    // POST /api/premade
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required',
-            'image' => 'required',
-            'description' => 'sometimes|required',
-            'price' => 'required|numeric',
-            'isAvailable' => 'required|boolean'
+            'name'        => 'required|string',
+            'image'       => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'description' => 'sometimes|required|string',
+            'price'       => 'required|numeric',
+            'isAvailable' => 'required|boolean',
         ]);
 
-        $premade = PremadeProduct::create($request->all());
+        // Store file in storage/app/public/premades
+        $imagePath = $request->file('image')->store('premades', 'public');
+
+        $premade = PremadeProduct::create([
+            'name'        => $request->name,
+            'image'       => Storage::url($imagePath), // returns /storage/premades/filename.jpg
+            'description' => $request->description,
+            'price'       => $request->price,
+            'isAvailable' => $request->isAvailable,
+        ]);
 
         return response()->json($premade, 201);
     }
 
-    // PUT /api/premade/{id}
     public function update(Request $request, $id)
     {
-         $request->validate([
-            'name' => 'sometimes|required',
-            'description' => 'sometimes|required',
-            'image' => 'sometimes|required',
-            'price' => 'sometimes|required|numeric',
-            'isAvailable' => 'sometimes|required|boolean', 
+        $request->validate([
+            'name'        => 'sometimes|required|string',
+            'image'       => 'sometimes|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'description' => 'sometimes|required|string',
+            'price'       => 'sometimes|required|numeric',
+            'isAvailable' => 'sometimes|required|boolean',
         ]);
 
         $premade = PremadeProduct::findOrFail($id);
-        $premade->update($request->all());
+
+        $data = $request->only(['name', 'description', 'price', 'isAvailable']);
+
+        if ($request->hasFile('image')) {
+            // Delete old image from storage
+            $oldPath = str_replace('/storage/', 'public/', $premade->image);
+            Storage::delete($oldPath);
+
+            // Store new image
+            $imagePath = $request->file('image')->store('premades', 'public');
+            $data['image'] = Storage::url($imagePath);
+        }
+
+        $premade->update($data);
 
         return response()->json($premade);
     }
 
-    // DELETE /api/premade/{id}
     public function destroy($id)
     {
-        PremadeProduct::destroy($id);
+        $premade = PremadeProduct::findOrFail($id);
 
-        return response()->json([
-            'message' => 'Premade deleted'
-        ]);
+        // Delete the image file too
+        $oldPath = str_replace('/storage/', 'public/', $premade->image);
+        Storage::delete($oldPath);
+
+        $premade->delete();
+
+        return response()->json(['message' => 'Premade deleted']);
     }
 }

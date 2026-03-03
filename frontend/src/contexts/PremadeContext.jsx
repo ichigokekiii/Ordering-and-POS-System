@@ -24,30 +24,53 @@ export function PremadeProvider({ children }) {
   }, []);
 
   // Add Premade
-  const addPremade = async (PremadeData) => {
-    try {
-      const res = await api.post("/premades", PremadeData);
-      setPremades((prev) => [res.data, ...prev]);
-      return res.data;
-    } catch (error) {
-      console.error("Failed to add Premade", error);
-      throw error;
+const addPremade = async (premadeData) => {
+  try {
+    const formData = new FormData();
+    formData.append("name", premadeData.name);
+    formData.append("description", premadeData.description);
+    formData.append("price", premadeData.price);
+    formData.append("isAvailable", Number(premadeData.isAvailable));
+    if (premadeData.image) {
+      formData.append("image", premadeData.image); // File object
     }
-  };
 
-  // Update Premade
-  const updatePremade = async (id, updatedData) => {
-    try {
-      const res = await api.put(`/premades/${id}`, updatedData);
-      setPremades((prev) =>
-        prev.map((p) => (p.id === id ? res.data : p))
-      );
-      return res.data;
-    } catch (error) {
-      console.error("Failed to update Premade", error);
-      throw error;
+    const res = await api.post("/premades", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    setPremades((prev) => [res.data, ...prev]);
+    return res.data;
+  } catch (error) {
+    console.error("Failed to add Premade", error);
+    throw error;
+  }
+};
+
+// Update Premade
+const updatePremade = async (id, updatedData) => {
+  try {
+    const formData = new FormData();
+    formData.append("_method", "PUT"); 
+    formData.append("name", updatedData.name);
+    formData.append("description", updatedData.description);
+    formData.append("price", updatedData.price);
+    formData.append("isAvailable", Number(updatedData.isAvailable));
+    if (updatedData.image) {
+      formData.append("image", updatedData.image); 
     }
-  };
+
+    const res = await api.post(`/premades/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    setPremades((prev) =>
+      prev.map((p) => (p.id === id ? res.data : p))
+    );
+    return res.data;
+  } catch (error) {
+    console.error("Failed to update Premade", error);
+    throw error;
+  }
+};
 
   // Delete Premade
   const deletePremade = async (id) => {

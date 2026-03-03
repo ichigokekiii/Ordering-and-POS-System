@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCart } from "../contexts/CartContext";
-import api from "../services/api";
+import { useCart } from "../../contexts/CartContext";
+import api from "../../services/api";
 
 function CheckoutPage() {
   const navigate = useNavigate();

@@ -1,5 +1,64 @@
+/* eslint-disable no-unused-vars */
 import { useState } from "react";
-import { useProducts } from "../contexts/ProductContext";
+import { useProducts } from "../../contexts/ProductContext";
+
+const ProductCard = ({ product, onEdit, onDelete }) => (
+  <div className="relative rounded border p-4 shadow-sm">
+    <div className="mb-2">
+      {product.isAvailable ? (
+        <span className="flex items-center text-xs font-bold text-green-600">
+          <span className="mr-1">✓</span> Available
+        </span>
+      ) : (
+        <span className="text-xs font-bold text-red-500">Out of Stock</span>
+      )}
+    </div>
+    <img
+      src={`${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:8000'}${product.image}`}
+      alt={product.name}
+      className={`mb-3 h-40 w-full rounded object-cover ${!product.isAvailable && "grayscale opacity-60"}`}
+    />
+    <h1 className="font-medium">{product.name}</h1>
+    <h3 className="text-sm text-gray-600">{product.description}</h3>
+    <p className="text-gray-500">₱{product.price}</p>
+    <div className="mt-4 flex gap-2">
+      <button
+        onClick={() => onEdit(product)}
+        className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+      >
+        Edit
+      </button>
+      <button
+        onClick={() => onDelete(product.id)}
+        className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+      >
+        Delete
+      </button>
+    </div>
+  </div>
+);
+
+const SectionGrid = ({ title, items, emptyMsg, onEdit, onDelete }) => (
+  <div>
+    {title && (
+      <h4 className="mb-3 text-base font-semibold text-gray-600">{title}</h4>
+    )}
+    {items.length === 0 ? (
+      <p className="py-6 text-center text-gray-400">{emptyMsg}</p>
+    ) : (
+      <div className="grid gap-6 md:grid-cols-3">
+        {items.map((p) => (
+          <ProductCard
+            key={p.id}
+            product={p}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ))}
+      </div>
+    )}
+  </div>
+);
 
 function AdminProductPage() {
   const { products, addProduct, updateProduct, deleteProduct } = useProducts();
@@ -88,49 +147,6 @@ function AdminProductPage() {
   const mainFlowers = products.filter((p) => p.category === "Additional" && p.type === "Main Flowers");
   const fillers = products.filter((p) => p.category === "Additional" && p.type === "Fillers");
 
-  const ProductCard = ({ product }) => (
-    <div className="relative rounded border p-4 shadow-sm">
-      <div className="mb-2">
-        {product.isAvailable ? (
-          <span className="flex items-center text-xs font-bold text-green-600">
-            <span className="mr-1">✓</span> Available
-          </span>
-        ) : (
-          <span className="text-xs font-bold text-red-500">Out of Stock</span>
-        )}
-      </div>
-      <img
-        src={`http://localhost:8000${product.image}`}
-        alt={product.name}
-        className={`mb-3 h-40 w-full rounded object-cover ${!product.isAvailable && "grayscale opacity-60"}`}
-      />
-      <h1 className="font-medium">{product.name}</h1>
-      <h3 className="text-sm text-gray-600">{product.description}</h3>
-      <p className="text-gray-500">₱{product.price}</p>
-      <div className="mt-4 flex gap-2">
-        <button onClick={() => handleEdit(product)} className="rounded border px-3 py-1 text-sm hover:bg-gray-100">
-          Edit
-        </button>
-        <button onClick={() => handleDelete(product.id)} className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50">
-          Delete
-        </button>
-      </div>
-    </div>
-  );
-
-  const SectionGrid = ({ title, items, emptyMsg }) => (
-    <div>
-      <h4 className="mb-3 text-base font-semibold text-gray-600">{title}</h4>
-      {items.length === 0 ? (
-        <p className="py-6 text-center text-gray-400">{emptyMsg}</p>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-3">
-          {items.map((p) => <ProductCard key={p.id} product={p} />)}
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div className="px-10 py-10">
       {message && (
@@ -153,15 +169,33 @@ function AdminProductPage() {
         {/* Bouquets Section */}
         <div>
           <h3 className="mb-4 text-xl font-semibold text-gray-700 border-b pb-2">Bouquets</h3>
-          <SectionGrid title="" items={bouquets} emptyMsg="No bouquets yet" />
+          <SectionGrid
+            title=""
+            items={bouquets}
+            emptyMsg="No bouquets yet"
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
         </div>
 
         {/* Additional Section */}
         <div>
           <h3 className="mb-6 text-xl font-semibold text-gray-700 border-b pb-2">Additional</h3>
           <div className="space-y-8">
-            <SectionGrid title="Main Flowers" items={mainFlowers} emptyMsg="No main flowers yet" />
-            <SectionGrid title="Fillers" items={fillers} emptyMsg="No fillers yet" />
+            <SectionGrid
+              title="Main Flowers"
+              items={mainFlowers}
+              emptyMsg="No main flowers yet"
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+            <SectionGrid
+              title="Fillers"
+              items={fillers}
+              emptyMsg="No fillers yet"
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
           </div>
         </div>
       </div>

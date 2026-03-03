@@ -3,13 +3,14 @@ import { useState } from "react";
 
 function AdminSidebar({ onLogout }) {
   const [showBlockModal, setShowBlockModal] = useState(false);
-  const baseClass = "block rounded px-3 py-2 transition hover:bg-gray-100";
+  const baseClass =
+    "block rounded px-3 py-2 transition hover:bg-gray-100";
 
   const activeClass =
     "block rounded px-3 py-2 bg-blue-100 text-blue-600 font-semibold";
 
   return (
-    <div className="flex h-screen w-64 flex-col border-r bg-white px-6 py-8">
+    <div className="sticky top-0 flex h-screen w-64 flex-col border-r bg-white px-6 py-8">
       {/* Logo */}
       <div className="mb-10 text-lg font-semibold text-blue-600">
         Admin Panel
@@ -32,29 +33,23 @@ function AdminSidebar({ onLogout }) {
           Analytics
         </NavLink>
 
-        <NavLink
-          to="/admin/products"
-          end
-          className={({ isActive }) => (isActive ? activeClass : baseClass)}
-        >
-          Products
-        </NavLink>
+        <li>
+          <button
+            onClick={() => setShowBlockModal(true)}
+            className={`${baseClass} w-full text-left`}
+          >
+            Products
+          </button>
+        </li>
 
-        <NavLink
-          to="/admin/premades"
-          end
-          className={({ isActive }) => (isActive ? activeClass : baseClass)}
-        >
-          Premades
-        </NavLink>
-
-        <NavLink
-          to="/admin/orders"
-          end
-          className={({ isActive }) => (isActive ? activeClass : baseClass)}
-        >
-          Orders
-        </NavLink>
+        <li>
+          <button
+            onClick={() => setShowBlockModal(true)}
+            className={`${baseClass} w-full text-left`}
+          >
+            Orders
+          </button>
+        </li>
 
         <NavLink
           to="/admin/schedule"
@@ -87,8 +82,8 @@ function AdminSidebar({ onLogout }) {
             </h2>
 
             <p className="mt-3 text-sm text-gray-600">
-              This section is currently under development. Please check back
-              later.
+              This section is currently under development.
+              Please check back later.
             </p>
 
             <div className="mt-6 flex justify-end">

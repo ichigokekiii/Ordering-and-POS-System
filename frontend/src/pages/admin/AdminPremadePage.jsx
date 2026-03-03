@@ -1,13 +1,10 @@
-import { useState } from "react";
-import { usePremades } from "../contexts/PremadeContext";
+/* eslint-disable no-undef */
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useState, useEffect } from "react";
+import { usePremades } from "../../contexts/PremadeContext";
 
-function AdminPremadePage() {
-  const {
-    premades,
-    addPremade,
-    updatePremade,
-    deletePremade,
-  } = usePremades();
+function AdminPremadePage({ openModalTrigger }) {
+  const { premades, addPremade, updatePremade, deletePremade } = usePremades();
 
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -18,7 +15,7 @@ function AdminPremadePage() {
   const [image, setImage] = useState("");
 
   const [price, setPrice] = useState("");
-  const [isAvailable, setIsAvailable] = useState(1); 
+  const [isAvailable, setIsAvailable] = useState(1);
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
@@ -47,7 +44,6 @@ const handleSubmit = async (e) => {
       setMessageType("success");
       resetForm();
       setShowModal(false);
-
     } catch (error) {
       console.error("Operation failed", error);
       setMessage("Operation failed.");
@@ -62,7 +58,8 @@ const handleSubmit = async (e) => {
 
   // delete
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this Premade?")) return;
+    if (!window.confirm("Are you sure you want to delete this Premade?"))
+      return;
 
     try {
       await deletePremade(id);
@@ -97,38 +94,34 @@ const handleSubmit = async (e) => {
     setImage(null);
     setPrice("");
     setDescription("");
-    setIsAvailable(1); 
+    setIsAvailable(1);
     setCurrentId(null);
     setIsEditing(false);
   };
 
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    if (openModalTrigger > 0) {
+      resetForm();
+      setShowModal(true);
+    }
+  }, [openModalTrigger]);
+
   return (
-    <div className="px-10 py-10">
+    <div>
       {message && (
         <div
           className={`mb-4 rounded px-4 py-2 text-white ${
-            messageType === "success"
-              ? "bg-green-500"
-              : "bg-red-500"
+            messageType === "success" ? "bg-green-500" : "bg-red-500"
           }`}
         >
           {message}
         </div>
       )}
-
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Premades</h2>
-
-        <button
-          onClick={() => {
-            resetForm();
-            setShowModal(true);
-          }}
-          className="rounded bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
-        >
-          + Add Premade
-        </button>
-      </div>
 
       {/* Premade List */}
       <div className="grid gap-6 md:grid-cols-3">
@@ -152,7 +145,7 @@ const handleSubmit = async (e) => {
             <img
               src={`http://localhost:8000${premade.image}`}
               alt={premade.name}
-              className={`mb-3 h-40 w-full rounded object-cover ${!premade.isAvailable && 'grayscale opacity-60'}`}
+              className={`mb-3 h-40 w-full rounded object-cover ${!premade.isAvailable && "grayscale opacity-60"}`}
             />
 
             <h1 className="font-medium">{premade.name}</h1>
@@ -228,7 +221,6 @@ const handleSubmit = async (e) => {
                 required
               />
 
-              
               <div className="rounded border p-4">
                 <label className="mb-2 block text-sm font-medium text-gray-700">
                   Availability Status
@@ -243,7 +235,9 @@ const handleSubmit = async (e) => {
                       onChange={() => setIsAvailable(1)}
                       className="h-4 w-4 text-blue-600"
                     />
-                    <span className="text-sm text-green-600 font-medium">Available</span>
+                    <span className="text-sm text-green-600 font-medium">
+                      Available
+                    </span>
                   </label>
 
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -255,7 +249,9 @@ const handleSubmit = async (e) => {
                       onChange={() => setIsAvailable(0)}
                       className="h-4 w-4 text-blue-600"
                     />
-                    <span className="text-sm text-red-600 font-medium">Out of Stock</span>
+                    <span className="text-sm text-red-600 font-medium">
+                      Out of Stock
+                    </span>
                   </label>
                 </div>
               </div>

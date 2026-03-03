@@ -1,6 +1,7 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from "react";
-import StaffNavbar from "../components/StaffNavbar";
-import { useProducts } from "../contexts/ProductContext";
+import StaffNavbar from "../../components/StaffNavbar";
+import { useProducts } from "../../contexts/ProductContext";
 import { ShoppingCart, Trash2, Plus, Minus, Package, Flower2, PlusCircle, CheckCircle } from "lucide-react";
 
 export default function PosPage({ user, onLogout }) {
@@ -125,12 +126,16 @@ export default function PosPage({ user, onLogout }) {
     };
 
     try {
-      const response = await fetch("http://localhost:8000/api/pos-transactions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/pos-transactions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
       );
 
       if (!response.ok) throw new Error("Network response was not ok");

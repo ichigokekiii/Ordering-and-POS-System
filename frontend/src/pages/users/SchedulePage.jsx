@@ -77,8 +77,16 @@ function SchedulePage() {
   };
 
   const handleOrderNow = () => {
-    setOrderStatus("info");
-    setOrderMessage("Ordering for this schedule is currently in progress. Please check back later.");
+    if (!selectedSchedule) return;
+
+    // Navigate to Order Page and pass schedule info
+    navigate("/order", {
+      state: {
+        schedule: selectedSchedule,
+      },
+    });
+
+    handleCloseModal();
   };
 
   const handleBookClick = () => {

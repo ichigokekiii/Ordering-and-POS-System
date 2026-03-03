@@ -1,362 +1,363 @@
-import { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useCart } from "../../contexts/CartContext";
-import { CreditCard, Truck, Store, Upload, QrCode } from "lucide-react";
 import api from "../../services/api";
 
-const PRIMARY_BLUE = "#4F6DB8";
+function CheckoutPage() {
+  const navigate = useNavigate();
+  const { cartItems, totalPrice, clearCart } = useCart();
+  const fileInputRef = useRef(null);
 
+  const [deliveryMode, setDeliveryMode] = useState("pickup");
+  const [paymentProof, setPaymentProof] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fileInputKey, setFileInputKey] = useState(0);
 
-export default function CheckoutPage() {
-  const { cartItems = [], clearCart } = useCart();
+  // Auto-filled from logged in user
+  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [userId, setUserId] = useState(null);
 
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  // Manual inputs
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [notes, setNotes] = useState("");
 
-  const location = useLocation();
-  const orderFromBackend = location.state?.order || null;
+  // Payment inputs
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [referenceNumber, setReferenceNumber] = useState("");
 
-  const itemsSource = orderFromBackend?.items || cartItems;
+  const GRAND_TOTAL = totalPrice;
 
-  const [deliveryMethod, setDeliveryMethod] = useState("delivery");
-  const [useSameAddress, setUseSameAddress] = useState(true);
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem("user") || "{}");
+    setUserName(stored.name || "");
+    setUserEmail(stored.email || "");
+    setUserId(stored.id || null);
+  }, []);
 
-  const subtotal = itemsSource.reduce(
-    (total, item) => total + item.price * item.quantity,
-    0
-  );
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPaymentProof(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    } else {
+      setPaymentProof(null);
+      setPreviewUrl(null);
+    }
+  };
 
-  const shippingFee = deliveryMethod === "delivery" ? 5 : 0;
-  const otherFee = 2.5;
-  const total = subtotal + shippingFee + otherFee;
+  const resetFileInput = () => {
+    setPaymentProof(null);
+    setPreviewUrl(null);
+    setFileInputKey(prev => prev + 1);
+  };
 
-  const handlePlaceOrder = async () => {
-    // FOR NOW: allow placing order even if backend fails
-    try {
-      await api.post("/orders", {
-        user_id: 1, // temporary until auth is implemented
-        schedule_id: 1, // temporary until dynamic schedule is connected
-        items: itemsSource.map((item) => ({
-          product_id: item.id,
-          quantity: item.quantity,
-          price: item.price,
-        })),
-      });
-    // eslint-disable-next-line no-unused-vars
-    } catch (error) {
-      console.warn("Backend order failed, continuing anyway for now.");
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const freshFile = fileInputRef.current?.files[0];
+
+    if (!freshFile) {
+      alert("Please upload your payment screenshot to proceed.");
+      return;
     }
 
-    // Show success modal regardless
-    setShowSuccessModal(true);
-    clearCart();
+    if (deliveryMode === "delivery" && !address.trim()) {
+      alert("Please enter your delivery address.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("user_id",          userId);
+      formData.append("address",          deliveryMode === "pickup" ? "Pickup" : address);
+      formData.append("phone",            phone);
+      formData.append("delivery_method",  deliveryMode);
+      formData.append("payment_method",   paymentMethod);
+      formData.append("reference_number", referenceNumber);
+      formData.append("reference_image",  freshFile);
+      formData.append("total_amount",     GRAND_TOTAL);
+      formData.append("special_message",  notes);
+
+      const res = await api.post("/orders", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      alert(`Order placed! Your Order ID is ${res.data.order_id}`);
+      clearCart();
+      resetFileInput();
+      navigate("/");
+    } catch (error) {
+      console.error("Order failed", error);
+      console.error("Validation errors:", error.response?.data);
+      alert("Something went wrong. Please try again.");
+      resetFileInput();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#f9fafb] py-10 px-4 relative">
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-10">
-        {/* LEFT SIDE */}
-        <div className="lg:col-span-2 space-y-10">
-          {/* 1. Contact */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <h2 className="text-lg font-semibold mb-6">1. Contact</h2>
+    <div className="min-h-screen bg-gray-50 px-4 py-10 md:px-8">
+      <div className="mx-auto max-w-4xl">
 
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">
-                  Email address*
-                </label>
-                <input
-                  type="email"
-                  placeholder="name@example.com"
-                  className="w-full mt-1 p-3 rounded-lg bg-gray-100 focus:outline-none"
-                />
-              </div>
+        {/* Header */}
+        <div className="mb-6 flex items-center gap-4">
+          <button
+            onClick={() => navigate("/cart")}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-gray-500 shadow-sm transition hover:bg-gray-100"
+          >
+            ←
+          </button>
+          <h1 className="text-2xl font-bold text-gray-800">Checkout</h1>
+        </div>
 
-              <div>
-                <label className="text-sm font-medium">
-                  Phone number
-                </label>
-                <input
-                  type="text"
-                  placeholder="+1 (415) 123-4567"
-                  className="w-full mt-1 p-3 rounded-lg bg-gray-100 focus:outline-none"
-                />
-              </div>
+        <form onSubmit={handleSubmit} className="grid gap-8 md:grid-cols-12">
 
-              <div className="flex items-center gap-2 text-sm">
-                <input type="checkbox" />
-                <span>
-                  I consent to receive text messages for order updates
-                </span>
-              </div>
-            </div>
-          </div>
+          {/* LEFT COLUMN */}
+          <div className="md:col-span-7 space-y-6">
 
-          {/* 2. Shipping */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <h2 className="text-lg font-semibold mb-6">2. Shipping</h2>
-
-            <div className="flex gap-4 mb-6">
-              <button
-                onClick={() => setDeliveryMethod("delivery")}
-                className={`flex-1 flex items-center gap-2 p-4 rounded-xl border ${
-                  deliveryMethod === "delivery"
-                    ? "border-[3px]"
-                    : "border-gray-200"
-                }`}
-                style={{
-                  borderColor:
-                    deliveryMethod === "delivery"
-                      ? PRIMARY_BLUE
-                      : undefined,
-                }}
-              >
-                <Truck size={18} />
-                <div>
-                  <p className="font-medium">Deliver to me</p>
-                  <p className="text-sm text-gray-500">₱5.00</p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setDeliveryMethod("pickup")}
-                className={`flex-1 flex items-center gap-2 p-4 rounded-xl border ${
-                  deliveryMethod === "pickup"
-                    ? "border-[3px]"
-                    : "border-gray-200"
-                }`}
-                style={{
-                  borderColor:
-                    deliveryMethod === "pickup"
-                      ? PRIMARY_BLUE
-                      : undefined,
-                }}
-              >
-                <Store size={18} />
-                <div>
-                  <p className="font-medium">Store pick up</p>
-                  <p className="text-sm text-gray-500">Free shipping</p>
-                </div>
-              </button>
-            </div>
-
-            {deliveryMethod === "delivery" && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <input
-                    placeholder="First name*"
-                    className="p-3 rounded-lg bg-gray-100 focus:outline-none"
-                  />
-                  <input
-                    placeholder="Last name*"
-                    className="p-3 rounded-lg bg-gray-100 focus:outline-none"
-                  />
-                </div>
-
-                <input
-                  placeholder="Address*"
-                  className="w-full p-3 rounded-lg bg-gray-100 focus:outline-none"
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <input
-                    placeholder="City*"
-                    className="p-3 rounded-lg bg-gray-100 focus:outline-none"
-                  />
-                  <input
-                    placeholder="Zip code*"
-                    className="p-3 rounded-lg bg-gray-100 focus:outline-none"
-                  />
-                </div>
-
-                <input
-                  placeholder="State / Province*"
-                  className="w-full p-3 rounded-lg bg-gray-100 focus:outline-none"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* 3. Payment */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <h2 className="text-lg font-semibold mb-6">3. Payment</h2>
-
-            <div
-              className="rounded-xl p-4 flex items-center justify-between mb-6 border-2"
-              style={{ borderColor: PRIMARY_BLUE }}
-            >
-              <div className="flex items-center gap-2">
-                <CreditCard size={18} />
-                <span className="font-medium">
-                  Checkout with GCash
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <label className="text-sm font-medium block mb-2">
-                  QR Code*
-                </label>
+            {/* 1. Delivery Method */}
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <h2 className="mb-4 text-lg font-semibold text-gray-700">1. Delivery Method</h2>
+              <div className="flex gap-4">
                 <button
                   type="button"
-                  className="px-4 py-2 rounded-lg text-white text-sm font-medium"
-                  style={{ backgroundColor: PRIMARY_BLUE }}
+                  onClick={() => setDeliveryMode("pickup")}
+                  className={`flex-1 rounded-xl border-2 py-3 text-sm font-medium transition ${
+                    deliveryMode === "pickup"
+                      ? "border-rose-500 bg-rose-50 text-rose-600"
+                      : "border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200"
+                  }`}
                 >
-                  Click Here
+                  Pickup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeliveryMode("delivery")}
+                  className={`flex-1 rounded-xl border-2 py-3 text-sm font-medium transition ${
+                    deliveryMode === "delivery"
+                      ? "border-rose-500 bg-rose-50 text-rose-600"
+                      : "border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200"
+                  }`}
+                >
+                  Delivery
                 </button>
               </div>
-
-              <div>
-                <label className="text-sm font-medium block mb-1">
-                  Reference Number*
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter here"
-                  className="w-full p-3 rounded-lg bg-gray-100 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium block mb-2">
-                  Attach Image
-                </label>
-                <div className="border-2 border-dashed rounded-xl p-8 text-center text-gray-500">
-                  <Upload className="mx-auto mb-2" size={20} />
-                  <p className="text-sm">Add an attachment (optional)</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={useSameAddress}
-                  onChange={() =>
-                    setUseSameAddress(!useSameAddress)
-                  }
-                />
-                <span>
-                  Use shipping address as billing address
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT SIDE - SUMMARY */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm h-fit">
-          <h3 className="text-lg font-semibold mb-6">
-            Checkout
-          </h3>
-
-          <div className="space-y-4 mb-6">
-            {itemsSource.map((item) => (
-              <div key={item.id} className="flex justify-between text-sm">
-                <span>
-                  {item.name || item.product?.name} × {item.quantity}
-                </span>
-                <span>
-                  ₱{(item.price * item.quantity).toFixed(2)}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="space-y-3 text-sm mb-6">
-            <div className="flex justify-between">
-              <span>Subtotal</span>
-              <span>₱{subtotal.toFixed(2)}</span>
+              {deliveryMode === "delivery" && (
+                <p className="mt-3 text-xs text-gray-400">
+                  Delivery is handled by a third-party courier. Fees are settled separately.
+                </p>
+              )}
             </div>
 
-            <div className="flex justify-between">
-              <span>Shipping</span>
-              <span>₱{shippingFee.toFixed(2)}</span>
-            </div>
+            {/* 2. Contact Details */}
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <h2 className="mb-4 text-lg font-semibold text-gray-700">2. Contact Details</h2>
+              <div className="space-y-4">
 
-            <div className="flex justify-between">
-              <span>Other Fee</span>
-              <span>₱{otherFee.toFixed(2)}</span>
-            </div>
-
-            <div className="flex justify-between font-semibold text-base mt-2">
-              <span>Total</span>
-              <span>₱{total.toFixed(2)}</span>
-            </div>
-          </div>
-
-          <button
-            onClick={handlePlaceOrder}
-            className="w-full py-3 rounded-xl text-white font-medium"
-            style={{ backgroundColor: PRIMARY_BLUE }}
-          >
-            Place order
-          </button>
-        </div>
-      </div>
-      {showSuccessModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-3xl p-10 max-w-lg w-full text-center relative animate-fadeIn">
-            
-            <div className="flex justify-center mb-6">
-              <div className="relative">
-                <div className="w-20 h-20 rounded-full border-4 border-green-400 flex items-center justify-center animate-scaleIn">
-                  <svg
-                    className="w-10 h-10 text-green-500 animate-drawCheck"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M5 13l4 4L19 7"
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-1 block text-xs text-gray-400">Full Name</label>
+                    <input
+                      readOnly
+                      value={userName}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-500 cursor-not-allowed"
                     />
-                  </svg>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-gray-400">Email</label>
+                    <input
+                      readOnly
+                      value={userEmail}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-500 cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs text-gray-400">Contact Number *</label>
+                  <input
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="e.g. 09123456789"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  />
+                </div>
+
+                {deliveryMode === "delivery" && (
+                  <div>
+                    <label className="mb-1 block text-xs text-gray-400">Delivery Address *</label>
+                    <textarea
+                      required
+                      rows="2"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Complete delivery address"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="mb-1 block text-xs text-gray-400">Special Instructions (optional)</label>
+                  <textarea
+                    rows="2"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Any special requests..."
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  />
                 </div>
               </div>
             </div>
 
-            <h2 className="text-2xl font-semibold mb-2">
-              Your Order is being Processed
-            </h2>
-            <p className="text-gray-500 mb-6">
-              We’ve sent you an Email confirming your order
-            </p>
+            {/* 3. Payment */}
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <h2 className="mb-4 text-lg font-semibold text-gray-700">3. Payment</h2>
+              <div className="space-y-4">
 
-            <button
-              onClick={() => setShowSuccessModal(false)}
-              className="px-6 py-3 rounded-full text-white font-medium"
-              style={{ backgroundColor: PRIMARY_BLUE }}
-            >
-              Continue Shopping
-            </button>
+                <div className="flex justify-center">
+                  <div className="flex flex-col items-center">
+                    <div className="mb-2 h-40 w-40 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 p-2">
+                      <img
+                        src="http://localhost:8000/storage/qr_payment.jpg"
+                        alt="GCash QR"
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400">Scan to pay</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs text-gray-400">Payment Method *</label>
+                  <input
+                    required
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    placeholder="e.g. GCash, PayMaya, BDO, BPI"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs text-gray-400">Reference Number *</label>
+                  <input
+                    required
+                    value={referenceNumber}
+                    onChange={(e) => setReferenceNumber(e.target.value)}
+                    placeholder="Transaction reference number"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs text-gray-400">Payment Screenshot *</label>
+                  <label className="flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 py-6 transition hover:bg-gray-100">
+                    <span className="text-2xl">📎</span>
+                    <p className="mb-1 text-sm text-gray-500">
+                      <span className="font-semibold">Click to upload</span> screenshot
+                    </p>
+                    <p className="text-xs text-gray-400">PNG, JPG (MAX. 5MB)</p>
+                    <input
+                      key={fileInputKey}
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                    />
+                  </label>
+
+                  {paymentProof && (
+                    <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-200 bg-green-50 p-2">
+                      {previewUrl && (
+                        <img src={previewUrl} alt="Preview" className="h-10 w-10 rounded object-cover" />
+                      )}
+                      <div className="overflow-hidden">
+                        <p className="truncate text-sm font-medium text-green-700">{paymentProof.name}</p>
+                        <p className="text-xs text-green-600">Ready to submit</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+
+          {/* RIGHT COLUMN */}
+          <div className="md:col-span-5">
+            <div className="sticky top-6 rounded-2xl bg-white p-6 shadow-sm">
+              <h3 className="mb-4 text-lg font-semibold text-gray-700">Order Summary</h3>
+
+              <div className="mb-4 max-h-64 overflow-y-auto pr-2 space-y-3">
+                {cartItems.map((item, index) => (
+                  <div key={`${item.id}-${index}`} className="flex justify-between text-sm">
+                    <div className="flex gap-3">
+                      <span className="font-medium text-gray-600 text-xs h-5 w-5 flex items-center justify-center bg-gray-100 rounded-full">
+                        {item.quantity}
+                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-gray-700">{item.name}</span>
+                        {item.type === "custom" && (
+                          <span className="text-[10px] text-gray-400">Custom Bouquet</span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-gray-500">₱{(item.price * item.quantity).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="my-4 border-t border-dashed border-gray-200" />
+
+              <div className="space-y-2 text-sm text-gray-600">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>₱{totalPrice.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Delivery</span>
+                  <span className="text-gray-400">
+                    {deliveryMode === "delivery" ? "Third-Party Delivery" : "Free (Pickup)"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="my-4 border-t border-gray-200" />
+
+              <div className="flex justify-between text-lg font-bold text-gray-800">
+                <span>Total</span>
+                <span className="text-rose-500">₱{GRAND_TOTAL.toLocaleString()}</span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={!paymentProof || isSubmitting}
+                className={`mt-6 w-full rounded-xl py-4 text-sm font-semibold text-white shadow transition
+                  ${paymentProof && !isSubmitting
+                    ? "bg-rose-500 hover:bg-rose-600 active:scale-95"
+                    : "cursor-not-allowed bg-gray-300"
+                  }`}
+              >
+                {isSubmitting ? "Placing Order..." : paymentProof ? "Complete Order" : "Upload Payment to Proceed"}
+              </button>
+
+              <p className="mt-3 text-center text-xs text-gray-400">
+                By placing this order, you agree to our terms of service.
+              </p>
+            </div>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
 
-/* Add these to your global CSS if not present:
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes scaleIn {
-  from { transform: scale(0.6); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-.animate-scaleIn {
-  animation: scaleIn 0.4s ease-out;
-}
-
-*/
+export default CheckoutPage;

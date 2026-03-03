@@ -1,7 +1,8 @@
-import { useState } from "react";
+/* eslint-disable react-hooks/purity */
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useProducts } from "../contexts/ProductContext";
-import { useCart } from "../contexts/CartContext";
+import { useProducts } from "../../contexts/ProductContext";
+import { useCart } from "../../contexts/CartContext";
 
 function OrderCustomAdditional() {
   const { products } = useProducts();
@@ -9,16 +10,19 @@ function OrderCustomAdditional() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { bouquet, fillers, basePrice } = location.state || {};
+  const { bouquet, fillers = [], basePrice = 0 } = location.state || {};
 
   const [quantities, setQuantities] = useState({});
   const [added, setAdded] = useState(false);
 
-  // Redirect if someone lands here directly without state
-  if (!bouquet) {
-    navigate("/order/custom");
-    return null;
-  }
+  // Redirect safely if someone lands here directly without state
+  useEffect(() => {
+    if (!bouquet) {
+      navigate("/order/custom");
+    }
+  }, [bouquet, navigate]);
+
+  if (!bouquet) return null;
 
   const availableProducts = products.filter((p) => p.isAvailable);
   const additionalMainFlowers = availableProducts.filter(

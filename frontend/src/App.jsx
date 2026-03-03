@@ -12,6 +12,7 @@ import { AuthContext } from "./contexts/AuthContext";
 
 import Navbar from "./components/Navbar";
 import AdminSidebar from "./components/AdminSidebar";
+import StaffNavbar from "./components/StaffNavbar";
 import Footer from "./components/Footer";
 
 // USER PAGES
@@ -25,7 +26,7 @@ import AboutPage from "./pages/users/AboutPage";
 import SchedulePage from "./pages/users/SchedulePage";
 import OrderPage from "./pages/users/OrderPage";
 import OrderCustom from "./pages/users/OrderCustom";
-import OrderCustomAdditional from "./pages/OrderCustomAdditional";
+import OrderCustomAdditional from "./pages/users/OrderCustomAdditional";
 import OrderPremade from "./pages/users/OrderPremade";
 import CartPage from "./pages/users/CartPage";
 import CheckoutPage from "./pages/users/CheckoutPage";
@@ -198,7 +199,14 @@ function App() {
         {user?.role === "staff" ? (
           <Route
             path="/staff"
-            element={<StaffPage user={user} onLogout={handleLogout} />}
+            element={
+              <div className="min-h-screen flex flex-col">
+                <StaffNavbar user={user} onLogout={handleLogout} />
+                <div className="flex-1">
+                  <StaffPage user={user} />
+                </div>
+              </div>
+            }
           />
         ) : (
           <Route path="/staff" element={<Navigate to="/" />} />

@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/purity */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useProducts } from "../contexts/ProductContext";
+import { useProducts } from "../../contexts/ProductContext";
 
 function OrderCustom() {
   const { products, loading } = useProducts();

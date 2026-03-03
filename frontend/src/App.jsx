@@ -14,6 +14,7 @@ import Navbar from "./components/Navbar";
 import AdminSidebar from "./components/AdminSidebar";
 import StaffNavbar from "./components/StaffNavbar";
 import Footer from "./components/Footer";
+import OrderLayout from "./components/OrderLayout";
 
 // USER PAGES
 import LandingPage from "./pages/users/LandingPage";
@@ -84,14 +85,14 @@ function App() {
         <Route path="/schedule" element={<SchedulePage />} />
         <Route path="/feedback" element={<Feedback />} />
 
-        <Route path="/order" element={<OrderPage />} />
-        <Route path="/ordercustom" element={<OrderCustom />} />
+      <Route element={<OrderLayout />}>
+          <Route path="/order" element={<OrderPage />} />
+          <Route path="/ordercustom" element={<OrderCustom />} />
           <Route path="/order/custom/additional" element={<OrderCustomAdditional />} />
-        <Route path="/orderpremade" element={<OrderPremade />} />
-        <Route path="/cart" element={<CartPage />} />
+          <Route path="/orderpremade" element={<OrderPremade />} />
+          <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
-
+        </Route>
         <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
 
         <Route

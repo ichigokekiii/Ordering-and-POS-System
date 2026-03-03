@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import StaffNavbar from "../components/StaffNavbar";
 import { useProducts } from "../contexts/ProductContext";
 import { ShoppingCart, Trash2, Plus, Minus, Package, Flower2, PlusCircle, CheckCircle } from "lucide-react";
+import api from "../services/api";
 
 export default function PosPage({ user, onLogout }) {
   const { products, loading } = useProducts();
@@ -115,7 +116,7 @@ export default function PosPage({ user, onLogout }) {
   const clearCart = () => setCart([]);
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
 
-  const handleCheckout = async () => {
+ const handleCheckout = async () => {
     if (cart.length === 0) return;
     setIsLoading(true);
 
@@ -125,16 +126,8 @@ export default function PosPage({ user, onLogout }) {
     };
 
     try {
-      const response = await fetch("http://localhost:8000/api/pos-transactions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) throw new Error("Network response was not ok");
+      // 2. Use your existing Axios 'api' setup instead of raw fetch
+      const response = await api.post("/pos-transactions", payload);
 
       // Show Success Modal instead of Alert
       setSuccessData({ show: true, total: cartTotal, isDemo: false });

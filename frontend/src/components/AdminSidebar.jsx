@@ -1,8 +1,9 @@
 import { NavLink } from "react-router-dom";
+import { useState } from "react";
 
 function AdminSidebar({ onLogout }) {
-  const baseClass =
-    "block rounded px-3 py-2 transition hover:bg-gray-100";
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const baseClass = "block rounded px-3 py-2 transition hover:bg-gray-100";
 
   const activeClass =
     "block rounded px-3 py-2 bg-blue-100 text-blue-600 font-semibold";
@@ -33,6 +34,7 @@ function AdminSidebar({ onLogout }) {
 
         <NavLink
           to="/admin/products"
+          end
           className={({ isActive }) => (isActive ? activeClass : baseClass)}
         >
           Products
@@ -40,15 +42,15 @@ function AdminSidebar({ onLogout }) {
 
         <NavLink
           to="/admin/premades"
-          className={({ isActive }) =>
-            isActive ? activeClass : baseClass
-          }
+          end
+          className={({ isActive }) => (isActive ? activeClass : baseClass)}
         >
           Premades
         </NavLink>
 
         <NavLink
           to="/admin/orders"
+          end
           className={({ isActive }) => (isActive ? activeClass : baseClass)}
         >
           Orders
@@ -76,6 +78,30 @@ function AdminSidebar({ onLogout }) {
       >
         Logout
       </button>
+
+      {showBlockModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-[90%] max-w-md rounded-2xl bg-white p-8 shadow-xl">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Feature In Progress
+            </h2>
+
+            <p className="mt-3 text-sm text-gray-600">
+              This section is currently under development. Please check back
+              later.
+            </p>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowBlockModal(false)}
+                className="rounded border px-4 py-2 text-sm hover:bg-gray-100"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { usePremades } from "../../contexts/PremadeContext";
 
 function AdminPremadePage({ openModalTrigger }) {
@@ -9,6 +9,8 @@ function AdminPremadePage({ openModalTrigger }) {
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState(null);
+  const isFirstRender = useRef(true);
+  
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");

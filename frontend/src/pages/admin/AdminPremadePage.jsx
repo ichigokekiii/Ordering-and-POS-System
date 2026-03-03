@@ -1,7 +1,9 @@
-import { useState } from "react";
+/* eslint-disable no-undef */
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useState, useEffect } from "react";
 import { usePremades } from "../../contexts/PremadeContext";
 
-function AdminPremadePage() {
+function AdminPremadePage({ openModalTrigger }) {
   const { premades, addPremade, updatePremade, deletePremade } = usePremades();
 
   const [showModal, setShowModal] = useState(false);
@@ -11,30 +13,33 @@ function AdminPremadePage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState("");
+
   const [price, setPrice] = useState("");
   const [isAvailable, setIsAvailable] = useState(1);
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
-  // add and update
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  //image
+  const handleImageChange = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    setImage(file);
+  }
+};
 
-    try {
-      if (isEditing) {
-        await updatePremade(currentId, {
-          name,
-          image,
-          price,
-          description,
-          isAvailable,
-        });
-        setMessage("Premade updated successfully!");
-      } else {
-        await addPremade({ name, image, price, description, isAvailable });
-        setMessage("Premade added successfully!");
-      }
+
+  // add and update
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    if (isEditing) {
+      await updatePremade(currentId, { name, image, price, description, isAvailable });
+      setMessage("Premade updated successfully!");
+    } else {
+      await addPremade({ name, image, price, description, isAvailable });
+      setMessage("Premade added successfully!");
+    }
 
       setMessageType("success");
       resetForm();
@@ -77,7 +82,7 @@ function AdminPremadePage() {
     setIsEditing(true);
     setCurrentId(premade.id);
     setName(premade.name);
-    setImage(premade.image);
+    setImage(null);
     setPrice(premade.price);
     setDescription(premade.description);
     setIsAvailable(premade.isAvailable);
@@ -86,7 +91,7 @@ function AdminPremadePage() {
 
   const resetForm = () => {
     setName("");
-    setImage("");
+    setImage(null);
     setPrice("");
     setDescription("");
     setIsAvailable(1);
@@ -94,8 +99,20 @@ function AdminPremadePage() {
     setIsEditing(false);
   };
 
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    if (openModalTrigger > 0) {
+      resetForm();
+      setShowModal(true);
+    }
+  }, [openModalTrigger]);
+
   return (
-    <div className="px-10 py-10">
+    <div>
       {message && (
         <div
           className={`mb-4 rounded px-4 py-2 text-white ${
@@ -105,20 +122,6 @@ function AdminPremadePage() {
           {message}
         </div>
       )}
-
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Premades</h2>
-
-        <button
-          onClick={() => {
-            resetForm();
-            setShowModal(true);
-          }}
-          className="rounded bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
-        >
-          + Add Premade
-        </button>
-      </div>
 
       {/* Premade List */}
       <div className="grid gap-6 md:grid-cols-3">
@@ -140,7 +143,7 @@ function AdminPremadePage() {
             </div>
 
             <img
-              src={premade.image}
+              src={`http://localhost:8000${premade.image}`}
               alt={premade.name}
               className={`mb-3 h-40 w-full rounded object-cover ${!premade.isAvailable && "grayscale opacity-60"}`}
             />
@@ -185,13 +188,21 @@ function AdminPremadePage() {
                 required
               />
 
-              <input
-                className="w-full rounded border px-4 py-2"
-                placeholder="Image URL"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                required
-              />
+              <div className="rounded border px-4 py-2">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Product Image
+                </label>
+
+                
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="w-full text-sm"
+                  required={!isEditing}
+                />
+              </div>
 
               <input
                 className="w-full rounded border px-4 py-2"
@@ -220,7 +231,7 @@ function AdminPremadePage() {
                       type="radio"
                       name="isAvailable"
                       value={1}
-                      checked={isAvailable === 1}
+                      checked={isAvailable}
                       onChange={() => setIsAvailable(1)}
                       className="h-4 w-4 text-blue-600"
                     />
@@ -234,7 +245,7 @@ function AdminPremadePage() {
                       type="radio"
                       name="isAvailable"
                       value={0}
-                      checked={isAvailable === 0}
+                      checked={!isAvailable}
                       onChange={() => setIsAvailable(0)}
                       className="h-4 w-4 text-blue-600"
                     />

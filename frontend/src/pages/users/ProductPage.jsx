@@ -16,7 +16,7 @@ function ProductPage() {
             className="rounded border p-4 shadow-sm"
           >
             <img
-              src={product.image}
+              src={`http://localhost:8000${product.image}`}
               alt={product.name}
               className="mb-3 h-40 w-full rounded object-cover"
             />

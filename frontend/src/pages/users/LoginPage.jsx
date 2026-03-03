@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../../services/api";
 
 function LoginPage({ onLogin }) {
@@ -7,13 +7,43 @@ function LoginPage({ onLogin }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  const navigate = useNavigate();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
     try {
       const res = await api.post("/login", { email, password });
-      onLogin(res.data);
+
+      const loggedInUser = res.data.user || res.data;
+
+      // Store Sanctum token
+      if (res.data.token) {
+        localStorage.setItem("token", res.data.token);
+      }
+
+      onLogin(loggedInUser);
+
+      // Role-based redirect (normalize role to lowercase)
+      const role = (loggedInUser?.role || "").toString().toLowerCase().trim();
+
+      if (role === "owner") {
+        navigate("/admin", { replace: true });
+        return;
+      }
+
+      if (role === "admin") {
+        navigate("/admin", { replace: true });
+        return;
+      }
+
+      if (role === "staff") {
+        navigate("/staff", { replace: true });
+        return;
+      }
+
+      navigate("/", { replace: true });
     } catch {
       setError("Invalid credentials");
     }
@@ -41,7 +71,7 @@ function LoginPage({ onLogin }) {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button className="w-full rounded bg-blue-600 py-2 text-white hover:bg-blue-700">
+        <button className="w-full rounded bg-[#4f6fa5] py-2 text-white hover:bg-[#3f5b89] transition">
           Login
         </button>
       </form>
@@ -51,7 +81,7 @@ function LoginPage({ onLogin }) {
         Don’t have an account?{" "}
         <Link
           to="/register"
-          className="text-blue-600 hover:underline"
+          className="text-[#4f6fa5] hover:underline"
         >
           Register
         </Link>

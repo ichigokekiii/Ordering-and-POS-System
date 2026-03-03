@@ -7,17 +7,23 @@ import { ProductProvider } from "./contexts/ProductContext";
 import { PremadeProvider } from "./contexts/PremadeContext";
 import { CartProvider } from "./contexts/CartContext";
 import { ScheduleProvider } from "./contexts/ScheduleContext";
+import { AuthProvider } from "./contexts/AuthContext";
+import { LoadingProvider } from "./contexts/LoadingContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
-    <CartProvider>
-      <ProductProvider>
-        <PremadeProvider>
-          <ScheduleProvider>
-            <App />
-          </ScheduleProvider>
-        </PremadeProvider>
-      </ProductProvider>
-    </CartProvider>
+    <LoadingProvider>
+      <CartProvider>
+        <ProductProvider>
+          <PremadeProvider>
+            <ScheduleProvider>
+              <AuthProvider>
+                <App />
+              </AuthProvider>
+            </ScheduleProvider>
+          </PremadeProvider>
+        </ProductProvider>
+      </CartProvider>
+    </LoadingProvider>
   </BrowserRouter>
 );

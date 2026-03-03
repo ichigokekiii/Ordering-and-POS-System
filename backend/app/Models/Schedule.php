@@ -16,4 +16,10 @@ class Schedule extends Model
         'event_date',
         'isAvailable',
     ];
+
+    public function bookings()
+    {
+        return $this->hasMany(ScheduleBooking::class);
+    }
+    
 }

@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import StaffNavbar from "../../components/StaffNavbar";
 import { useProducts } from "../../contexts/ProductContext";
 import { ShoppingCart, Trash2, Plus, Minus, Package, Flower2, PlusCircle, CheckCircle } from "lucide-react";
-import api from "../services/api";
+import api from "../../services/api";
 
 export default function PosPage({ user, onLogout }) {
   const { products, loading } = useProducts();

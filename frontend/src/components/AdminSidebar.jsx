@@ -33,23 +33,19 @@ function AdminSidebar({ onLogout }) {
           Analytics
         </NavLink>
 
-        <li>
-          <button
-            onClick={() => setShowBlockModal(true)}
-            className={`${baseClass} w-full text-left`}
-          >
-            Products
-          </button>
-        </li>
+        <NavLink
+          to="/admin/products"
+          className={({ isActive }) => (isActive ? activeClass : baseClass)}
+        >
+          Products
+        </NavLink>
 
-        <li>
-          <button
-            onClick={() => setShowBlockModal(true)}
-            className={`${baseClass} w-full text-left`}
-          >
-            Orders
-          </button>
-        </li>
+        <NavLink
+          to="/admin/orders"
+          className={({ isActive }) => (isActive ? activeClass : baseClass)}
+        >
+          Orders
+        </NavLink>
 
         <NavLink
           to="/admin/schedule"

@@ -49,84 +49,141 @@ class AuthController extends Controller
             'token' => $token
         ]);
     }
-public function verifyOtp(Request $request)
-{
-    $request->validate([
-        'email' => 'required|email',
-        'otp' => 'required'
-    ]);
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required'
+        ]);
 
-    $user = User::where('email', $request->email)->first();
+        $user = User::where('email', $request->email)->first();
 
-    if (!$user) {
-        return response()->json(['message' => 'User not found'], 404);
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $otp = Otp::where('user_id', $user->id)
+                ->where('code', $request->otp)
+                ->where('expires_at', '>', now())
+                ->first();
+
+        if (!$otp) {
+            return response()->json(['message' => 'Invalid or expired OTP'], 400);
+        }
+
+        $user->is_verified = true;
+        $user->save();
+
+        $otp->delete();
+
+        // Create Sanctum token for auto-login after verification
+        $user->tokens()->delete();
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Account verified successfully',
+            'user' => $user,
+            'token' => $token
+        ]);
     }
 
-    $otp = Otp::where('user_id', $user->id)
-              ->where('code', $request->otp)
-              ->where('expires_at', '>', now())
-              ->first();
+    public function resendOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
 
-    if (!$otp) {
-        return response()->json(['message' => 'Invalid or expired OTP'], 400);
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+
+        // Delete old OTPs
+        Otp::where('user_id', $user->id)->delete();
+
+        $otpCode = rand(100000, 999999);
+
+        Otp::create([
+            'user_id' => $user->id,
+            'code' => $otpCode,
+            'expires_at' => now()->addMinutes(5),
+        ]);
+
+        Mail::to($user->email)->send(new SendOtpMail($otpCode));
+
+        return response()->json(['message' => 'OTP resent successfully']);
     }
 
-    $user->is_verified = true;
-    $user->save();
+    public function logout(Request $request)
+    {
+        if ($request->user() && $request->user()->currentAccessToken()) {
+            $request->user()->currentAccessToken()->delete();
+        }
 
-    $otp->delete();
+        return response()->json([
+            'message' => 'Logged out successfully'
+        ]);
+    }
+    public function forgotPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
 
-    // Create Sanctum token for auto-login after verification
-    $user->tokens()->delete();
-    $token = $user->createToken('auth_token')->plainTextToken;
+        $user = User::where('email', $request->email)->first();
 
-    return response()->json([
-        'message' => 'Account verified successfully',
-        'user' => $user,
-        'token' => $token
-    ]);
-}
+        if (!$user) {
+            return response()->json([
+                'message' => 'Email not found'
+            ], 404);
+        }
 
-public function resendOtp(Request $request)
-{
-    $request->validate([
-        'email' => 'required|email'
-    ]);
+        // Send OTP
+        $this->sendOtp($user);
 
-    $user = User::where('email', $request->email)->first();
-
-    if (!$user) {
-        return response()->json(['message' => 'User not found'], 404);
+        return response()->json([
+            'message' => 'OTP sent successfully'
+        ]);
     }
 
-    if ($user->is_verified) {
-        return response()->json(['message' => 'Account already verified'], 400);
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|min:6'
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        return response()->json([
+            'message' => 'Password reset successful'
+        ]);
     }
 
-    // Delete old OTPs
-    Otp::where('user_id', $user->id)->delete();
+    private function sendOtp($user)
+    {
+        // Delete old OTPs
+        Otp::where('user_id', $user->id)->delete();
 
-    $otpCode = rand(100000, 999999);
+        $otpCode = rand(100000, 999999);
 
-    Otp::create([
-        'user_id' => $user->id,
-        'code' => $otpCode,
-        'expires_at' => now()->addMinutes(5),
-    ]);
+        Otp::create([
+            'user_id' => $user->id,
+            'code' => $otpCode,
+            'expires_at' => now()->addMinutes(5),
+        ]);
 
-    Mail::to($user->email)->send(new SendOtpMail($otpCode));
-
-    return response()->json(['message' => 'OTP resent successfully']);
-}
-
-public function logout(Request $request)
-{
-    if ($request->user() && $request->user()->currentAccessToken()) {
-        $request->user()->currentAccessToken()->delete();
+        Mail::to($user->email)->send(new SendOtpMail($otpCode));
     }
-
-    return response()->json([
-        'message' => 'Logged out successfully'
-    ]);
-}
 }

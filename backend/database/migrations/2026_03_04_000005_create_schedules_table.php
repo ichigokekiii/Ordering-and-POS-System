@@ -11,9 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('names', function (Blueprint $table) {
+        Schema::create('schedules', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+
+            $table->string('schedule_name');
+            $table->string('image')->nullable();
+            $table->text('schedule_description')->nullable();
+            $table->string('location');
+
+            $table->dateTime('event_date');
+
+            $table->boolean('isAvailable')->default(true);
+
             $table->timestamps();
         });
     }
@@ -23,6 +32,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('names');
+        Schema::dropIfExists('schedules');
     }
 };

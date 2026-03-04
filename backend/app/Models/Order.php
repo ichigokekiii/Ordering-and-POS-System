@@ -9,8 +9,6 @@ class Order extends Model
 {
     use HasFactory;
 
-    // Override the default table name
-    protected $table = 'tbl_orders';
 
     // Override the default primary key
     protected $primaryKey = 'order_id';

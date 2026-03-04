@@ -9,15 +9,26 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up()
+    public function up(): void
     {
         Schema::create('pos_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('pos_id')->constrained('pos_transactions')->onDelete('cascade'); 
-            $table->string('product_id'); 
+
+            $table->foreignId('pos_id')
+                  ->constrained('pos_transactions')
+                  ->cascadeOnDelete();
+
+            $table->foreignId('product_id')
+                  ->nullable()
+                  ->constrained('products')
+                  ->nullOnDelete();
+
             $table->string('product_name');
-            $table->decimal('price', 10, 2); 
+
+            $table->decimal('price', 10, 2);
+
             $table->integer('quantity');
+
             $table->timestamps();
         });
     }
@@ -27,6 +38,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::dropIfExists('pos_items');
     }
 };

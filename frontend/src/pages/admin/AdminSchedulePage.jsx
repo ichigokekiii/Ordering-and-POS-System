@@ -15,6 +15,7 @@ function AdminSchedulePage() {
 
   const [scheduleName, setScheduleName] = useState("");
   const [scheduleDescription, setScheduleDescription] = useState("");
+  const [location, setLocation] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [imageUrl, setImageUrl] = useState("");
 
@@ -33,6 +34,7 @@ function AdminSchedulePage() {
         await updateSchedule(editingSchedule.id, {
           schedule_name: scheduleName,
           schedule_description: scheduleDescription,
+          location: location,
           event_date: eventDate,
           image: imageUrl,
         });
@@ -42,6 +44,7 @@ function AdminSchedulePage() {
         await addSchedule({
           schedule_name: scheduleName,
           schedule_description: scheduleDescription,
+          location: location,
           event_date: eventDate,
           image: imageUrl,
         });
@@ -53,6 +56,7 @@ function AdminSchedulePage() {
 
       setScheduleName("");
       setScheduleDescription("");
+      setLocation("");
       setEventDate("");
       setImageUrl("");
       setEditingSchedule(null);
@@ -74,6 +78,7 @@ function AdminSchedulePage() {
     setEditingSchedule(schedule);
     setScheduleName(schedule.schedule_name);
     setScheduleDescription(schedule.schedule_description);
+    setLocation(schedule.location || "");
     setEventDate(schedule.event_date);
     setImageUrl(schedule.image || "");
     setShowModal(true);
@@ -142,6 +147,9 @@ function AdminSchedulePage() {
             <p className="text-sm text-gray-500">
               {schedule.schedule_description}
             </p>
+            <p className="text-sm text-gray-600">
+              📍 {schedule.location}
+            </p>
 
             <p className="mt-2 text-sm text-blue-600">
               {schedule.event_date}
@@ -191,6 +199,14 @@ function AdminSchedulePage() {
                 onChange={(e) =>
                   setScheduleDescription(e.target.value)
                 }
+                required
+              />
+
+              <input
+                className="w-full rounded border px-4 py-2"
+                placeholder="Location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
                 required
               />
 

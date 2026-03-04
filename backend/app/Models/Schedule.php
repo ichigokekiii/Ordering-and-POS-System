@@ -13,6 +13,7 @@ class Schedule extends Model
         'schedule_name',
         'image',
         'schedule_description',
+        'location',
         'event_date',
         'isAvailable',
     ];

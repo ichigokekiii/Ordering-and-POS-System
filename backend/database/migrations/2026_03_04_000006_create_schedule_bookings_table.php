@@ -11,11 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('pos_transactions', function (Blueprint $table) {
-        $table->id();
-        $table->decimal('total_amount', 10, 2);
-        $table->timestamps();                   
-    });
+        Schema::create('schedule_bookings', function (Blueprint $table) {
+            $table->id();
+
+            $table->foreignId('schedule_id')->constrained('schedules')->cascadeOnDelete();
+
+            $table->string('email');
+
+            $table->timestamps();
+        });
     }
 
     /**
@@ -23,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::dropIfExists('schedule_bookings');
     }
 };

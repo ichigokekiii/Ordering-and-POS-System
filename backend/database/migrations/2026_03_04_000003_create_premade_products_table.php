@@ -11,15 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('custom_products', function (Blueprint $table) {
+        Schema::create('premade_products', function (Blueprint $table) {
             $table->id();
+
             $table->string('name');
-             $table->string('image');
-            $table->string(column: 'description');
-            $table->string(column: 'category');
-            $table->decimal('price', 8, 2);
-            $table->boolean('isAvailable')->default(1);
-            $table->boolean('isArchive')->default(0);
+            $table->text('description')->nullable();
+            $table->string('image')->nullable();
+            $table->string('category')->nullable();
+            $table->string('type')->nullable();
+            $table->decimal('price', 10, 2);
+            $table->boolean('isAvailable')->default(true);
             $table->timestamps();
         });
     }
@@ -29,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('custom_products');
+        Schema::dropIfExists('premade_products');
     }
 };

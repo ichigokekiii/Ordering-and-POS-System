@@ -40,6 +40,7 @@ import AdminSchedulePage from "./pages/admin/AdminSchedulePage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminPremadePage from "./pages/admin/AdminPremadePage";
 
+
 // STAFF PAGE
 import StaffPage from "./pages/staff/StaffPage";
 
@@ -144,16 +145,16 @@ function App() {
             />
 
             <Route
-              path="/admin/premades"
-              element={
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminPremadePage />
-                  </div>
-                </div>
-              }
-            />
+  path="/admin/premades"
+  element={
+    <div className="flex min-h-screen">
+      <AdminSidebar onLogout={handleLogout} />
+      <div className="flex-1 p-6 bg-gray-50">
+        <AdminPremadePage />
+      </div>
+    </div>
+  }
+/>
 
             <Route
               path="/admin/orders"

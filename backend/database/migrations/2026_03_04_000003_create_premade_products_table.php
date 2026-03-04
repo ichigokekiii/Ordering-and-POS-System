@@ -15,9 +15,9 @@ return new class extends Migration
             $table->id();
 
             $table->string('name');
-            $table->string('image')->nullable();
             $table->text('description')->nullable();
-            $table->string('category');
+            $table->string('image')->nullable();
+            $table->string('category')->nullable();
             $table->string('type')->nullable();
             $table->decimal('price', 10, 2);
             $table->boolean('isAvailable')->default(true);

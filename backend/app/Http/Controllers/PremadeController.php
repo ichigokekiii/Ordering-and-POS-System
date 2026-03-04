@@ -19,6 +19,8 @@ class PremadeController extends Controller
             'name'        => 'required|string',
             'image'       => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
             'description' => 'sometimes|required|string',
+            'category'    => 'nullable|string',
+            'type'        => 'nullable|string',
             'price'       => 'required|numeric',
             'isAvailable' => 'required|boolean',
         ]);
@@ -30,6 +32,8 @@ class PremadeController extends Controller
             'name'        => $request->name,
             'image'       => Storage::url($imagePath), // returns /storage/premades/filename.jpg
             'description' => $request->description,
+            'category'    => $request->category,
+            'type'        => $request->type,
             'price'       => $request->price,
             'isAvailable' => $request->isAvailable,
         ]);
@@ -43,13 +47,15 @@ class PremadeController extends Controller
             'name'        => 'sometimes|required|string',
             'image'       => 'sometimes|image|mimes:jpeg,png,jpg,webp|max:2048',
             'description' => 'sometimes|required|string',
+            'category'    => 'sometimes|nullable|string',
+            'type'        => 'sometimes|nullable|string',
             'price'       => 'sometimes|required|numeric',
             'isAvailable' => 'sometimes|required|boolean',
         ]);
 
         $premade = PremadeProduct::findOrFail($id);
 
-        $data = $request->only(['name', 'description', 'price', 'isAvailable']);
+        $data = $request->only(['name', 'description', 'category', 'type', 'price', 'isAvailable']);
 
         if ($request->hasFile('image')) {
             // Delete old image from storage

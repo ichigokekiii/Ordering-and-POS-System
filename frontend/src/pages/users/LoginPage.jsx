@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../../services/api";
@@ -18,32 +19,23 @@ function LoginPage({ onLogin }) {
 
       const loggedInUser = res.data.user || res.data;
 
-      // Store Sanctum token
+      // Store Sanctum token if returned
       if (res.data.token) {
         localStorage.setItem("token", res.data.token);
       }
 
-      onLogin(loggedInUser);
-
-      // Role-based redirect (normalize role to lowercase)
-      const role = (loggedInUser?.role || "").toString().toLowerCase().trim();
-
-      if (role === "owner") {
-        navigate("/admin", { replace: true });
-        return;
+      // Trigger OTP sending for login verification
+      try {
+        await api.post("/resend-otp", { email });
+      } catch (otpErr) {
+        console.warn("OTP sending failed", otpErr);
       }
 
-      if (role === "admin") {
-        navigate("/admin", { replace: true });
-        return;
-      }
+      // Temporarily store user so we can finish login after OTP verification
+      localStorage.setItem("pendingUser", JSON.stringify(loggedInUser));
 
-      if (role === "staff") {
-        navigate("/staff", { replace: true });
-        return;
-      }
-
-      navigate("/", { replace: true });
+      // Redirect to OTP page
+      navigate("/verify-otp", { state: { email } });
     } catch {
       setError("Invalid credentials");
     }

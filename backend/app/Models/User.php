@@ -27,6 +27,7 @@ class User extends Authenticatable
         'last_failed_attempt_at',
         'is_locked',
         'priority',
+        'is_verified',
     ];
 
     /**

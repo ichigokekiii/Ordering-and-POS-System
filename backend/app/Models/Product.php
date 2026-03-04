@@ -13,4 +13,8 @@ class Product extends Model
     'isAvailable',
 ];
 
+    protected $casts = [
+        'isAvailable' => 'boolean',
+];
+
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
 import api from "../../services/api";
 
 function VerifyOtpPage() {
@@ -13,6 +14,7 @@ function VerifyOtpPage() {
 
   const location = useLocation();
   const navigate = useNavigate();
+  const { handleLogin } = useAuth();
 
   const email = location.state?.email;
 
@@ -38,18 +40,41 @@ function VerifyOtpPage() {
         otp,
       });
 
-      // 🔥 Store Sanctum token
-      localStorage.setItem("token", res.data.token);
+      // Store Sanctum token
+      if (res.data.token) {
+        localStorage.setItem("token", res.data.token);
+      }
 
-      // Store verified user
-      localStorage.setItem("user", JSON.stringify(res.data.user));
+      // Determine user source (login or register)
+      let userData = null;
 
-      setModalMessage("Account verified successfully! Logging you in...");
+      const pendingUser = localStorage.getItem("pendingUser");
+
+      if (pendingUser) {
+        userData = JSON.parse(pendingUser);
+        localStorage.removeItem("pendingUser");
+        setModalMessage("Login verified! Logging you in...");
+      } else {
+        userData = res.data.user;
+        setModalMessage("Account verified successfully! Logging you in...");
+      }
+
+      // Properly log the user in using AuthContext
+      handleLogin(userData);
+
       setShowModal(true);
 
-      // Redirect normally (no hard reload needed)
+      // Role-based redirect
+      const role = (userData?.role || "").toLowerCase();
+
       setTimeout(() => {
-        navigate("/");
+        if (role === "admin" || role === "owner") {
+          navigate("/admin");
+        } else if (role === "staff") {
+          navigate("/staff");
+        } else {
+          navigate("/");
+        }
       }, 1500);
 
     } catch (err) {

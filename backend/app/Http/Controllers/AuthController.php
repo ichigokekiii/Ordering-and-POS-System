@@ -99,9 +99,6 @@ public function resendOtp(Request $request)
         return response()->json(['message' => 'User not found'], 404);
     }
 
-    if ($user->is_verified) {
-        return response()->json(['message' => 'Account already verified'], 400);
-    }
 
     // Delete old OTPs
     Otp::where('user_id', $user->id)->delete();

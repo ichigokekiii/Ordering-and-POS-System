@@ -13,13 +13,18 @@ return new class extends Migration
     {
         Schema::create('custom_products', function (Blueprint $table) {
             $table->id();
+
             $table->string('name');
-             $table->string('image');
-            $table->string(column: 'description');
-            $table->string(column: 'category');
-            $table->decimal('price', 8, 2);
-            $table->boolean('isAvailable')->default(1);
-            $table->boolean('isArchive')->default(0);
+            $table->string('image')->nullable();
+            $table->text('description')->nullable();
+
+            $table->string('category');
+            $table->string('type');
+
+            $table->decimal('price', 10, 2);
+
+            $table->boolean('isAvailable')->default(true);
+
             $table->timestamps();
         });
     }

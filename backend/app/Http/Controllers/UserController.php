@@ -56,7 +56,7 @@ class UserController extends Controller
         $user->email = $email;
         $user->password = Hash::make($password);
         $user->role = 'user';
-        $user->status = 'active';
+        $user->status = 'Active';
         $user->phone_number = $phoneNumber;
         $user->failed_attempt_count = 0;
         $user->last_failed_attempt_at = null;

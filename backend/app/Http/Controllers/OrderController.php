@@ -14,6 +14,19 @@ use Illuminate\Support\Facades\Mail;
 
 class OrderController extends Controller
 {
+    public function index()
+    {
+        try {
+            $orders = Order::orderBy('created_at', 'desc')->get();
+
+            return response()->json($orders);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to fetch orders',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
     public function store(Request $request)
     {
 

@@ -170,6 +170,10 @@ function SchedulePage() {
                     <p className="text-sm text-gray-500 mt-1">
                       {new Date(schedule.event_date).toLocaleDateString()}
                     </p>
+
+                    <p className="text-sm text-gray-500">
+                      📍 {schedule.location || "Location coming soon"}
+                    </p>
                   </div>
                 </div>
               ))}

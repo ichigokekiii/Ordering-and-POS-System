@@ -24,6 +24,7 @@ class ScheduleController extends Controller
             'schedule_name' => 'required|string|max:255',
             'image' => 'nullable|string',
             'schedule_description' => 'nullable|string',
+            'location' => 'required|string|max:255',
             'event_date' => 'required|date',
             'isAvailable' => 'boolean'
         ]);
@@ -42,6 +43,7 @@ class ScheduleController extends Controller
             'schedule_name' => 'sometimes|required|string|max:255',
             'image' => 'nullable|string',
             'schedule_description' => 'nullable|string',
+            'location' => 'sometimes|required|string|max:255',
             'event_date' => 'sometimes|required|date',
             'isAvailable' => 'boolean'
         ]);

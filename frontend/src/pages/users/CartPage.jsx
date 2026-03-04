@@ -50,29 +50,30 @@ function CartPage() {
           {cartItems.map((item) => (
             <div
               key={item.id}
-              className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm"
+              className="rounded-2xl bg-white p-4 shadow-sm"
             >
-              {/* Image */}
-              <img
-                src={`http://localhost:8000${item.image}`}
-                alt={item.name}
-                className="h-16 w-16 rounded-xl object-cover flex-shrink-0"
-              />
+              <div className="flex items-center gap-4">
+                {/* Image */}
+                <img
+                  src={`http://localhost:8000${item.image}`}
+                  alt={item.name}
+                  className="h-16 w-16 rounded-xl object-cover flex-shrink-0"
+                />
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-800 truncate">{item.name}</h3>
-                  {item.type === "custom" && (
-                    <span className="flex-shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-500">
-                      Custom
-                    </span>
-                  )}
-                </div>
-                {/* Custom bouquet: show each flower on its own line */}
-                {item.type === "custom" && item.items ? (
-                  <ul className="mt-0.5 space-y-0.5">
-                    {item.items.map((flower) => (
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-gray-800 truncate">{item.name}</h3>
+                    {item.type === "custom" && (
+                      <span className="flex-shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-500">
+                        Custom
+                      </span>
+                    )}
+                  </div>
+                  {/* Custom bouquet: show each flower on its own line */}
+                  {item.type === "custom" && item.items ? (
+                    <ul className="mt-0.5 space-y-0.5">
+                      {item.items.map((flower) => (
                         <li key={flower.id} className="text-xs text-gray-400">
                           {flower.name} ×{flower.quantity}
                           <span className="ml-1 text-gray-300">
@@ -80,42 +81,53 @@ function CartPage() {
                           </span>
                         </li>
                       ))}
-                  </ul>
-                ) : (
-                  <p className="text-xs text-gray-400 truncate">{item.description}</p>
-                )}
-                <p className="mt-1 text-sm font-bold text-rose-500">
-                  ₱{(item.price * item.quantity).toLocaleString()}
-                </p>
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-gray-400 truncate">{item.description}</p>
+                  )}
+                  <p className="mt-1 text-sm font-bold text-rose-500">
+                    ₱{(item.price * item.quantity).toLocaleString()}
+                  </p>
+                </div>
+
+                {/* Quantity Controls */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:border-rose-400 hover:text-rose-500 transition"
+                  >
+                    −
+                  </button>
+                  <span className="w-5 text-center text-sm font-semibold text-gray-700">
+                    {item.quantity}
+                  </span>
+                  <button
+                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:border-rose-400 hover:text-rose-500 transition"
+                  >
+                    +
+                  </button>
+                </div>
+
+                {/* Remove */}
+                <button
+                  onClick={() => removeFromCart(item.id)}
+                  className="ml-1 flex-shrink-0 text-gray-300 hover:text-red-400 transition text-lg leading-none"
+                  title="Remove"
+                >
+                  ✕
+                </button>
               </div>
 
-              {/* Quantity Controls */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                  className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:border-rose-400 hover:text-rose-500 transition"
-                >
-                  −
-                </button>
-                <span className="w-5 text-center text-sm font-semibold text-gray-700">
-                  {item.quantity}
-                </span>
-                <button
-                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                  className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:border-rose-400 hover:text-rose-500 transition"
-                >
-                  +
-                </button>
-              </div>
-
-              {/* Remove */}
-              <button
-                onClick={() => removeFromCart(item.id)}
-                className="ml-1 flex-shrink-0 text-gray-300 hover:text-red-400 transition text-lg leading-none"
-                title="Remove"
-              >
-                ✕
-              </button>
+              {/* Greeting Card — shown below the item row when present */}
+              {item.greetingCard && (
+                <div className="mt-3 flex items-start gap-2 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-rose-500">Greeting Card <span className="font-normal text-rose-400">(+₱5)</span></p>
+                    <p className="mt-0.5 text-xs text-gray-500 break-words">{item.greetingCard}</p>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -127,9 +139,17 @@ function CartPage() {
           </h3>
           <div className="space-y-2">
             {cartItems.map((item) => (
-              <div key={item.id} className="flex justify-between text-sm text-gray-500">
-                <span>{item.name} × {item.quantity}</span>
-                <span>₱{(item.price * item.quantity).toLocaleString()}</span>
+              <div key={item.id} className="space-y-0.5">
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>{item.name} × {item.quantity}</span>
+                  <span>₱{(item.price * item.quantity).toLocaleString()}</span>
+                </div>
+                {item.greetingCard && (
+                  <div className="flex justify-between text-xs text-rose-400 pl-2">
+                    <span>↳ Greeting card included</span>
+                    <span>+₱5</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>

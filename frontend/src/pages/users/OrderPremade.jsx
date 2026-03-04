@@ -3,27 +3,36 @@ import { useNavigate } from "react-router-dom";
 import { usePremades } from "../../contexts/PremadeContext";
 import { useCart } from "../../contexts/CartContext";
 
+const MAX_GREETING_CHARS = 150;
+const GREETING_CARD_PRICE = 5;
+
 function OrderModal({ product, onClose, onConfirm }) {
   const [quantity, setQuantity] = useState(1);
+  const [greetingCard, setGreetingCard] = useState(false);
+  const [greetingMessage, setGreetingMessage] = useState("");
+
+  const subtotal = (product.price * quantity) + (greetingCard ? GREETING_CARD_PRICE : 0);
 
   const handleConfirm = () => {
-    onConfirm(product, quantity);
+    if (greetingCard && !greetingMessage.trim()) {
+      alert("Please write a greeting card message or uncheck the greeting card option.");
+      return;
+    }
+    onConfirm(product, quantity, greetingCard ? greetingMessage.trim() : null);
     onClose();
   };
 
   return (
-    
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
       onClick={onClose}
-      
     >
       <div
-        className="relative mx-4 w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className="relative mx-4 w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Product Image */}
-        <div className="relative h-56 w-full overflow-hidden">
+        <div className="relative h-56 w-full overflow-hidden flex-shrink-0">
           <img
             src={`http://localhost:8000${product.image}`}
             alt={product.name}
@@ -39,19 +48,20 @@ function OrderModal({ product, onClose, onConfirm }) {
         </div>
 
         {/* Details */}
-        <div className="px-6 py-5">
-          <h2 className="text-xl font-semibold text-gray-800">{product.name}</h2>
-          <p className="mt-1 text-sm text-gray-500">{product.description}</p>
-
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-lg font-bold text-rose-500">
-              ₱{product.price}
-            </span>
-            <span className="text-sm text-gray-400">per bouquet</span>
+        <div className="px-6 py-5 space-y-5">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800">{product.name}</h2>
+            <p className="mt-1 text-sm text-gray-500">{product.description}</p>
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-lg font-bold text-rose-500">
+                ₱{product.price}
+              </span>
+              <span className="text-sm text-gray-400">per bouquet</span>
+            </div>
           </div>
 
           {/* Quantity Selector */}
-          <div className="mt-5">
+          <div>
             <p className="mb-2 text-sm font-medium text-gray-600">Quantity</p>
             <div className="flex items-center gap-4">
               <button
@@ -72,18 +82,72 @@ function OrderModal({ product, onClose, onConfirm }) {
               <span className="ml-auto text-sm font-medium text-gray-500">
                 Subtotal:{" "}
                 <span className="text-gray-800 font-semibold">
-                  ₱{(product.price * quantity).toLocaleString()}
+                  ₱{subtotal.toLocaleString()}
                 </span>
               </span>
             </div>
           </div>
 
+          {/* Greeting Card */}
+          <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-gray-800">Add a Greeting Card</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Include a personal message · <span className="text-rose-500 font-medium">+₱{GREETING_CARD_PRICE}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setGreetingCard((prev) => !prev);
+                  setGreetingMessage("");
+                }}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  greetingCard ? "bg-rose-500" : "bg-gray-200"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    greetingCard ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {greetingCard && (
+              <div className="mt-4">
+                <div className="flex justify-between mb-1">
+                  <label className="text-xs text-gray-400">Your Message *</label>
+                  <span className={`text-xs ${greetingMessage.length >= MAX_GREETING_CHARS ? "text-red-400" : "text-gray-400"}`}>
+                    {greetingMessage.length}/{MAX_GREETING_CHARS}
+                  </span>
+                </div>
+                <textarea
+                  rows={3}
+                  value={greetingMessage}
+                  onChange={(e) => {
+                    if (e.target.value.length <= MAX_GREETING_CHARS) {
+                      setGreetingMessage(e.target.value);
+                    }
+                  }}
+                  placeholder="Write your heartfelt message here..."
+                  maxLength={MAX_GREETING_CHARS}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500 resize-none"
+                />
+                {greetingMessage.length >= MAX_GREETING_CHARS && (
+                  <p className="mt-1 text-xs text-red-400">Maximum character limit reached.</p>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Confirm Button */}
           <button
             onClick={handleConfirm}
-            className="mt-6 w-full rounded-xl bg-rose-500 py-3 text-sm font-semibold text-white transition hover:bg-rose-600 active:scale-95"
+            className="w-full rounded-xl bg-rose-500 py-3 text-sm font-semibold text-white transition hover:bg-rose-600 active:scale-95"
           >
-            Add to Cart
+            Add to Cart — ₱{subtotal.toLocaleString()}
           </button>
         </div>
       </div>
@@ -99,10 +163,18 @@ function OrderPremadePage() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [addedId, setAddedId] = useState(null);
 
-const availableProducts = premades.filter((p) => p.isAvailable);
+  const availableProducts = premades.filter((p) => p.isAvailable);
 
-  const handleConfirm = (product, quantity) => {
-    addToCart(product, quantity);
+  const handleConfirm = (product, quantity, greetingMessage) => {
+    // Add ₱5 to the price if greeting card was selected
+    const finalPrice = Number(product.price) + (greetingMessage ? GREETING_CARD_PRICE : 0);
+
+    addToCart({
+      ...product,
+      price: finalPrice,
+      greetingCard: greetingMessage || null,
+    }, quantity);
+
     setAddedId(product.id);
     setTimeout(() => {
       setAddedId(null);

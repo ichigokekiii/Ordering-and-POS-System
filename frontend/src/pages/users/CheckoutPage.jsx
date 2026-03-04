@@ -92,6 +92,67 @@ function CheckoutPage() {
     setFileInputKey(prev => prev + 1);
   };
 
+  /**
+   * Builds the order_items rows from the cart.
+   *
+   * Premade item → 1 row, custom_id = null
+   * Custom item  → 1 row per flower inside item.items[], grouped by a
+   *                custom_id that increments for each distinct custom
+   *                bouquet in the cart.
+   */
+  const buildOrderItems = (orderId) => {
+    const rows = [];
+    let customCounter = 0;  // increments per custom bouquet in cart
+    let premadeCounter = 0; // increments per premade item in cart
+
+    for (const cartItem of cartItems) {
+
+      if (cartItem.type === "custom") {
+        customCounter += 1;
+        const customId = customCounter;
+        // greetingCard lives on cartItem, not on the individual flower objects
+        const message = cartItem.greetingCard || null;
+
+        for (let i = 0; i < cartItem.items.length; i++) {
+          const flower = cartItem.items[i];
+          rows.push({
+            order_id:          orderId,
+            product_id:        flower.id,
+            product_name:      flower.name,
+            custom_id:         customId,
+            premade_id:        null,
+            quantity:          flower.quantity ?? 1,
+            price_at_purchase: flower.free
+              ? 0
+              : Number(flower.price) * (flower.quantity ?? 1),
+            // Only store the greeting message on the first row (bouquet base)
+            // to avoid duplicating it across every flower row
+            special_message:   i === 0 ? message : null,
+          });
+        }
+
+      } else {
+        // Each premade cart entry gets its own premade_id so that two orders
+        // of the same product but with different greeting cards stay separate
+        premadeCounter += 1;
+        rows.push({
+          order_id:          orderId,
+          // _productId is the real DB id; id may be a synthetic string for
+          // greeting-card entries (e.g. "5-card-1234")
+          product_id:        cartItem._productId ?? cartItem.id,
+          product_name:      cartItem.name,
+          custom_id:         null,
+          premade_id:        premadeCounter,
+          quantity:          cartItem.quantity,
+          price_at_purchase: Number(cartItem.price) * cartItem.quantity,
+          special_message:   cartItem.greetingCard || null,
+        });
+      }
+    }
+
+    return rows;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -107,6 +168,7 @@ function CheckoutPage() {
     setIsSubmitting(true);
 
     try {
+      // ── Step 1: Create the order ──────────────────────────────────────
       const formData = new FormData();
       formData.append("user_id",          userId);
       formData.append("address",          deliveryMode === "pickup" ? "Pickup" : address);
@@ -122,10 +184,17 @@ function CheckoutPage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      alert(`Order placed! Your Order ID is ${res.data.order_id}`);
+      const orderId = res.data.order_id;
+
+      // ── Step 2: Submit order_items ────────────────────────────────────
+      const orderItems = buildOrderItems(orderId);
+      await api.post("/order-items", { items: orderItems });
+
+      alert(`Order placed! Your Order ID is ${orderId}`);
       clearCart();
       resetFileInput();
       navigate("/");
+
     } catch (error) {
       console.error("Order failed", error);
       console.error("Validation errors:", error.response?.data);
@@ -214,7 +283,7 @@ function CheckoutPage() {
                   </div>
                 </div>
 
-               <div>
+                <div>
                   <div className="flex justify-between mb-1">
                     <label className="text-xs text-gray-400">Contact Number</label>
                   </div>
@@ -352,19 +421,30 @@ function CheckoutPage() {
 
               <div className="mb-4 max-h-64 overflow-y-auto pr-2 space-y-3">
                 {cartItems.map((item, index) => (
-                  <div key={`${item.id}-${index}`} className="flex justify-between text-sm">
-                    <div className="flex gap-3">
-                      <span className="font-medium text-gray-600 text-xs h-5 w-5 flex items-center justify-center bg-gray-100 rounded-full">
-                        {item.quantity}
-                      </span>
-                      <div className="flex flex-col">
-                        <span className="text-gray-700">{item.name}</span>
-                        {item.type === "custom" && (
-                          <span className="text-[10px] text-gray-400">Custom Bouquet</span>
-                        )}
+                  <div key={`${item.id}-${index}`} className="space-y-1.5">
+                    <div className="flex justify-between text-sm">
+                      <div className="flex gap-3">
+                        <span className="font-medium text-gray-600 text-xs h-5 w-5 flex items-center justify-center bg-gray-100 rounded-full flex-shrink-0">
+                          {item.quantity}
+                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-gray-700">{item.name}</span>
+                          {item.type === "custom" && (
+                            <span className="text-[10px] text-gray-400">Custom Bouquet</span>
+                          )}
+                        </div>
                       </div>
+                      <span className="text-gray-500 flex-shrink-0">₱{(item.price * item.quantity).toLocaleString()}</span>
                     </div>
-                    <span className="text-gray-500">₱{(item.price * item.quantity).toLocaleString()}</span>
+                    {/* Greeting card preview */}
+                    {item.greetingCard && (
+                      <div className="ml-8 flex items-start gap-1.5 rounded-lg border border-rose-100 bg-rose-50 px-2.5 py-1.5">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-medium text-rose-500">Greeting Card · <span className="font-normal">+₱5</span></p>
+                          <p className="text-[10px] text-gray-400 break-words line-clamp-2">{item.greetingCard}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

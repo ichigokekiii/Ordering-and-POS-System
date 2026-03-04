@@ -24,8 +24,6 @@ return new class extends Migration
 
             $table->string('order_status')->default('pending');
 
-            $table->text('special_message')->nullable();
-
             $table->text('address')->nullable();
 
             $table->string('delivery_method');

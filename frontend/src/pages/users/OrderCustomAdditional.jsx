@@ -4,6 +4,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useProducts } from "../../contexts/ProductContext";
 import { useCart } from "../../contexts/CartContext";
 
+const MAX_GREETING_CHARS = 150;
+const GREETING_CARD_PRICE = 5;
+
 function OrderCustomAdditional() {
   const { products } = useProducts();
   const { addToCart } = useCart();
@@ -16,8 +19,6 @@ function OrderCustomAdditional() {
   const [added, setAdded] = useState(false);
   const [greetingCard, setGreetingCard] = useState(false);
   const [greetingMessage, setGreetingMessage] = useState("");
-
-  const MAX_GREETING_CHARS = 150;
 
   useEffect(() => {
     if (!bouquet) {
@@ -53,7 +54,8 @@ function OrderCustomAdditional() {
     0
   );
 
-  const totalPrice = Number(basePrice) + additionalTotal;
+  const greetingCardTotal = greetingCard ? GREETING_CARD_PRICE : 0;
+  const totalPrice = Number(basePrice) + additionalTotal + greetingCardTotal;
 
   const handleAddToCart = () => {
     if (greetingCard && !greetingMessage.trim()) {
@@ -212,14 +214,14 @@ function OrderCustomAdditional() {
                 <div>
                   <p className="font-medium text-gray-800">Add a Greeting Card</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Include a personal message with your bouquet
+                    Include a personal message ·{" "}
+                    <span className="text-rose-500 font-medium">+₱{GREETING_CARD_PRICE}</span>
                   </p>
                 </div>
-                {/* Toggle switch */}
                 <button
                   type="button"
                   onClick={() => {
-                    setGreetingCard(prev => !prev);
+                    setGreetingCard((prev) => !prev);
                     setGreetingMessage("");
                   }}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
@@ -271,6 +273,7 @@ function OrderCustomAdditional() {
               <p className="text-xs text-gray-400">
                 Base ₱{Number(basePrice).toLocaleString()}
                 {additionalTotal > 0 && ` + ₱${additionalTotal.toLocaleString()} extras`}
+                {greetingCard && ` + ₱${GREETING_CARD_PRICE} card`}
               </p>
               <p className="text-base font-bold text-gray-800">
                 Total: ₱{totalPrice.toLocaleString()}

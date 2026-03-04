@@ -10,6 +10,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PremadeController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderItemController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PosTransactionsController;
 use App\Http\Controllers\AuthController;
@@ -39,6 +40,9 @@ Route::post('/schedules/{id}/book', [ScheduleController::class, 'book']);
 //order api route
 Route::get('/orders/user/{user_id}', [OrderController::class, 'userOrders']);
 Route::apiResource('orders', OrderController::class);
+
+//order items route
+Route::post('/order-items', [OrderItemController::class, 'store']);
 
 //pos api route
 Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);

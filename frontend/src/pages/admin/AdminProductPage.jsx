@@ -2,6 +2,42 @@
 import { useState } from "react";
 import { useProducts } from "../../contexts/ProductContext";
 
+// Validation rules
+const VALIDATION = {
+  name: {
+    regex: /^[a-zA-Z0-9 \-'&]+$/,
+    maxLength: 50,
+    message: "Name must be letters, numbers, spaces, hyphens, apostrophes, or & only (max 50 chars)",
+  },
+  description: {
+    regex: /^[a-zA-Z0-9 .,!?'\-&()\n]+$/,
+    maxLength: 200,
+    message: "Description contains invalid characters (max 200 chars)",
+  },
+  price: {
+    regex: /^\d+(\.\d{0,2})?$/,
+    maxLength: 7,
+    message: "Price must be a valid number with up to 2 decimal places",
+  },
+};
+
+const validate = (field, value) => {
+  const rule = VALIDATION[field];
+  if (!value) return "This field is required";
+  if (value.length > rule.maxLength) return rule.message;
+  if (!rule.regex.test(value)) return rule.message;
+  return "";
+};
+
+const CharCount = ({ value, max }) => (
+  <span className={`text-xs ${value.length > max ? "text-red-500" : "text-gray-400"}`}>
+    {value.length}/{max}
+  </span>
+);
+
+const FieldError = ({ error }) =>
+  error ? <p className="mt-1 text-xs text-red-500">{error}</p> : null;
+
 const ProductCard = ({ product, onEdit, onDelete }) => (
   <div className="relative rounded border p-4 shadow-sm">
     <div className="mb-2">
@@ -75,6 +111,8 @@ function AdminProductPage() {
   const [type, setType] = useState("");
   const [isAvailable, setIsAvailable] = useState(1);
 
+  const [errors, setErrors] = useState({ name: "", description: "", price: "" });
+
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
@@ -83,8 +121,33 @@ function AdminProductPage() {
     if (file) setImage(file);
   };
 
+  // Validates a single field and updates errors state
+  const handleFieldChange = (field, value, setter) => {
+    setter(value);
+    setErrors((prev) => ({ ...prev, [field]: validate(field, value) }));
+  };
+
+  // Price: strip any non-numeric / non-decimal characters on input
+  const handlePriceChange = (e) => {
+    const raw = e.target.value.replace(/[^0-9.]/g, "");
+    // Prevent multiple decimal points
+    const sanitized = raw.split(".").length > 2 ? raw.slice(0, raw.lastIndexOf(".")) : raw;
+    handleFieldChange("price", sanitized, setPrice);
+  };
+
+  const validateAll = () => {
+    const newErrors = {
+      name: validate("name", name),
+      description: validate("description", description),
+      price: validate("price", price),
+    };
+    setErrors(newErrors);
+    return Object.values(newErrors).every((e) => e === "");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateAll()) return;
     try {
       if (isEditing) {
         await updateProduct(currentId, { name, image, price, description, category, type, isAvailable });
@@ -127,6 +190,7 @@ function AdminProductPage() {
     setCategory(product.category);
     setType(product.type || "");
     setIsAvailable(product.isAvailable);
+    setErrors({ name: "", description: "", price: "" });
     setShowModal(true);
   };
 
@@ -140,9 +204,9 @@ function AdminProductPage() {
     setIsAvailable(1);
     setCurrentId(null);
     setIsEditing(false);
+    setErrors({ name: "", description: "", price: "" });
   };
 
-  // Grouped products
   const bouquets = products.filter((p) => p.category === "Bouquets");
   const mainFlowers = products.filter((p) => p.category === "Additional" && p.type === "Main Flowers");
   const fillers = products.filter((p) => p.category === "Additional" && p.type === "Fillers");
@@ -166,7 +230,6 @@ function AdminProductPage() {
       </div>
 
       <div className="space-y-10">
-        {/* Bouquets Section */}
         <div>
           <h3 className="mb-4 text-xl font-semibold text-gray-700 border-b pb-2">Bouquets</h3>
           <SectionGrid
@@ -177,8 +240,6 @@ function AdminProductPage() {
             onDelete={handleDelete}
           />
         </div>
-
-        {/* Additional Section */}
         <div>
           <h3 className="mb-6 text-xl font-semibold text-gray-700 border-b pb-2">Additional</h3>
           <div className="space-y-8">
@@ -209,22 +270,41 @@ function AdminProductPage() {
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <input
-                className="w-full rounded border px-4 py-2"
-                placeholder="Product name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
+              {/* Name */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-700">Product Name</label>
+                  <CharCount value={name} max={VALIDATION.name.maxLength} />
+                </div>
+                <input
+                  className={`mt-1 w-full rounded border px-4 py-2 ${errors.name ? "border-red-400 focus:outline-red-400" : ""}`}
+                  placeholder="Product name"
+                  value={name}
+                  onChange={(e) => handleFieldChange("name", e.target.value, setName)}
+                  maxLength={VALIDATION.name.maxLength}
+                  required
+                />
+                <FieldError error={errors.name} />
+              </div>
 
-              <input
-                className="w-full rounded border px-4 py-2"
-                placeholder="Description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                required
-              />
+              {/* Description */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-700">Description</label>
+                  <CharCount value={description} max={VALIDATION.description.maxLength} />
+                </div>
+                <input
+                  className={`mt-1 w-full rounded border px-4 py-2 ${errors.description ? "border-red-400 focus:outline-red-400" : ""}`}
+                  placeholder="Description"
+                  value={description}
+                  onChange={(e) => handleFieldChange("description", e.target.value, setDescription)}
+                  maxLength={VALIDATION.description.maxLength}
+                  required
+                />
+                <FieldError error={errors.description} />
+              </div>
 
+              {/* Image */}
               <div className="rounded border px-4 py-2">
                 <label className="mb-1 block text-sm font-medium text-gray-700">Product Image</label>
                 <input
@@ -237,14 +317,24 @@ function AdminProductPage() {
                 {!image && isEditing && <p className="mt-1 text-xs text-gray-400">No new file chosen — existing image will be kept</p>}
               </div>
 
-              <input
-                type="number"
-                className="w-full rounded border px-4 py-2"
-                placeholder="Price"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                required
-              />
+              {/* Price */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-700">Price</label>
+                  <CharCount value={price} max={VALIDATION.price.maxLength} />
+                </div>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className={`mt-1 w-full rounded border px-4 py-2 ${errors.price ? "border-red-400 focus:outline-red-400" : ""}`}
+                  placeholder="Price (e.g. 299.99)"
+                  value={price}
+                  onChange={handlePriceChange}
+                  maxLength={VALIDATION.price.maxLength}
+                  required
+                />
+                <FieldError error={errors.price} />
+              </div>
 
               {/* Category */}
               <div className="rounded border p-4">
@@ -275,7 +365,7 @@ function AdminProductPage() {
                 </div>
               </div>
 
-              {/* Type — only shown when Additional is selected */}
+              {/* Type */}
               {category === "Additional" && (
                 <div className="rounded border p-4">
                   <label className="mb-2 block text-sm font-medium text-gray-700">Type</label>
@@ -336,7 +426,7 @@ function AdminProductPage() {
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="rounded border px-4 py-2">
+                <button type="button" onClick={() => { setShowModal(false); resetForm(); }} className="rounded border px-4 py-2">
                   Cancel
                 </button>
                 <button type="submit" className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">

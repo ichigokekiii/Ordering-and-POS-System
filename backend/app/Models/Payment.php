@@ -9,7 +9,7 @@ class Payment extends Model
 {
     use HasFactory;
 
-    protected $table = 'tbl_payments';
+    protected $table = 'payments';
     protected $primaryKey = 'payment_id';
     public $incrementing = false;
     protected $keyType = 'string';

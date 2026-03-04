@@ -97,17 +97,10 @@ function App() {
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
         </Route>
+
         <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
-
-        <Route
-          path="/register"
-          element={<RegisterPage />}
-        />
-        <Route
-          path="/verify-otp"
-          element={<VerifyOtpPage />}
-        />
-
+        <Route path="/register" element={<RegisterPage />}  />
+        <Route  path="/verify-otp"  element={<VerifyOtpPage />} />
 
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />

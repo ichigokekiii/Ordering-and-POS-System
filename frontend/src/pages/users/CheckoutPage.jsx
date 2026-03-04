@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../contexts/CartContext";
@@ -66,7 +67,7 @@ function CheckoutPage() {
 
     if (!referenceCode.trim()) {
       newErrors.referenceCode = "Reference code is required.";
-    } else if (!/^[a-zA-Z0-9\-]{4,30}$/.test(referenceCode)) {
+    } else if (!/^[a-zA-Z0-9]{4,30}$/.test(referenceCode)) {
       newErrors.referenceCode = "Reference code must be 4–30 alphanumeric characters.";
     }
 

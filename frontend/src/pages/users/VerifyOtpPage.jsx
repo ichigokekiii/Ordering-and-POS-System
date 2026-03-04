@@ -17,6 +17,7 @@ function VerifyOtpPage() {
   const { handleLogin } = useAuth();
 
   const email = location.state?.email;
+  const purpose = location.state?.purpose;
 
   // Countdown timer effect
   useEffect(() => {
@@ -59,12 +60,23 @@ function VerifyOtpPage() {
         setModalMessage("Account verified successfully! Logging you in...");
       }
 
-      // Properly log the user in using AuthContext
+      // If this OTP was for password reset, redirect to reset password page
+      if (purpose === "reset-password") {
+        setModalMessage("OTP verified! Redirecting to reset password...");
+        setShowModal(true);
+
+        setTimeout(() => {
+          navigate("/reset-password", { state: { email, otp } });
+        }, 1500);
+
+        return;
+      }
+
+      // Otherwise continue normal login/register flow
       handleLogin(userData);
 
       setShowModal(true);
 
-      // Role-based redirect
       const role = (userData?.role || "").toLowerCase();
 
       setTimeout(() => {

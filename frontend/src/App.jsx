@@ -22,6 +22,8 @@ import ProductPage from "./pages/users/ProductPage";
 import Feedback from "./pages/users/Feedback";
 import LoginPage from "./pages/users/LoginPage";
 import RegisterPage from "./pages/users/RegisterPage";
+import ForgotPasswordPage from "./pages/users/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/users/ResetPasswordPage";
 import VerifyOtpPage from "./pages/users/VerifyOtpPage";
 import AboutPage from "./pages/users/AboutPage";
 import SchedulePage from "./pages/users/SchedulePage";
@@ -39,6 +41,7 @@ import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
 import AdminSchedulePage from "./pages/admin/AdminSchedulePage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminPremadePage from "./pages/admin/AdminPremadePage";
+
 
 
 // STAFF PAGE
@@ -104,6 +107,10 @@ function App() {
           path="/verify-otp"
           element={<VerifyOtpPage />}
         />
+
+
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Admin Navbar */}
         {user?.role === "admin" || user?.role === "owner" ? (

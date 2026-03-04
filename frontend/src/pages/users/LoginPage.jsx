@@ -78,6 +78,16 @@ function LoginPage({ onLogin }) {
           Register
         </Link>
       </p>
+
+      {/* Forgot Password link */}
+      <p className="mt-2 text-center text-sm">
+        <Link
+          to="/forgot-password"
+          className="text-[#4f6fa5] hover:underline"
+        >
+          Forgot Password?
+        </Link>
+      </p>
     </div>
   );
 }

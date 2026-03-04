@@ -17,14 +17,10 @@ return new class extends Migration
             $table->string('name');
             $table->string('image')->nullable();
             $table->text('description')->nullable();
-
-            $table->string('type');
             $table->string('category');
-
+            $table->string('type')->nullable();
             $table->decimal('price', 10, 2);
-
             $table->boolean('isAvailable')->default(true);
-
             $table->timestamps();
         });
     }

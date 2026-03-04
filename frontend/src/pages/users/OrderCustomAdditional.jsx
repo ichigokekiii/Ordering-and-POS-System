@@ -14,8 +14,11 @@ function OrderCustomAdditional() {
 
   const [quantities, setQuantities] = useState({});
   const [added, setAdded] = useState(false);
+  const [greetingCard, setGreetingCard] = useState(false);
+  const [greetingMessage, setGreetingMessage] = useState("");
 
-  // Redirect safely if someone lands here directly without state
+  const MAX_GREETING_CHARS = 150;
+
   useEffect(() => {
     if (!bouquet) {
       navigate("/order/custom");
@@ -53,9 +56,14 @@ function OrderCustomAdditional() {
   const totalPrice = Number(basePrice) + additionalTotal;
 
   const handleAddToCart = () => {
+    if (greetingCard && !greetingMessage.trim()) {
+      alert("Please write a greeting card message or uncheck the greeting card option.");
+      return;
+    }
+
     const allItems = [
       { ...bouquet, quantity: 1 },
-      ...fillers.map((f) => ({ ...f, free: true })),   // tag initial fillers as free
+      ...fillers.map((f) => ({ ...f, free: true })),
       ...selectedAdditionals,
     ];
 
@@ -73,6 +81,7 @@ function OrderCustomAdditional() {
       price: totalPrice,
       image: bouquet.image,
       items: allItems,
+      greetingCard: greetingCard ? greetingMessage.trim() : null,
     };
 
     addToCart(cartItem, 1);
@@ -166,6 +175,7 @@ function OrderCustomAdditional() {
         </div>
 
         <div className="space-y-10">
+
           {/* Additional Main Flowers */}
           <section>
             <h3 className="mb-4 text-lg font-semibold text-gray-700">Main Flowers</h3>
@@ -193,9 +203,68 @@ function OrderCustomAdditional() {
               </div>
             )}
           </section>
+
+          {/* Greeting Card */}
+          <section>
+            <h3 className="mb-4 text-lg font-semibold text-gray-700">Greeting Card</h3>
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-800">Add a Greeting Card</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Include a personal message with your bouquet
+                  </p>
+                </div>
+                {/* Toggle switch */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGreetingCard(prev => !prev);
+                    setGreetingMessage("");
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    greetingCard ? "bg-rose-500" : "bg-gray-200"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                      greetingCard ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {greetingCard && (
+                <div className="mt-4">
+                  <div className="flex justify-between mb-1">
+                    <label className="text-xs text-gray-400">Your Message *</label>
+                    <span className={`text-xs ${greetingMessage.length >= MAX_GREETING_CHARS ? "text-red-400" : "text-gray-400"}`}>
+                      {greetingMessage.length}/{MAX_GREETING_CHARS}
+                    </span>
+                  </div>
+                  <textarea
+                    rows={4}
+                    value={greetingMessage}
+                    onChange={(e) => {
+                      if (e.target.value.length <= MAX_GREETING_CHARS) {
+                        setGreetingMessage(e.target.value);
+                      }
+                    }}
+                    placeholder="Write your heartfelt message here..."
+                    maxLength={MAX_GREETING_CHARS}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500 resize-none"
+                  />
+                  {greetingMessage.length >= MAX_GREETING_CHARS && (
+                    <p className="mt-1 text-xs text-red-400">Maximum character limit reached.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+
         </div>
 
-        {/* Sticky Add to Cart Bar — always visible on this page */}
+        {/* Sticky Add to Cart Bar */}
         <div className="fixed bottom-0 left-0 right-0 z-30 border-t bg-white px-6 py-4 shadow-xl">
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
             <div className="min-w-0 flex-1">

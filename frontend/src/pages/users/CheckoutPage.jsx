@@ -17,25 +17,62 @@ function CheckoutPage() {
   // Auto-filled from logged in user
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
+  const [userPhone, setUserPhone] = useState("");
   const [userId, setUserId] = useState(null);
 
   // Manual inputs
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [notes, setNotes] = useState("");
 
   // Payment inputs
   const [paymentMethod, setPaymentMethod] = useState("");
-  const [referenceNumber, setReferenceNumber] = useState("");
+  const [referenceCode, setReferenceCode] = useState("");
+
+  // Validation errors
+  const [errors, setErrors] = useState({});
 
   const GRAND_TOTAL = totalPrice;
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("user") || "{}");
-    setUserName(stored.name || "");
+    const fullName = `${stored.first_name || ""} ${stored.last_name || ""}`.trim();
+    setUserName(fullName);
     setUserEmail(stored.email || "");
+    setUserPhone(stored.phone_number || "");
+    setPhone(stored.phone_number || "");
     setUserId(stored.id || null);
   }, []);
+
+  const validate = () => {
+    const newErrors = {};
+
+    if (!phone.trim()) {
+      newErrors.phone = "Contact number is required.";
+    } else if (!/^[0-9+\-\s]{7,15}$/.test(phone)) {
+      newErrors.phone = "Enter a valid phone number (7–15 digits).";
+    }
+
+    if (deliveryMode === "delivery") {
+      if (!address.trim()) {
+        newErrors.address = "Delivery address is required.";
+      } else if (address.trim().length < 10) {
+        newErrors.address = "Please enter a more complete address (min 10 characters).";
+      }
+    }
+
+    if (!paymentMethod.trim()) {
+      newErrors.paymentMethod = "Payment method is required.";
+    }
+
+    if (!referenceCode.trim()) {
+      newErrors.referenceCode = "Reference code is required.";
+    } else if (!/^[a-zA-Z0-9\-]{4,30}$/.test(referenceCode)) {
+      newErrors.referenceCode = "Reference code must be 4–30 alphanumeric characters.";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -64,10 +101,7 @@ function CheckoutPage() {
       return;
     }
 
-    if (deliveryMode === "delivery" && !address.trim()) {
-      alert("Please enter your delivery address.");
-      return;
-    }
+    if (!validate()) return;
 
     setIsSubmitting(true);
 
@@ -78,10 +112,10 @@ function CheckoutPage() {
       formData.append("phone",            phone);
       formData.append("delivery_method",  deliveryMode);
       formData.append("payment_method",   paymentMethod);
-      formData.append("reference_number", referenceNumber);
+      formData.append("reference_number", referenceCode);
       formData.append("reference_image",  freshFile);
       formData.append("total_amount",     GRAND_TOTAL);
-      formData.append("special_message",  notes);
+      formData.append("special_message",  "");
 
       const res = await api.post("/orders", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -179,41 +213,40 @@ function CheckoutPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="mb-1 block text-xs text-gray-400">Contact Number *</label>
+               <div>
+                  <div className="flex justify-between mb-1">
+                    <label className="text-xs text-gray-400">Contact Number</label>
+                  </div>
                   <input
-                    required
+                    readOnly
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="e.g. 09123456789"
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-500 cursor-not-allowed"
                   />
                 </div>
 
                 {deliveryMode === "delivery" && (
                   <div>
-                    <label className="mb-1 block text-xs text-gray-400">Delivery Address *</label>
+                    <div className="flex justify-between mb-1">
+                      <label className="text-xs text-gray-400">Delivery Address *</label>
+                      <span className="text-xs text-gray-400">{address.length}/200</span>
+                    </div>
                     <textarea
-                      required
                       rows="2"
                       value={address}
-                      onChange={(e) => setAddress(e.target.value)}
+                      onChange={(e) => {
+                        if (e.target.value.length <= 200) setAddress(e.target.value);
+                      }}
                       placeholder="Complete delivery address"
-                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                      maxLength={200}
+                      className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-1 ${
+                        errors.address
+                          ? "border-red-400 focus:border-red-400 focus:ring-red-400"
+                          : "border-gray-200 bg-gray-50 focus:border-rose-500 focus:ring-rose-500"
+                      }`}
                     />
+                    {errors.address && <p className="mt-1 text-xs text-red-500">{errors.address}</p>}
                   </div>
                 )}
-
-                <div>
-                  <label className="mb-1 block text-xs text-gray-400">Special Instructions (optional)</label>
-                  <textarea
-                    rows="2"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Any special requests..."
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                  />
-                </div>
               </div>
             </div>
 
@@ -236,25 +269,45 @@ function CheckoutPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs text-gray-400">Payment Method *</label>
+                  <div className="flex justify-between mb-1">
+                    <label className="text-xs text-gray-400">Payment Method *</label>
+                    <span className="text-xs text-gray-400">{paymentMethod.length}/50</span>
+                  </div>
                   <input
-                    required
                     value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    onChange={(e) => {
+                      if (e.target.value.length <= 50) setPaymentMethod(e.target.value);
+                    }}
                     placeholder="e.g. GCash, PayMaya, BDO, BPI"
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    maxLength={50}
+                    className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-1 ${
+                      errors.paymentMethod
+                        ? "border-red-400 focus:border-red-400 focus:ring-red-400"
+                        : "border-gray-200 bg-gray-50 focus:border-rose-500 focus:ring-rose-500"
+                    }`}
                   />
+                  {errors.paymentMethod && <p className="mt-1 text-xs text-red-500">{errors.paymentMethod}</p>}
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs text-gray-400">Reference Number *</label>
+                  <div className="flex justify-between mb-1">
+                    <label className="text-xs text-gray-400">Reference Code *</label>
+                    <span className="text-xs text-gray-400">{referenceCode.length}/30</span>
+                  </div>
                   <input
-                    required
-                    value={referenceNumber}
-                    onChange={(e) => setReferenceNumber(e.target.value)}
-                    placeholder="Transaction reference number"
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    value={referenceCode}
+                    onChange={(e) => {
+                      if (e.target.value.length <= 30) setReferenceCode(e.target.value);
+                    }}
+                    placeholder="Transaction reference code"
+                    maxLength={30}
+                    className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-1 ${
+                      errors.referenceCode
+                        ? "border-red-400 focus:border-red-400 focus:ring-red-400"
+                        : "border-gray-200 bg-gray-50 focus:border-rose-500 focus:ring-rose-500"
+                    }`}
                   />
+                  {errors.referenceCode && <p className="mt-1 text-xs text-red-500">{errors.referenceCode}</p>}
                 </div>
 
                 <div>

@@ -7,6 +7,7 @@ use App\Models\OrderItem;
 use App\Mail\OrderReceipt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 
 class OrderItemController extends Controller
 {
@@ -24,6 +25,17 @@ class OrderItemController extends Controller
             'items.*.special_message'   => 'nullable|string|max:150',
         ]);
 
+        // Ensure the order exists before inserting items
+        $orderId = $request->items[0]['order_id'] ?? null;
+        $order = Order::with('user')->where('order_id', $orderId)->first();
+
+        if (!$order) {
+            return response()->json([
+                'message' => 'Order not found.'
+            ], 404);
+        }
+
+        // ── Send receipt email ────────────────────────────────────────────
         $rows = collect($request->items)->map(fn ($item) => [
             'order_id'          => $item['order_id'],
             'product_id'        => $item['product_id'],
@@ -39,26 +51,22 @@ class OrderItemController extends Controller
 
         OrderItem::insert($rows);
 
-        // ── Send receipt email ────────────────────────────────────────────
         // Load the order + its user so we have the email address and order meta
         try {
-            $orderId = $request->items[0]['order_id'];
-            $order   = Order::with('user')->find($orderId);
-
             if ($order && $order->user && $order->user->email) {
                 Mail::to($order->user->email)->send(new OrderReceipt(
                     orderId:        $order->order_id,
                     paymentId:      $order->payment_id ?? '—',
                     totalAmount:    (float) $order->total_amount,
                     deliveryMethod: $order->delivery_method,
-                    userName:       trim("{$order->user->first_name} {$order->user->last_name}"),
+                    userName:       trim(($order->user->first_name ?? '') . ' ' . ($order->user->last_name ?? '')),
                     userEmail:      $order->user->email,
                     items:          $rows,
                 ));
             }
         } catch (\Throwable $e) {
             // Never let a mail failure break the order — just log it
-            \Log::warning("Order receipt email failed for order {$orderId}: " . $e->getMessage());
+            Log::warning("Order receipt email failed for order {$orderId}: " . $e->getMessage());
         }
 
         return response()->json([

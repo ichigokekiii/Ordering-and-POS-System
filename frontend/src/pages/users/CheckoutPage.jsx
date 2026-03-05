@@ -22,7 +22,6 @@ function CheckoutPage() {
   const [userId, setUserId] = useState(null);
 
   // Manual inputs
-  const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
 
   // Payment inputs
@@ -40,18 +39,11 @@ function CheckoutPage() {
     setUserName(fullName);
     setUserEmail(stored.email || "");
     setUserPhone(stored.phone_number || "");
-    setPhone(stored.phone_number || "");
     setUserId(stored.id || null);
   }, []);
 
   const validate = () => {
     const newErrors = {};
-
-    if (!phone.trim()) {
-      newErrors.phone = "Contact number is required.";
-    } else if (!/^[0-9+\-\s]{7,15}$/.test(phone)) {
-      newErrors.phone = "Enter a valid phone number (7–15 digits).";
-    }
 
     if (deliveryMode === "delivery") {
       if (!address.trim()) {
@@ -156,7 +148,7 @@ function CheckoutPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const freshFile = fileInputRef.current?.files[0];
+    const freshFile = paymentProof;
 
     if (!freshFile) {
       alert("Please upload your payment screenshot to proceed.");
@@ -172,7 +164,6 @@ function CheckoutPage() {
       const formData = new FormData();
       formData.append("user_id",          userId);
       formData.append("address",          deliveryMode === "pickup" ? "Pickup" : address);
-      formData.append("phone",            phone);
       formData.append("delivery_method",  deliveryMode);
       formData.append("payment_method",   paymentMethod);
       formData.append("reference_number", referenceCode);
@@ -289,7 +280,7 @@ function CheckoutPage() {
                   </div>
                   <input
                     readOnly
-                    value={phone}
+                    value={userPhone}
                     className="w-full rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-500 cursor-not-allowed"
                   />
                 </div>

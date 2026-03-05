@@ -9,8 +9,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
-use App\Mail\OrderReceipt;
-use Illuminate\Support\Facades\Mail;
 
 class OrderController extends Controller
 {
@@ -33,7 +31,6 @@ class OrderController extends Controller
         $request->validate([
             'user_id'          => 'required|integer|exists:users,id',
             'address'          => 'required|string',
-            'phone'            => 'required|string',
             'delivery_method'  => 'required|in:pickup,delivery',
             'payment_method'   => 'required|string',
             'reference_number' => 'required|string',
@@ -94,24 +91,12 @@ class OrderController extends Controller
 
             // 4. Send email AFTER transaction succeeds — outside the try/catch
             //    so a mail failure doesn't affect the order response
-            $user = \App\Models\User::find($request->input('user_id'));
 
-            // try {
-            //     Mail::to($user->email)->send(new OrderReceipt(
-            //         orderId:        $orderId,
-            //         paymentId:      $paymentId,
-            //         totalAmount:    $request->total_amount,
-            //         deliveryMethod: $request->delivery_method,
-            //         userName:       $user->name,
-            //     ));
-            // } catch (\Throwable $e) {
-            //     \Log::warning('Order receipt email failed: ' . $e->getMessage());
-            // }
 
             return response()->json([
                 'message'    => 'Order placed successfully',
                 'order_id'   => $orderId,
                 'payment_id' => $paymentId,
             ], 201);
-            }
+        }
 }

@@ -25,6 +25,7 @@ import RegisterPage from "./pages/users/RegisterPage";
 import ForgotPasswordPage from "./pages/users/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/users/ResetPasswordPage";
 import VerifyOtpPage from "./pages/users/VerifyOtpPage";
+import ProfilePage from "./pages/users/ProfilePage";
 import AboutPage from "./pages/users/AboutPage";
 import SchedulePage from "./pages/users/SchedulePage";
 import OrderPage from "./pages/users/OrderPage";
@@ -88,6 +89,8 @@ function App() {
         <Route path="/products" element={<ProductPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
         <Route path="/feedback" element={<Feedback />} />
+
+        <Route path="/profile" element={<ProfilePage />} />
 
       <Route element={<OrderLayout />}>
           <Route path="/order" element={<OrderPage />} />

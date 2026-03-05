@@ -12,6 +12,7 @@ use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderItemController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PosTransactionsController;
 use App\Http\Controllers\AuthController;
 
@@ -73,18 +74,20 @@ Route::post('/schedules/{id}/book', [ScheduleController::class, 'book']);
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->group(function () {
-    
-    // User Profile Management (Fixed 404 issue)
-    Route::get('/profile', function (Request $request) {
-        return $request->user();
-    });
-    
-    // Update Profile and Account Actions
-    Route::put('/profile', [UserController::class, 'updateProfile']);
-    Route::delete('/profile', [UserController::class, 'deleteAccount']);
-    Route::post('/profile/email-otp', [UserController::class, 'requestEmailChangeOtp']);
 
-    // Order Tracking for Customers
+    // Get profile
+    Route::get('/profile', [ProfileController::class, 'profile']);
+
+    // Update profile
+    Route::put('/profile', [ProfileController::class, 'updateProfile']);
+
+    // Request email change OTP
+    Route::post('/profile/email-otp', [ProfileController::class, 'requestEmailChangeOtp']);
+
+    // Delete account
+    Route::delete('/profile', [ProfileController::class, 'deleteAccount']);
+
+    // Order tracking
     Route::get('/orders/user/{user_id}', [OrderController::class, 'userOrders']);
     Route::apiResource('orders', OrderController::class);
 

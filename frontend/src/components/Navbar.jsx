@@ -1,17 +1,40 @@
+/* eslint-disable no-unused-vars */
 import { Link, useNavigate } from "react-router-dom";
+import { User } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useNavbar } from "../contexts/NavbartContext";
 
-function Navbar({ user, onLogout }) {
+function Navbar() {
   const navigate = useNavigate();
+  const { currentUser, logoutUser } = useNavbar();
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleLogout = () => {
-    onLogout();
+    logoutUser();
     navigate("/");
   };
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
-        
+
         <Link
           to="/"
           className="cursor-pointer text-lg font-semibold tracking-wide text-blue-600"
@@ -19,40 +42,68 @@ function Navbar({ user, onLogout }) {
           petal express
         </Link>
 
-        <ul className="hidden items-center gap-8 text-sm text-gray-700 md:flex">
-          <li className="hover:text-blue-600">
+        <ul className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 text-sm text-gray-700 md:flex">
+          <li className="hover:text-[#4f6fa5]">
             <Link to="/">Home</Link>
           </li>
 
-          <li className="hover:text-blue-600">
+          <li className="hover:text-[#4f6fa5]">
             <Link to="/about">About</Link>
           </li>
 
-          <li className="hover:text-blue-600">
+          <li className="hover:text-[#4f6fa5]">
             <Link to="/products">Products</Link>
           </li>
 
-          <li className="hover:text-blue-600">
+          <li className="hover:text-[#4f6fa5]">
             <Link to="/schedule">Schedule</Link>
           </li>
         </ul>
 
-        {user ? (
-          <div className="flex items-center gap-3">
+        {currentUser ? (
+          <div ref={menuRef} className="relative flex items-center gap-4">
             <span className="text-sm text-gray-600">
-              Welcome, {user.first_name}
+              Hi, {currentUser.first_name}
             </span>
+
             <button
-              onClick={handleLogout}
-              className="rounded-full border px-5 py-2 text-sm hover:bg-gray-100"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="flex items-center justify-center rounded-full border p-2 hover:bg-[#4f6fa5]/10 hover:text-[#4f6fa5]"
             >
-              Logout
+              <User size={20} />
             </button>
+
+            {menuOpen && (
+              <div className="absolute right-0 top-12 w-44 rounded-lg border bg-white shadow-md">
+                <Link
+                  to="/profile"
+                  className="block px-4 py-2 text-sm hover:bg-[#4f6fa5]/10 hover:text-[#4f6fa5]"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  My Account
+                </Link>
+
+                <Link
+                  to="/settings"
+                  className="block px-4 py-2 text-sm hover:bg-[#4f6fa5]/10 hover:text-[#4f6fa5]"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Settings
+                </Link>
+
+                <button
+                  onClick={handleLogout}
+                  className="block w-full px-4 py-2 text-left text-sm hover:bg-[#4f6fa5]/10 hover:text-[#4f6fa5]"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <Link
             to="/login"
-            className="rounded-full border px-5 py-2 text-sm hover:bg-gray-100"
+            className="rounded-full border px-5 py-2 text-sm hover:bg-[#4f6fa5]/10 hover:text-[#4f6fa5]"
           >
             Login
           </Link>

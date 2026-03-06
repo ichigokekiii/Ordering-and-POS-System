@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import api from "../../services/api";
-import { useNavbar } from "../../contexts/NavbartContext";
+import { useNavbar } from "../../contexts/NavbarContext";
 
 export default function ProfilePage() {
   const { updateUser } = useNavbar();

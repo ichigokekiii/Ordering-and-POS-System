@@ -45,10 +45,18 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Login successful',
-            'user' => $user,
+            'user' => [
+                'id' => $user->id,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'email' => $user->email,
+                'phone_number' => $user->phone_number,
+                'role' => $user->role,
+            ],
             'token' => $token
         ]);
     }
+
     public function verifyOtp(Request $request)
     {
         $request->validate([
@@ -63,9 +71,9 @@ class AuthController extends Controller
         }
 
         $otp = Otp::where('user_id', $user->id)
-                ->where('code', $request->otp)
-                ->where('expires_at', '>', now())
-                ->first();
+            ->where('code', $request->otp)
+            ->where('expires_at', '>', now())
+            ->first();
 
         if (!$otp) {
             return response()->json(['message' => 'Invalid or expired OTP'], 400);
@@ -76,13 +84,20 @@ class AuthController extends Controller
 
         $otp->delete();
 
-        // Create Sanctum token for auto-login after verification
+        // Auto-login after verification
         $user->tokens()->delete();
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'message' => 'Account verified successfully',
-            'user' => $user,
+            'user' => [
+                'id' => $user->id,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'email' => $user->email,
+                'phone_number' => $user->phone_number,
+                'role' => $user->role,
+            ],
             'token' => $token
         ]);
     }
@@ -99,8 +114,6 @@ class AuthController extends Controller
             return response()->json(['message' => 'User not found'], 404);
         }
 
-
-        // Delete old OTPs
         Otp::where('user_id', $user->id)->delete();
 
         $otpCode = rand(100000, 999999);
@@ -118,14 +131,22 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        if ($request->user() && $request->user()->currentAccessToken()) {
-            $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not authenticated'
+            ], 401);
         }
+
+        // Delete all Sanctum tokens so the user is fully logged out
+        $user->tokens()->delete();
 
         return response()->json([
             'message' => 'Logged out successfully'
         ]);
     }
+
     public function forgotPassword(Request $request)
     {
         $request->validate([
@@ -140,7 +161,6 @@ class AuthController extends Controller
             ], 404);
         }
 
-        // Send OTP
         $this->sendOtp($user);
 
         return response()->json([
@@ -173,7 +193,6 @@ class AuthController extends Controller
 
     private function sendOtp($user)
     {
-        // Delete old OTPs
         Otp::where('user_id', $user->id)->delete();
 
         $otpCode = rand(100000, 999999);

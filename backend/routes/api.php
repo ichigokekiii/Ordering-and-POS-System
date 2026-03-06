@@ -42,13 +42,6 @@ Route::apiResource('premades', PremadeController::class);
 Route::apiResource('schedules', ScheduleController::class);
 Route::post('/schedules/{id}/book', [ScheduleController::class, 'book']);
 
-//order api route
-Route::get('/orders/user/{user_id}', [OrderController::class, 'userOrders']);
-Route::apiResource('orders', OrderController::class);
-
-//order items route
-Route::post('/order-items', [OrderItemController::class, 'store']);
-
 //pos api route
 Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
 Route::get('/pos-transactions/analytics', [PosTransactionsController::class, 'analytics']);
@@ -60,12 +53,6 @@ Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
-
-// Public Resources
-Route::apiResource('products', ProductController::class);
-Route::apiResource('premades', PremadeController::class);
-Route::apiResource('schedules', ScheduleController::class);
-Route::post('/schedules/{id}/book', [ScheduleController::class, 'book']);
 
 
 /*
@@ -90,6 +77,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Order tracking
     Route::get('/orders/user/{user_id}', [OrderController::class, 'userOrders']);
     Route::apiResource('orders', OrderController::class);
+
+    Route::post('/order-items', [OrderItemController::class, 'store']);
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);

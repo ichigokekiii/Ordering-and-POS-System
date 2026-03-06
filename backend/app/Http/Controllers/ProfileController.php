@@ -34,6 +34,7 @@ class ProfileController extends Controller
             'last_name' => $user->last_name,
             'email' => $user->email,
             'phone_number' => $user->phone_number,
+            'role' => $user->role,
             'addresses' => $user->addresses
         ]);
     }
@@ -108,7 +109,15 @@ class ProfileController extends Controller
 
         return response()->json([
             'message' => 'Profile updated successfully',
-            'user' => $user->load('addresses')
+            'user' => [
+                'id' => $user->id,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'email' => $user->email,
+                'phone_number' => $user->phone_number,
+                'role' => $user->role,
+                'addresses' => $user->load('addresses')->addresses
+            ]
         ]);
     }
 

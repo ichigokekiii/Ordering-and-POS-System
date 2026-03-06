@@ -11,6 +11,7 @@ export function NavbarProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(
     JSON.parse(localStorage.getItem("user")) || null
   );
+  const [token, setToken] = useState(localStorage.getItem("token"));
 
   // Fetch user from backend
   const fetchUser = async () => {
@@ -30,6 +31,25 @@ export function NavbarProvider({ children }) {
   useEffect(() => {
     fetchUser();
   }, []);
+
+  // Detect login/logout by watching token changes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const storedToken = localStorage.getItem("token");
+
+      if (storedToken !== token) {
+        setToken(storedToken);
+
+        if (storedToken) {
+          fetchUser(); // user just logged in
+        } else {
+          setCurrentUser(null); // user logged out
+        }
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [token]);
 
   // Listen for updates across tabs or manual dispatch
   useEffect(() => {
@@ -54,9 +74,18 @@ export function NavbarProvider({ children }) {
     window.dispatchEvent(new Event("userUpdated"));
   };
 
-  const logoutUser = () => {
+  const logoutUser = async () => {
+    try {
+      await api.post("/logout");
+    } catch (err) {
+      console.warn("Backend logout failed, continuing local logout", err);
+    }
+
+    // Clear frontend auth state
     setCurrentUser(null);
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
+
     window.dispatchEvent(new Event("userUpdated"));
   };
 

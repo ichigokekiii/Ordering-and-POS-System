@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\SendScheduleBookingMail;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 class ScheduleController extends Controller
 {
@@ -22,12 +23,17 @@ class ScheduleController extends Controller
     {
         $validated = $request->validate([
             'schedule_name' => 'required|string|max:255',
-            'image' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
             'schedule_description' => 'nullable|string',
             'location' => 'required|string|max:255',
-            'event_date' => 'required|date',
+            'event_date' => 'required|date|after_or_equal:today',
             'isAvailable' => 'boolean'
         ]);
+
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('schedules', 'public');
+            $validated['image'] = Storage::url($path);
+        }
 
         $schedule = Schedule::create($validated);
 
@@ -39,14 +45,27 @@ class ScheduleController extends Controller
     {
         $schedule = Schedule::findOrFail($id);
 
+
+        // Prevent booking if the schedule date is already in the past
+        if (Carbon::parse($schedule->event_date)->lt(Carbon::today())) {
+            return response()->json([
+                'message' => 'This event date has already passed.'
+            ], 400);
+        }
+
         $validated = $request->validate([
             'schedule_name' => 'sometimes|required|string|max:255',
-            'image' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
             'schedule_description' => 'nullable|string',
             'location' => 'sometimes|required|string|max:255',
-            'event_date' => 'sometimes|required|date',
+            'event_date' => 'sometimes|required|date|after_or_equal:today',
             'isAvailable' => 'boolean'
         ]);
+
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('schedules', 'public');
+            $validated['image'] = Storage::url($path);
+        }
 
         $schedule->update($validated);
 

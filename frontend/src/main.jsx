@@ -9,7 +9,7 @@ import { CartProvider } from "./contexts/CartContext";
 import { ScheduleProvider } from "./contexts/ScheduleContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LoadingProvider } from "./contexts/LoadingContext";
-import { NavbarProvider } from "./contexts/NavbartContext";
+import { NavbarProvider } from "./contexts/NavbarContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>

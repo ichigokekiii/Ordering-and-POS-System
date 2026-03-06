@@ -1,5 +1,3 @@
-
-
 import { createContext, useContext, useState, useEffect } from "react";
 import api from "../services/api";
 
@@ -28,8 +26,12 @@ export function ScheduleProvider({ children }) {
   // Add schedule
   const addSchedule = async (scheduleData) => {
     try {
-      const res = await api.post("/schedules", scheduleData);
-      setSchedules((prev) => [res.data, ...prev]);
+      const res = await api.post("/schedules", scheduleData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      await fetchSchedules();
       return res.data;
     } catch (error) {
       console.error("Failed to add schedule", error);
@@ -40,10 +42,28 @@ export function ScheduleProvider({ children }) {
   // Update schedule
   const updateSchedule = async (id, updatedData) => {
     try {
-      const res = await api.put(`/schedules/${id}`, updatedData);
-      setSchedules((prev) =>
-        prev.map((s) => (s.id === id ? res.data : s))
-      );
+      let payload;
+
+      // If the data is already FormData (used when editing with image upload)
+      if (updatedData instanceof FormData) {
+        updatedData.append("_method", "PUT");
+        payload = updatedData;
+      } else {
+        // If it's a normal object (used when toggling archive/restore)
+        payload = new FormData();
+        Object.keys(updatedData).forEach((key) => {
+          payload.append(key, updatedData[key]);
+        });
+        payload.append("_method", "PUT");
+      }
+
+      const res = await api.post(`/schedules/${id}`, payload, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      await fetchSchedules();
       return res.data;
     } catch (error) {
       console.error("Failed to update schedule", error);

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useContext, useEffect } from "react";
 import {
@@ -53,7 +54,7 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { user, handleLogin, handleLogout } = useContext(AuthContext);
+  const { user, handleLogin, handleLogout, loading } = useContext(AuthContext);
 
   useEffect(() => {
     if (!user) return;
@@ -70,7 +71,13 @@ function App() {
     if (user.role === "staff" && location.pathname === "/") {
       navigate("/staff");
     }
-  }, [user, location.pathname]);
+  }, [user, location.pathname, navigate]);
+
+  // Prevent routes from evaluating before auth state is restored
+  if (loading) {
+    return null;
+  }
+
 
   // temporary role router
   const isAdminRoute =
@@ -108,114 +115,143 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-        {/* Admin Navbar */}
-        {user?.role === "admin" || user?.role === "owner" ? (
-          <>
+        {/* Admin Routes */}
+        <>
             <Route
               path="/admin"
               element={
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminOverviewPage />
+                !user ? <Navigate to="/login" replace /> :
+                (user.role === "admin" || user.role === "owner") ? (
+                  <div className="flex min-h-screen">
+                    <AdminSidebar onLogout={handleLogout} />
+                    <div className="flex-1 p-6 bg-gray-50">
+                      <AdminOverviewPage />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <Navigate to="/" />
+                )
               }
             />
 
             <Route
               path="/admin/analytics"
               element={
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminAnalyticsPage />
+                !user ? <Navigate to="/login" replace /> :
+                (user.role === "admin" || user.role === "owner") ? (
+                  <div className="flex min-h-screen">
+                    <AdminSidebar onLogout={handleLogout} />
+                    <div className="flex-1 p-6 bg-gray-50">
+                      <AdminAnalyticsPage />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <Navigate to="/" />
+                )
               }
             />
 
             <Route
               path="/admin/products"
               element={
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminProductPage />
+                !user ? <Navigate to="/login" replace /> :
+                (user.role === "admin" || user.role === "owner") ? (
+                  <div className="flex min-h-screen">
+                    <AdminSidebar onLogout={handleLogout} />
+                    <div className="flex-1 p-6 bg-gray-50">
+                      <AdminProductPage />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <Navigate to="/" />
+                )
               }
             />
 
             <Route
   path="/admin/premades"
   element={
-    <div className="flex min-h-screen">
-      <AdminSidebar onLogout={handleLogout} />
-      <div className="flex-1 p-6 bg-gray-50">
-        <AdminPremadePage />
+    !user ? <Navigate to="/login" replace /> :
+    (user.role === "admin" || user.role === "owner") ? (
+      <div className="flex min-h-screen">
+        <AdminSidebar onLogout={handleLogout} />
+        <div className="flex-1 p-6 bg-gray-50">
+          <AdminPremadePage />
+        </div>
       </div>
-    </div>
+    ) : (
+      <Navigate to="/" />
+    )
   }
 />
 
             <Route
               path="/admin/orders"
               element={
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminOrdersPage />
+                !user ? <Navigate to="/login" replace /> :
+                (user.role === "admin" || user.role === "owner") ? (
+                  <div className="flex min-h-screen">
+                    <AdminSidebar onLogout={handleLogout} />
+                    <div className="flex-1 p-6 bg-gray-50">
+                      <AdminOrdersPage />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <Navigate to="/" />
+                )
               }
             />
 
             <Route
               path="/admin/schedule"
               element={
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminSchedulePage />
+                !user ? <Navigate to="/login" replace /> :
+                (user.role === "admin" || user.role === "owner") ? (
+                  <div className="flex min-h-screen">
+                    <AdminSidebar onLogout={handleLogout} />
+                    <div className="flex-1 p-6 bg-gray-50">
+                      <AdminSchedulePage />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <Navigate to="/" />
+                )
               }
             />
 
             <Route
               path="/admin/users"
               element={
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminUsersPage />
+                !user ? <Navigate to="/login" replace /> :
+                (user.role === "admin" || user.role === "owner") ? (
+                  <div className="flex min-h-screen">
+                    <AdminSidebar onLogout={handleLogout} />
+                    <div className="flex-1 p-6 bg-gray-50">
+                      <AdminUsersPage />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <Navigate to="/" />
+                )
               }
             />
           </>
-        ) : (
-          <>
-            <Route path="/admin/*" element={<Navigate to="/" />} />
-          </>
-        )}
 
-        {user?.role === "staff" ? (
-          <Route
-            path="/staff"
-            element={
+        <Route
+          path="/staff"
+          element={
+            !user ? <Navigate to="/login" replace /> : user.role === "staff" ? (
               <div className="min-h-screen flex flex-col">
                 <StaffNavbar user={user} onLogout={handleLogout} />
                 <div className="flex-1">
                   <StaffPage user={user} />
                 </div>
               </div>
-            }
-          />
-        ) : (
-          <Route path="/staff" element={<Navigate to="/" />} />
-        )}
+            ) : (
+              <Navigate to="/" />
+            )
+          }
+        />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
 

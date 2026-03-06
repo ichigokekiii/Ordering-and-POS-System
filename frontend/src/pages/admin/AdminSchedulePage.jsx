@@ -7,7 +7,6 @@ function AdminSchedulePage() {
     fetchSchedules,
     addSchedule,
     updateSchedule,
-    deleteSchedule,
   } = useSchedules();
 
   const [showModal, setShowModal] = useState(false);
@@ -17,7 +16,8 @@ function AdminSchedulePage() {
   const [scheduleDescription, setScheduleDescription] = useState("");
   const [location, setLocation] = useState("");
   const [eventDate, setEventDate] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [image, setImage] = useState(null);
+  const [isAvailable, setIsAvailable] = useState(1);
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
@@ -26,29 +26,31 @@ function AdminSchedulePage() {
     fetchSchedules();
   }, []);
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) setImage(file);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      if (editingSchedule) {
-        await updateSchedule(editingSchedule.id, {
-          schedule_name: scheduleName,
-          schedule_description: scheduleDescription,
-          location: location,
-          event_date: eventDate,
-          image: imageUrl,
-        });
+      const formData = new FormData();
+      formData.append("schedule_name", scheduleName);
+      formData.append("schedule_description", scheduleDescription);
+      formData.append("location", location);
+      formData.append("event_date", eventDate);
+      formData.append("isAvailable", isAvailable);
 
+      if (image) {
+        formData.append("image", image);
+      }
+
+      if (editingSchedule) {
+        await updateSchedule(editingSchedule.id, formData);
         setMessage("Schedule updated successfully!");
       } else {
-        await addSchedule({
-          schedule_name: scheduleName,
-          schedule_description: scheduleDescription,
-          location: location,
-          event_date: eventDate,
-          image: imageUrl,
-        });
-
+        await addSchedule(formData);
         setMessage("Schedule added successfully!");
       }
 
@@ -58,7 +60,8 @@ function AdminSchedulePage() {
       setScheduleDescription("");
       setLocation("");
       setEventDate("");
-      setImageUrl("");
+      setImage(null);
+      setIsAvailable(1);
       setEditingSchedule(null);
       setShowModal(false);
 
@@ -79,19 +82,29 @@ function AdminSchedulePage() {
     setScheduleName(schedule.schedule_name);
     setScheduleDescription(schedule.schedule_description);
     setLocation(schedule.location || "");
-    setEventDate(schedule.event_date);
-    setImageUrl(schedule.image || "");
+    setEventDate(schedule.event_date ? schedule.event_date.split(" ")[0] : "");
+    setImage(null);
+    setIsAvailable(schedule.isAvailable ?? 1);
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
+  const handleToggleArchive = async (schedule) => {
     try {
-      await deleteSchedule(id);
-      setMessage("Schedule deleted successfully!");
+      await updateSchedule(schedule.id, {
+        isAvailable: schedule.isAvailable ? 0 : 1,
+      });
+
+      setMessage(
+        schedule.isAvailable
+          ? "Schedule archived successfully!"
+          : "Schedule restored successfully!"
+      );
       setMessageType("success");
+
+      fetchSchedules();
     } catch (error) {
-      console.error("Failed to delete schedule", error);
-      setMessage("Failed to delete schedule.");
+      console.error("Failed to update schedule status", error);
+      setMessage("Failed to update schedule.");
       setMessageType("error");
     }
 
@@ -100,6 +113,9 @@ function AdminSchedulePage() {
       setMessageType("");
     }, 3000);
   };
+
+  const activeSchedules = schedules.filter((s) => s.isAvailable);
+  const archivedSchedules = schedules.filter((s) => !s.isAvailable);
 
   return (
     <div className="px-10 py-10">
@@ -126,52 +142,134 @@ function AdminSchedulePage() {
         </button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        {schedules.map((schedule) => (
-          <div
-            key={schedule.id}
-            className="rounded border p-4 shadow-sm"
-          >
-            {schedule.image && (
-              <img
-                src={schedule.image}
-                alt={schedule.schedule_name}
-                className="mb-3 h-40 w-full rounded object-cover"
-              />
+      <div className="space-y-10">
+        <div>
+          <h3 className="mb-4 text-xl font-semibold text-gray-700 border-b pb-2">Active Schedules</h3>
+          <div className="grid gap-6 md:grid-cols-3">
+            {activeSchedules.length === 0 ? (
+              <p className="text-gray-400">No active schedules</p>
+            ) : (
+              activeSchedules.map((schedule) => (
+                <div
+                  key={schedule.id}
+                  className="rounded border p-4 shadow-sm"
+                >
+                  <div className="mb-2">
+                    {!schedule.isAvailable ? (
+                      <span className="text-xs font-bold text-gray-500">Archived</span>
+                    ) : (
+                      <span className="flex items-center text-xs font-bold text-green-600">
+                        <span className="mr-1">✓</span> Active
+                      </span>
+                    )}
+                  </div>
+                  {schedule.image && (
+                    <img
+                      src={`${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:8000'}${schedule.image}`}
+                      alt={schedule.schedule_name}
+                      className="mb-3 h-40 w-full rounded object-cover"
+                    />
+                  )}
+
+                  <h3 className="font-medium">
+                    {schedule.schedule_name}
+                  </h3>
+
+                  <p className="text-sm text-gray-500">
+                    {schedule.schedule_description}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    📍 {schedule.location}
+                  </p>
+
+                  <p className="mt-2 text-sm text-blue-600">
+                    {schedule.event_date?.split(" ")[0]}
+                  </p>
+
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => handleEdit(schedule)}
+                      className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={() => handleToggleArchive(schedule)}
+                      className="rounded border px-3 py-1 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Archive
+                    </button>
+                  </div>
+                </div>
+              ))
             )}
-
-            <h3 className="font-medium">
-              {schedule.schedule_name}
-            </h3>
-
-            <p className="text-sm text-gray-500">
-              {schedule.schedule_description}
-            </p>
-            <p className="text-sm text-gray-600">
-              📍 {schedule.location}
-            </p>
-
-            <p className="mt-2 text-sm text-blue-600">
-              {schedule.event_date}
-            </p>
-
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => handleEdit(schedule)}
-                className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-              >
-                Edit
-              </button>
-
-              <button
-                onClick={() => handleDelete(schedule.id)}
-                className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
-              >
-                Delete
-              </button>
-            </div>
           </div>
-        ))}
+        </div>
+
+        <div>
+          <h3 className="mb-4 text-xl font-semibold text-gray-700 border-b pb-2">Archived Schedules</h3>
+          <div className="grid gap-6 md:grid-cols-3">
+            {archivedSchedules.length === 0 ? (
+              <p className="text-gray-400">No archived schedules</p>
+            ) : (
+              archivedSchedules.map((schedule) => (
+                <div
+                  key={schedule.id}
+                  className="rounded border p-4 shadow-sm"
+                >
+                  <div className="mb-2">
+                    {!schedule.isAvailable ? (
+                      <span className="text-xs font-bold text-gray-500">Archived</span>
+                    ) : (
+                      <span className="flex items-center text-xs font-bold text-green-600">
+                        <span className="mr-1">✓</span> Active
+                      </span>
+                    )}
+                  </div>
+                  {schedule.image && (
+                    <img
+                      src={`${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:8000'}${schedule.image}`}
+                      alt={schedule.schedule_name}
+                      className={`mb-3 h-40 w-full rounded object-cover ${!schedule.isAvailable && "grayscale opacity-60"}`}
+                    />
+                  )}
+
+                  <h3 className="font-medium">
+                    {schedule.schedule_name}
+                  </h3>
+
+                  <p className="text-sm text-gray-500">
+                    {schedule.schedule_description}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    📍 {schedule.location}
+                  </p>
+
+                  <p className="mt-2 text-sm text-blue-600">
+                    {schedule.event_date?.split(" ")[0]}
+                  </p>
+
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => handleEdit(schedule)}
+                      className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={() => handleToggleArchive(schedule)}
+                      className="rounded border px-3 py-1 text-sm text-green-700 hover:bg-green-50"
+                    >
+                      Restore
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
 
       {showModal && (
@@ -214,20 +312,25 @@ function AdminSchedulePage() {
                 type="date"
                 className="w-full rounded border px-4 py-2"
                 value={eventDate}
-                onChange={(e) =>
-                  setEventDate(e.target.value)
-                }
+                min={new Date().toISOString().split("T")[0]}
+                onChange={(e) => setEventDate(e.target.value)}
                 required
               />
 
-              <input
-                className="w-full rounded border px-4 py-2"
-                placeholder="Image URL (optional)"
-                value={imageUrl}
-                onChange={(e) =>
-                  setImageUrl(e.target.value)
-                }
-              />
+              <div className="rounded border px-4 py-2">
+                <label className="mb-1 block text-sm font-medium text-gray-700">Schedule Image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="w-full text-sm"
+                />
+                {!image && editingSchedule && (
+                  <p className="mt-1 text-xs text-gray-400">
+                    No new file chosen — existing image will be kept
+                  </p>
+                )}
+              </div>
 
               <div className="flex justify-end gap-2 pt-2">
                 <button

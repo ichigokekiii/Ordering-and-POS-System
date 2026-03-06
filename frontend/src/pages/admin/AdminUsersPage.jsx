@@ -31,6 +31,17 @@ function AdminUsersPage() {
   const [toast, setToast] = useState(null);
   const isOwner = currentUser?.role?.toLowerCase() === "owner";
 
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showConfirmSave, setShowConfirmSave] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+
+  const [editForm, setEditForm] = useState({
+    email: "",
+    password: "",
+    confirmPassword: ""
+  });
+
   useEffect(() => {
     fetchUsersFromDatabase();
   }, []);
@@ -120,15 +131,63 @@ function AdminUsersPage() {
   };
 
   const handleDeleteUser = (userId) => {
-    if (isOwner) return;
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
-
     api.delete(`/users/${userId}`)
       .then(() => {
         setUsers((prev) => prev.filter((u) => u.id !== userId));
+        setShowConfirmDelete(false);
+        setShowEditModal(false);
+        setToast({ type: "success", message: "User deleted successfully" });
+        setTimeout(() => setToast(null), 4000);
       })
       .catch(() => {
         setUpdateError("Failed to delete user");
+      });
+  };
+
+  // Edit Modal helpers
+  const openEditModal = (user) => {
+    setSelectedUser(user);
+    setEditForm({
+      email: user.email || "",
+      password: "",
+      confirmPassword: ""
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveChanges = () => {
+    if (editForm.password && editForm.password !== editForm.confirmPassword) {
+      setToast({ type: "error", message: "Passwords do not match" });
+      setTimeout(() => setToast(null), 4000);
+      return;
+    }
+    setShowConfirmSave(true);
+  };
+
+  const confirmSaveChanges = () => {
+    const payload = {
+      email: editForm.email
+    };
+
+    if (editForm.password) {
+      payload.password = editForm.password;
+    }
+
+    api.put(`/users/${selectedUser.id}`, payload)
+      .then((res) => {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === selectedUser.id ? res.data : u))
+        );
+
+        setShowConfirmSave(false);
+        setShowEditModal(false);
+
+        setToast({ type: "success", message: "User updated successfully" });
+        setTimeout(() => setToast(null), 4000);
+      })
+      .catch(() => {
+        setToast({ type: "error", message: "Failed to update user" });
+        setTimeout(() => setToast(null), 4000);
       });
   };
 
@@ -324,12 +383,16 @@ function AdminUsersPage() {
                   <th className="pb-4">Role</th>
                   <th className="pb-4">Status</th>
                   <th className="pb-4">Created Date</th>
-                  {!isOwner && <th className="pb-4">Actions</th>}
+                  {/* Actions column removed */}
                 </tr>
               </thead>
               <tbody className="text-sm text-gray-700">
                 {getFilteredAndSortedUsers().map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50 border-b">
+                  <tr
+                    key={user.id}
+                    className="hover:bg-gray-50 border-b cursor-pointer"
+                    onClick={() => openEditModal(user)}
+                  >
                     <td className="py-5">{user.id}</td>
                     <td className="py-5 font-medium">
                       {user.first_name} {user.last_name}
@@ -342,6 +405,7 @@ function AdminUsersPage() {
                         </span>
                       ) : (
                         <select
+                          onClick={(e) => e.stopPropagation()}
                           value={formatRole(user.role).toLowerCase()}
                           onChange={(e) => handleRoleChange(user.id, e.target.value)}
                           disabled={updatingUserId === user.id}
@@ -375,16 +439,7 @@ function AdminUsersPage() {
                     <td className="py-5">
                       {new Date(user.created_at).toLocaleDateString("en-US")}
                     </td>
-                    {!isOwner && (
-                      <td className="py-5">
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="text-red-600 hover:underline"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    )}
+                    {/* Actions cell removed */}
                   </tr>
                 ))}
               </tbody>
@@ -473,6 +528,135 @@ function AdminUsersPage() {
                 className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl"
               >
                 Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Edit User Modal */}
+      {showEditModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-white rounded-3xl w-[90%] max-w-md shadow-xl p-8">
+            <h2 className="text-2xl font-bold mb-6">Edit User</h2>
+
+            <div className="space-y-4">
+              <input
+                type="email"
+                placeholder="Email"
+                value={editForm.email}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, email: e.target.value })
+                }
+                className="w-full border rounded-xl px-4 py-3 text-sm"
+              />
+
+              <input
+                type="password"
+                placeholder="New Password"
+                value={editForm.password}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, password: e.target.value })
+                }
+                className="w-full border rounded-xl px-4 py-3 text-sm"
+              />
+
+              <input
+                type="password"
+                placeholder="Confirm Password"
+                value={editForm.confirmPassword}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, confirmPassword: e.target.value })
+                }
+                className="w-full border rounded-xl px-4 py-3 text-sm"
+              />
+            </div>
+
+            <div className="flex justify-between mt-8">
+              <button
+                onClick={() => setShowConfirmDelete(true)}
+                className="text-red-600 hover:underline"
+              >
+                Delete User
+              </button>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="px-5 py-2 border rounded-xl hover:bg-gray-100"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={handleSaveChanges}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Save Modal */}
+      {showConfirmSave && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-[90%] max-w-sm p-8 text-center animate-fade-in">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">
+              Confirm Changes
+            </h3>
+
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to save these changes?
+            </p>
+
+            <div className="flex justify-center gap-3">
+              <button
+                onClick={() => setShowConfirmSave(false)}
+                className="px-5 py-2 rounded-lg border text-gray-700 hover:bg-gray-100 transition"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={confirmSaveChanges}
+                className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
+              >
+                Yes, Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Delete Modal */}
+      {showConfirmDelete && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-[90%] max-w-sm p-8 text-center animate-fade-in">
+            <h3 className="text-lg font-semibold text-red-600 mb-3">
+              Delete User
+            </h3>
+
+            <p className="text-sm text-gray-600 mb-6">
+              This action will permanently remove this user account.
+              <br />
+              Are you sure you want to continue?
+            </p>
+
+            <div className="flex justify-center gap-3">
+              <button
+                onClick={() => setShowConfirmDelete(false)}
+                className="px-5 py-2 rounded-lg border text-gray-700 hover:bg-gray-100 transition"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={() => handleDeleteUser(selectedUser.id)}
+                className="px-5 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+              >
+                Delete
               </button>
             </div>
           </div>

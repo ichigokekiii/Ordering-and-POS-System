@@ -2,7 +2,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { User } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { useNavbar } from "../contexts/NavbartContext";
+import { useNavbar } from "../contexts/NavbarContext";
 
 function Navbar() {
   const navigate = useNavigate();
@@ -26,9 +26,13 @@ function Navbar() {
     };
   }, []);
 
-  const handleLogout = () => {
-    logoutUser();
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      navigate("/");
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
   };
 
   return (

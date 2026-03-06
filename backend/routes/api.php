@@ -15,6 +15,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PosTransactionsController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ContentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,6 +42,9 @@ Route::apiResource('premades', PremadeController::class);
 //schedule api route
 Route::apiResource('schedules', ScheduleController::class);
 Route::post('/schedules/{id}/book', [ScheduleController::class, 'book']);
+
+//cms controller
+Route::apiResource('contents', ContentController::class);
 
 //pos api route
 Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);

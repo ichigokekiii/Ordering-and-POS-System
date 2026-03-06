@@ -1,7 +1,7 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
+import React from "react";
+import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import './main.css';
+import "./main.css";
 import App from "./App";
 import { ProductProvider } from "./contexts/ProductContext";
 import { PremadeProvider } from "./contexts/PremadeContext";
@@ -10,6 +10,7 @@ import { ScheduleProvider } from "./contexts/ScheduleContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LoadingProvider } from "./contexts/LoadingContext";
 import { NavbarProvider } from "./contexts/NavbarContext";
+import { OrderProvider } from "./contexts/OrderContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
@@ -20,7 +21,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             <PremadeProvider>
               <ScheduleProvider>
                 <AuthProvider>
-                  <App />
+                  <OrderProvider>
+                    <App />
+                  </OrderProvider>
                 </AuthProvider>
               </ScheduleProvider>
             </PremadeProvider>
@@ -28,5 +31,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         </CartProvider>
       </NavbarProvider>
     </LoadingProvider>
-  </BrowserRouter>
+  </BrowserRouter>,
 );

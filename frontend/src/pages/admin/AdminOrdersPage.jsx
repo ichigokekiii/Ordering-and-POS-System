@@ -1,6 +1,58 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../../services/api";
 import { Pencil, Trash2, RefreshCw } from "lucide-react";
+
+
+const OrderCard = ({ order, onEdit, onDelete }) => (
+  <div className="rounded border p-4 shadow-sm bg-white">
+    <div className="mb-2">
+      <span
+        className={`px-2 py-1 text-xs font-bold rounded ${
+          order.order_status === "Pending"
+            ? "bg-yellow-100 text-yellow-700"
+            : order.order_status === "Processing"
+            ? "bg-blue-100 text-blue-700"
+            : order.order_status === "Shipped"
+            ? "bg-purple-100 text-purple-700"
+            : order.order_status === "Delivered"
+            ? "bg-green-100 text-green-700"
+            : "bg-red-100 text-red-700"
+        }`}
+      >
+        {order.order_status}
+      </span>
+    </div>
+
+    <h3 className="font-medium">Order: {order.order_id || order.id}</h3>
+
+    <p className="text-sm text-gray-600">User ID: {order.user_id}</p>
+    <p className="text-sm text-gray-600">Delivery: {order.delivery_method}</p>
+
+    <p className="text-gray-500">
+      {new Date(order.created_at).toLocaleDateString()}
+    </p>
+
+    <p className="text-[#3B5BDB] font-medium mt-1">
+      ₱{order.total_amount}
+    </p>
+
+    <div className="mt-4 flex gap-2">
+      <button
+        onClick={() => onEdit(order)}
+        className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+      >
+        Edit
+      </button>
+
+      <button
+        onClick={() => onDelete(order.order_id || order.id)}
+        className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+      >
+        Delete
+      </button>
+    </div>
+  </div>
+);
 
 function AdminOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -10,7 +62,7 @@ function AdminOrdersPage() {
 
   const fetchOrders = async () => {
     try {
-      const res = await axios.get("http://localhost:8000/api/orders");
+      const res = await api.get("/orders");
 
       // Support both raw array and wrapped response
       const data = Array.isArray(res.data)
@@ -33,7 +85,7 @@ function AdminOrdersPage() {
     if (!window.confirm("Are you sure you want to delete this order?")) return;
 
     try {
-      await axios.delete(`http://localhost:8000/api/orders/${id}`);
+      await api.delete(`/orders/${id}`);
       fetchOrders();
     } catch (err) {
       console.error("Delete failed:", err);
@@ -44,18 +96,21 @@ function AdminOrdersPage() {
     if (!editingOrder) return;
 
     try {
-      await axios.put(
-        `http://localhost:8000/api/orders/${editingOrder.order_id || editingOrder.id}`,
+      await api.put(
+        `/orders/${editingOrder.order_id || editingOrder.id}`,
         { order_status: status }
       );
 
       // Update local state immediately for better UX
       setOrders((prev) =>
-        prev.map((order) =>
-          order.order_id === editingOrder.order_id || order.id === editingOrder.id
+        prev.map((order) => {
+          const id = order.order_id || order.id;
+          const editingId = editingOrder.order_id || editingOrder.id;
+
+          return id === editingId
             ? { ...order, order_status: status }
-            : order
-        )
+            : order;
+        })
       );
 
       setEditingOrder(null);
@@ -66,103 +121,257 @@ function AdminOrdersPage() {
   };
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-[#3B5BDB]">
-          Orders Dashboard
-        </h1>
-        <button
-          onClick={fetchOrders}
-          className="flex items-center gap-2 px-4 py-2 bg-[#3B5BDB] text-white rounded-lg hover:opacity-90"
-        >
-          <RefreshCw size={16} />
-          Refresh
-        </button>
+    <div className="px-10 py-10">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-black">Orders</h1>
       </div>
 
-      <div className="bg-white shadow-md rounded-2xl overflow-hidden border border-gray-100">
+      <div className="space-y-6">
         {loading ? (
-          <div className="p-6 text-gray-500">Loading orders...</div>
+          <div className="text-gray-500">Loading orders...</div>
         ) : orders.length === 0 ? (
-          <div className="p-6 text-gray-500">No orders found.</div>
+          <p className="py-6 text-center text-gray-400">No orders yet</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-100 border-b border-gray-200">
-              <tr className="text-left">
-                <th className="p-4">ID</th>
-                <th className="p-4">User</th>
-                <th className="p-4">Total</th>
-                <th className="p-4">Status</th>
-                <th className="p-4">Created</th>
-                <th className="p-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => (
-                <tr
-                  key={order.order_id || order.id}
-                  className="border-b border-gray-100 hover:bg-gray-50 transition duration-200"
-                >
-                  <td className="p-4">{order.order_id || order.id}</td>
-                  <td className="p-4">{order.user_id}</td>
-                  <td className="p-4 text-[#3B5BDB] font-medium">
-                    ₱{order.total_amount}
-                  </td>
-                  <td className="p-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        order.order_status === "Pending"
-                          ? "bg-yellow-100 text-yellow-700"
-                          : order.order_status === "Processing"
-                          ? "bg-blue-100 text-blue-700"
-                          : order.order_status === "Shipped"
-                          ? "bg-purple-100 text-purple-700"
-                          : order.order_status === "Delivered"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {order.order_status}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    {new Date(order.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="p-4 flex gap-3">
-                    <button
-                      onClick={() => {
-                        setEditingOrder(order);
-                        setStatus(order.order_status);
-                      }}
-                      className="text-[#3B5BDB] hover:text-[#2f4ac7] transition"
-                    >
-                      <Pencil size={18} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(order.order_id || order.id)}
-                      className="text-red-500 hover:text-red-700 transition"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
+          <div className="rounded border p-6 shadow-sm">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-xl font-semibold text-gray-800">
+                Orders list
+              </h2>
+            </div>
+
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="text-gray-500 text-sm uppercase border-b">
+                  <th className="pb-4">Order ID</th>
+                  <th className="pb-4">User</th>
+                  <th className="pb-4">Delivery</th>
+                  <th className="pb-4">Total</th>
+                  <th className="pb-4">Status</th>
+                  <th className="pb-4">Created Date</th>
+                  <th className="pb-4">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+
+              <tbody className="text-sm text-gray-700">
+                {orders.map((order) => (
+                  <tr
+                    key={order.order_id || order.id}
+                    className="hover:bg-gray-50 border-b cursor-pointer"
+                    onClick={() => {
+                      setEditingOrder(order);
+                      setStatus(order.order_status);
+                    }}
+                  >
+                    <td className="py-5 font-medium">
+                      {order.order_id || order.id}
+                    </td>
+
+                    <td className="py-5">{order.user_id}</td>
+
+                    <td className="py-5 capitalize">
+                      {order.delivery_method}
+                    </td>
+
+                    <td className="py-5 text-[#3B5BDB] font-medium">
+                      ₱{order.total_amount}
+                    </td>
+
+                    <td className="py-5">
+                      <span
+                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          order.order_status === "Pending"
+                            ? "bg-yellow-100 text-yellow-700"
+                            : order.order_status === "Processing"
+                            ? "bg-blue-100 text-blue-700"
+                            : order.order_status === "Shipped"
+                            ? "bg-purple-100 text-purple-700"
+                            : order.order_status === "Delivered"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {order.order_status}
+                      </span>
+                    </td>
+
+                    <td className="py-5">
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </td>
+
+                    <td className="py-5 flex gap-2">
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(order.order_id || order.id);
+                        }}
+                        className="px-3 py-1 border rounded text-red-600 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
       {editingOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-[420px] shadow-xl border border-gray-100">
-            <h2 className="text-lg font-semibold mb-4">
-              Update Order Status
+          <div className="bg-white rounded-2xl p-8 w-[640px] max-h-[85vh] overflow-y-auto shadow-xl border border-gray-100">
+            <h2 className="text-xl font-semibold mb-4">
+              Order Details
             </h2>
 
+            {/* Order Info */}
+            <div className="mb-6 rounded-lg border p-4 bg-gray-50">
+              <h3 className="text-sm font-semibold text-gray-800 mb-2">Order Info</h3>
+
+              <div className="space-y-1 text-sm text-gray-700">
+                <p>
+                  <span className="font-medium">Order ID:</span>{" "}
+                  {editingOrder.order_id || editingOrder.id}
+                </p>
+
+                <p>
+                  <span className="font-medium">Order Date:</span>{" "}
+                  {editingOrder.created_at
+                    ? new Date(editingOrder.created_at).toLocaleString()
+                    : "N/A"}
+                </p>
+
+                <p>
+                  <span className="font-medium">Delivery Method:</span>{" "}
+                  {editingOrder.delivery_method}
+                </p>
+
+                {editingOrder.special_message && (
+                  <p>
+                    <span className="font-medium">Card Message:</span>{" "}
+                    {editingOrder.special_message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* User Info */}
+            <div className="mb-6 rounded-lg border p-4 bg-gray-50">
+              <h3 className="text-sm font-semibold text-gray-800 mb-2">Customer Info</h3>
+
+              <div className="space-y-1 text-sm text-gray-700">
+                <p>
+                  <span className="font-medium">Name:</span>{" "}
+                  {editingOrder.user?.first_name
+                    ? `${editingOrder.user.first_name} ${editingOrder.user.last_name}`
+                    : "N/A"}
+                </p>
+
+                <p>
+                  <span className="font-medium">Email:</span>{" "}
+                  {editingOrder.user?.email || "N/A"}
+                </p>
+
+                <p>
+                  <span className="font-medium">Phone:</span>{" "}
+                  {editingOrder.user?.phone_number || "N/A"}
+                </p>
+
+                {editingOrder.address && (
+                  <p>
+                    <span className="font-medium">Delivery Address:</span>{" "}
+                    {editingOrder.address}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Ordered Products */}
+            {editingOrder.order_items && editingOrder.order_items.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-800 mb-2">
+                  Product Info
+                </h3>
+
+                <div className="border rounded-lg divide-y bg-white">
+                  {editingOrder.order_items.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 text-sm gap-4 hover:bg-gray-50 transition">
+                      <div className="flex items-center gap-3">
+                        
+                        {/* Product Image */}
+                        {item.product?.image && (
+                          <img
+                            src={`${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:8000'}${item.product.image}`}
+                            alt={item.product?.name || item.product_name}
+                            className="w-12 h-12 object-cover rounded border"
+                          />
+                        )}
+
+                        <div>
+                          <p className="font-medium">
+                            {item.product?.name || item.product_name}
+                          </p>
+
+                          {/* Product ID */}
+                          {item.product_id && (
+                            <p className="text-xs text-gray-500">
+                              Product ID: {item.product_id}
+                            </p>
+                          )}
+
+                          {item.special_message && (
+                            <p className="text-xs text-gray-500">
+                              Message: {item.special_message}
+                            </p>
+                          )}
+
+                          <p className="text-xs text-gray-500">
+                            Quantity: {item.quantity}
+                          </p>
+
+                          <p className="text-xs text-gray-500">
+                            Subtotal: ₱{item.quantity * item.price_at_purchase}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="font-medium text-[#3B5BDB]">
+                          ₱{item.price_at_purchase}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Order Total */}
+            <div className="mb-4 border-t pt-4 flex justify-between items-center">
+              <span className="text-sm font-semibold text-gray-700">Order Total</span>
+              <span className="text-lg font-bold text-[#3B5BDB]">
+                ₱{editingOrder.total_amount}
+              </span>
+            </div>
+
+            <p className="text-sm font-semibold text-gray-800 mb-2 border-t pt-4">
+              Update Order Status
+            </p>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 mb-4"
+              className={`w-full border rounded-lg px-3 py-2 mb-4 font-medium ${
+                status === "Pending"
+                  ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                  : status === "Processing"
+                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                  : status === "Shipped"
+                  ? "bg-purple-50 text-purple-700 border-purple-200"
+                  : status === "Delivered"
+                  ? "bg-green-50 text-green-700 border-green-200"
+                  : "bg-red-50 text-red-700 border-red-200"
+              }`}
             >
               <option value="Pending">Pending</option>
               <option value="Processing">Processing</option>
@@ -171,7 +380,7 @@ function AdminOrdersPage() {
               <option value="Cancelled">Cancelled</option>
             </select>
 
-            <div className="flex justify-end gap-3">
+            <div className="flex justify-end gap-3 pt-2">
               <button
                 onClick={() => setEditingOrder(null)}
                 className="px-4 py-2 border rounded-lg"

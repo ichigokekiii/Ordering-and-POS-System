@@ -58,11 +58,13 @@ function SchedulePage() {
     );
   }
 
-  // Pagination Logic
-  const totalPages = Math.ceil(schedules.length / schedulesPerPage);
+  // Only show schedules that are available (isAvailable = 1)
+  const availableSchedules = schedules.filter((s) => s.isAvailable === 1 || s.isAvailable === true);
+
+  const totalPages = Math.ceil(availableSchedules.length / schedulesPerPage);
   const indexOfLast = currentPage * schedulesPerPage;
   const indexOfFirst = indexOfLast - schedulesPerPage;
-  const currentSchedules = schedules.slice(indexOfFirst, indexOfLast);
+  const currentSchedules = availableSchedules.slice(indexOfFirst, indexOfLast);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
@@ -138,7 +140,7 @@ function SchedulePage() {
       <div className="p-10">
         <h2 className="text-3xl font-bold mb-6">Pop-Up Events</h2>
 
-        {schedules.length === 0 ? (
+        {availableSchedules.length === 0 ? (
           <div className="border p-4 rounded bg-gray-50 text-gray-500">
             No upcoming events available.
           </div>

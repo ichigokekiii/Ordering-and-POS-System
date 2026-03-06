@@ -76,7 +76,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Order tracking
     Route::get('/orders/user/{user_id}', [OrderController::class, 'userOrders']);
-    Route::apiResource('orders', OrderController::class);
 
     Route::post('/order-items', [OrderItemController::class, 'store']);
 
@@ -91,6 +90,9 @@ Route::middleware('auth:sanctum')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:sanctum', 'admin.owner'])->group(function () {
+
+    // Admin Order Management
+    Route::apiResource('orders', OrderController::class);
 
     // Transaction & Analytics
     Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);

@@ -52,7 +52,7 @@ function AdminOverviewPage() {
   return (
     <div className="flex">
       <div className="flex-1 px-10 py-10">
-        <h1 className="mb-6 text-3xl font-semibold text-black">
+        <h1 className="mb-6 text-2xl font-semibold text-black">
           Admin Overview
         </h1>
 

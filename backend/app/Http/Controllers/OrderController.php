@@ -15,7 +15,11 @@ class OrderController extends Controller
     public function index()
     {
         try {
-            $orders = Order::orderBy('created_at', 'desc')->get();
+            $orders = Order::with([
+                'user',
+                'payment',
+                'orderItems.product'
+            ])->orderBy('created_at', 'desc')->get();
 
             return response()->json($orders);
         } catch (\Exception $e) {
@@ -59,7 +63,7 @@ class OrderController extends Controller
                 $order->payment_id      = null;
                 $order->order_date      = $now->toDateString();
                 $order->total_amount    = $request->total_amount;
-                $order->order_status    = 'pending';
+                $order->status    = 'pending';
                 $order->special_message = $request->special_message;
                 $order->address         = $request->address;
                 $order->delivery_method = $request->delivery_method;
@@ -99,4 +103,63 @@ class OrderController extends Controller
                 'payment_id' => $paymentId,
             ], 201);
         }
+
+    public function update(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'status' => 'nullable|string',
+                'order_status' => 'nullable|string'
+            ]);
+
+            // Support only custom order_id strings (no numeric 'id' column)
+            $order = Order::where('order_id', $id)->firstOrFail();
+
+            $status = $request->input('status') ?? $request->input('order_status');
+
+            if (!$status) {
+                return response()->json([
+                    'message' => 'Failed to update order',
+                    'error' => 'The status field is required.'
+                ], 400);
+            }
+
+            $order->order_status = $status;
+            $order->save();
+
+            // Reload relationships so frontend receives full order data
+            $order->load([
+                'user',
+                'payment',
+                'orderItems.product'
+            ]);
+
+            return response()->json($order);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to update order',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function destroy($id)
+    {
+        try {
+            // Find order using the custom primary key
+            $order = Order::where('order_id', $id)->firstOrFail();
+
+            $order->delete();
+
+            return response()->json([
+                'message' => 'Order deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to delete order',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

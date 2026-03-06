@@ -227,12 +227,12 @@ function AdminUsersPage() {
   return (
     <div className="px-10 py-10">
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-3xl font-semibold text-black">Users</h1>
+        <h1 className="text-2xl font-semibold text-black">Users</h1>
 
         {!isOwner && (
           <button
             onClick={() => setShowCreateModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 text-base font-medium rounded-xl transition"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-base font-medium rounded-md transition"
           >
             + Add User
           </button>

@@ -26,12 +26,17 @@ function CheckoutPage() {
   // Manual inputs
   const [address, setAddress] = useState("");
 
+  // Saved addresses from profile
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressIndex, setSelectedAddressIndex] = useState(""); // "" = unselected, number = saved, "manual" = manual
+  const [useManualAddress, setUseManualAddress] = useState(false);
+
   // Payment inputs
   const [paymentMethod, setPaymentMethod] = useState("");
   const [referenceCode, setReferenceCode] = useState("");
 
   // Validation errors
-const [errors, setErrors] = useState({ image: "" });
+  const [errors, setErrors] = useState({ image: "" });
 
   const GRAND_TOTAL = totalPrice;
 
@@ -44,13 +49,40 @@ const [errors, setErrors] = useState({ image: "" });
     setUserId(stored.id || null);
   }, []);
 
+  // Fetch saved addresses from profile
+  useEffect(() => {
+    const fetchAddresses = async () => {
+      try {
+        const res = await api.get("/profile");
+        setSavedAddresses(res.data.addresses || []);
+      } catch (err) {
+        console.error("Failed to load addresses", err);
+      }
+    };
+    fetchAddresses();
+  }, []);
+
+  // Build a readable one-line string from a saved address object
+  const formatAddress = (addr) =>
+    [addr.house_number, addr.street, addr.barangay, addr.city, addr.zip_code]
+      .filter(Boolean)
+      .join(", ");
+
+  // Resolve the final address string for submission
+  const resolvedAddress = useManualAddress
+    ? address
+    : selectedAddressIndex !== "" && selectedAddressIndex !== "manual"
+    ? formatAddress(savedAddresses[Number(selectedAddressIndex)])
+    : address;
+
   const validate = () => {
     const newErrors = {};
 
     if (deliveryMode === "delivery") {
-      if (!address.trim()) {
+      const finalAddr = resolvedAddress.trim();
+      if (!finalAddr) {
         newErrors.address = "Delivery address is required.";
-      } else if (address.trim().length < 10) {
+      } else if (finalAddr.length < 10) {
         newErrors.address = "Please enter a more complete address (min 10 characters).";
       }
     }
@@ -70,50 +102,43 @@ const [errors, setErrors] = useState({ image: "" });
   };
 
   const handleFileChange = (e) => {
-  const file = e.target.files[0];
-  if (!file) {
-    setPaymentProof(null);
-    setPreviewUrl(null);
-    return;
-  }
-  if (file.size > 2 * 1024 * 1024) {
-    setErrors(prev => ({ ...prev, image: "Image must be under 2MB. Please compress it first." }));
+    const file = e.target.files[0];
+    if (!file) {
+      setPaymentProof(null);
+      setPreviewUrl(null);
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setErrors(prev => ({ ...prev, image: "Image must be under 2MB. Please compress it first." }));
+      setPaymentProof(null);
+      setPreviewUrl(null);
+      setFileInputKey(prev => prev + 1);
+      return;
+    }
+    setErrors(prev => ({ ...prev, image: "" }));
+    setPaymentProof(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const resetFileInput = () => {
     setPaymentProof(null);
     setPreviewUrl(null);
     setFileInputKey(prev => prev + 1);
-    return;
-  }
-  setErrors(prev => ({ ...prev, image: "" }));
-  setPaymentProof(file);
-  setPreviewUrl(URL.createObjectURL(file));
-};
-
-  const resetFileInput = () => {
-  setPaymentProof(null);
-  setPreviewUrl(null);
-  setFileInputKey(prev => prev + 1);
-  setErrors(prev => ({ ...prev, image: "" }));  // ADD THIS LINE
-};
+    setErrors(prev => ({ ...prev, image: "" }));
+  };
 
   /**
    * Builds the order_items rows from the cart.
-   *
-   * Premade item → 1 row, custom_id = null
-   * Custom item  → 1 row per flower inside item.items[], grouped by a
-   *                custom_id that increments for each distinct custom
-   *                bouquet in the cart.
    */
   const buildOrderItems = (orderId) => {
     const rows = [];
-    let customCounter = 0;  // increments per custom bouquet in cart
-    let premadeCounter = 0; // increments per premade item in cart
+    let customCounter = 0;
+    let premadeCounter = 0;
 
     for (const cartItem of cartItems) {
-
       if (cartItem.type === "custom") {
         customCounter += 1;
         const customId = customCounter;
-        // greetingCard lives on cartItem, not on the individual flower objects
         const message = cartItem.greetingCard || null;
 
         for (let i = 0; i < cartItem.items.length; i++) {
@@ -128,20 +153,13 @@ const [errors, setErrors] = useState({ image: "" });
             price_at_purchase: flower.free
               ? 0
               : Number(flower.price) * (flower.quantity ?? 1),
-            // Only store the greeting message on the first row (bouquet base)
-            // to avoid duplicating it across every flower row
             special_message:   i === 0 ? message : null,
           });
         }
-
       } else {
-        // Each premade cart entry gets its own premade_id so that two orders
-        // of the same product but with different greeting cards stay separate
         premadeCounter += 1;
         rows.push({
           order_id:          orderId,
-          // _productId is the real DB id; id may be a synthetic string for
-          // greeting-card entries (e.g. "5-card-1234")
           product_id:        cartItem._productId ?? cartItem.id,
           product_name:      cartItem.name,
           custom_id:         null,
@@ -171,10 +189,9 @@ const [errors, setErrors] = useState({ image: "" });
     setIsSubmitting(true);
 
     try {
-      // ── Step 1: Create the order ──────────────────────────────────────
       const formData = new FormData();
       formData.append("user_id",          userId);
-      formData.append("address",          deliveryMode === "pickup" ? "Pickup" : address);
+      formData.append("address",          deliveryMode === "pickup" ? "Pickup" : resolvedAddress);
       formData.append("delivery_method",  deliveryMode);
       formData.append("payment_method",   paymentMethod);
       formData.append("reference_number", referenceCode);
@@ -188,7 +205,6 @@ const [errors, setErrors] = useState({ image: "" });
 
       const orderId = res.data.order_id;
 
-      // ── Step 2: Submit order_items ────────────────────────────────────
       const orderItems = buildOrderItems(orderId);
       await api.post("/order-items", { items: orderItems });
 
@@ -296,27 +312,89 @@ const [errors, setErrors] = useState({ image: "" });
                   />
                 </div>
 
+                {/* ── Delivery Address ── */}
                 {deliveryMode === "delivery" && (
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <label className="text-xs text-gray-400">Delivery Address *</label>
-                      <span className="text-xs text-gray-400">{address.length}/200</span>
-                    </div>
-                    <textarea
-                      rows="2"
-                      value={address}
-                      onChange={(e) => {
-                        if (e.target.value.length <= 200) setAddress(e.target.value);
+                  <div className="space-y-3">
+                    <label className="text-xs text-gray-400">Delivery Address *</label>
+
+                    {/* Saved address dropdown */}
+                    {!useManualAddress && (
+                      <div className="relative">
+                        <select
+                          value={selectedAddressIndex}
+                          onChange={(e) => {
+                            setSelectedAddressIndex(e.target.value);
+                            setErrors(prev => ({ ...prev, address: "" }));
+                          }}
+                          className={`w-full appearance-none rounded-xl border px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-1 ${
+                            errors.address
+                              ? "border-red-400 focus:border-red-400 focus:ring-red-400"
+                              : "border-gray-200 bg-gray-50 focus:border-rose-500 focus:ring-rose-500"
+                          } ${selectedAddressIndex === "" ? "text-gray-400" : "text-gray-700"}`}
+                        >
+                          <option value="" disabled>
+                            {savedAddresses.length === 0
+                              ? "No saved addresses"
+                              : "Select a saved address"}
+                          </option>
+                          {savedAddresses.map((addr, i) => (
+                            <option key={i} value={i}>
+                              {formatAddress(addr)}
+                            </option>
+                          ))}
+                        </select>
+                        {/* Chevron icon */}
+                        <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Manual input */}
+                    {useManualAddress && (
+                      <div>
+                        <div className="flex justify-end mb-1">
+                          <span className="text-xs text-gray-400">{address.length}/200</span>
+                        </div>
+                        <textarea
+                          rows="2"
+                          value={address}
+                          onChange={(e) => {
+                            if (e.target.value.length <= 200) setAddress(e.target.value);
+                            setErrors(prev => ({ ...prev, address: "" }));
+                          }}
+                          placeholder="Enter your complete delivery address"
+                          maxLength={200}
+                          className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-1 ${
+                            errors.address
+                              ? "border-red-400 focus:border-red-400 focus:ring-red-400"
+                              : "border-gray-200 bg-gray-50 focus:border-rose-500 focus:ring-rose-500"
+                          }`}
+                        />
+                      </div>
+                    )}
+
+                    {errors.address && (
+                      <p className="text-xs text-red-500">{errors.address}</p>
+                    )}
+
+                    {/* Toggle between saved and manual */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUseManualAddress(prev => !prev);
+                        setSelectedAddressIndex("");
+                        setAddress("");
+                        setErrors(prev => ({ ...prev, address: "" }));
                       }}
-                      placeholder="Complete delivery address"
-                      maxLength={200}
-                      className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-1 ${
-                        errors.address
-                          ? "border-red-400 focus:border-red-400 focus:ring-red-400"
-                          : "border-gray-200 bg-gray-50 focus:border-rose-500 focus:ring-rose-500"
-                      }`}
-                    />
-                    {errors.address && <p className="mt-1 text-xs text-red-500">{errors.address}</p>}
+                      className="text-xs text-rose-500 underline hover:text-rose-600 transition"
+                    >
+                      {useManualAddress
+                        ? "← Use a saved address instead"
+                        : "Enter address manually instead"}
+                    </button>
                   </div>
                 )}
               </div>
@@ -440,7 +518,6 @@ const [errors, setErrors] = useState({ image: "" });
                       </div>
                       <span className="text-gray-500 flex-shrink-0">₱{(item.price * item.quantity).toLocaleString()}</span>
                     </div>
-                    {/* Greeting card preview */}
                     {item.greetingCard && (
                       <div className="ml-8 flex items-start gap-1.5 rounded-lg border border-rose-100 bg-rose-50 px-2.5 py-1.5">
                         <div className="min-w-0">
@@ -504,107 +581,103 @@ const [errors, setErrors] = useState({ image: "" });
       </div>
 
       {showTerms && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-    <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl max-h-[80vh] flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-800">Terms & Conditions</h2>
-        <button
-          type="button"
-          onClick={() => setShowTerms(false)}
-          className="text-gray-400 hover:text-gray-600 text-xl font-bold"
-        >
-          ✕
-        </button>
-      </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-800">Terms & Conditions</h2>
+              <button
+                type="button"
+                onClick={() => setShowTerms(false)}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
 
-      {/* ── TERMS & CONDITIONS CONTENT ── */}
-      <div className="overflow-y-auto pr-1 text-sm text-gray-600 space-y-4">
+            <div className="overflow-y-auto pr-1 text-sm text-gray-600 space-y-4">
 
-  {/* Customer T&C */}
-  <div>
-    <h3 className="font-semibold text-gray-800 text-base mb-1">Customer Terms & Conditions</h3>
-    <p className="text-xs text-gray-400 mb-3">
-      These terms and conditions act as the legal agreement for all external users accessing the Petal Express PH web platform.
-    </p>
-    <div className="space-y-3">
-      <div>
-        <p className="font-semibold text-gray-700">1. Introduction & Acceptance of Terms</p>
-        <p>Customers acknowledge that by using the service, they agree to abide by the specified usage and purchasing policies.</p>
-      </div>
-      <div>
-        <p className="font-semibold text-gray-700">2. Ordering and Payment Protocols</p>
-        <p>Orders are only confirmed upon validation of payment proof (screenshot and reference number).</p>
-      </div>
-      <div>
-        <p className="font-semibold text-gray-700">3. Cancellation and Modification</p>
-        <p>Cancellation requests are prohibited within the 3-day window preceding a scheduled event.</p>
-      </div>
-      <div>
-        <p className="font-semibold text-gray-700">4. Account Security and Responsibilities</p>
-        <p>Users are responsible for their account credentials. The system enforces security protocols including account lockout procedures after failed login attempts.</p>
-      </div>
-      <div>
-        <p className="font-semibold text-gray-700">5. Electronic Communications</p>
-        <p>Customers grant consent for the system to use the Email API for order receipts, event notifications, and OTP verification during registration and reset flows.</p>
-      </div>
-      <div>
-        <p className="font-semibold text-gray-700">6. Product Customization Disclaimer</p>
-        <p>Custom orders involve manual creation and final results may vary based on flower and filler availability.</p>
-      </div>
-    </div>
-  </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 text-base mb-1">Customer Terms & Conditions</h3>
+                <p className="text-xs text-gray-400 mb-3">
+                  These terms and conditions act as the legal agreement for all external users accessing the Petal Express PH web platform.
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <p className="font-semibold text-gray-700">1. Introduction & Acceptance of Terms</p>
+                    <p>Customers acknowledge that by using the service, they agree to abide by the specified usage and purchasing policies.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-700">2. Ordering and Payment Protocols</p>
+                    <p>Orders are only confirmed upon validation of payment proof (screenshot and reference number).</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-700">3. Cancellation and Modification</p>
+                    <p>Cancellation requests are prohibited within the 3-day window preceding a scheduled event.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-700">4. Account Security and Responsibilities</p>
+                    <p>Users are responsible for their account credentials. The system enforces security protocols including account lockout procedures after failed login attempts.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-700">5. Electronic Communications</p>
+                    <p>Customers grant consent for the system to use the Email API for order receipts, event notifications, and OTP verification during registration and reset flows.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-700">6. Product Customization Disclaimer</p>
+                    <p>Custom orders involve manual creation and final results may vary based on flower and filler availability.</p>
+                  </div>
+                </div>
+              </div>
 
-  <div className="border-t border-gray-200 my-2" />
+              <div className="border-t border-gray-200 my-2" />
 
-  {/* Internal Operations T&C */}
-  <div>
-    <h3 className="font-semibold text-gray-800 text-base mb-1">Internal Operations Terms & Conditions</h3>
-    <p className="text-xs text-gray-400 mb-3">
-      This document governs the behavior and responsibilities of personnel with administrative system access.
-    </p>
-    <div className="space-y-3">
-      <div>
-        <p className="font-semibold text-gray-700">1. Role-Based Access Control (RBAC)</p>
-        <p>IT and Owners maintain full CRUD capabilities, while Staff roles are limited to operational viewing and POS order processing.</p>
-      </div>
-      <div>
-        <p className="font-semibold text-gray-700">2. Administrative Security & Auth</p>
-        <p>Secure login practices are mandatory, including MFA (OTP) and strict limits on failed login attempts to prevent account hijacking.</p>
-      </div>
-      <div>
-        <p className="font-semibold text-gray-700">3. POS and Inventory Integrity</p>
-        <p>Staff must maintain accurate stock availability. Failure to properly process orders may result in discrepancies between the POS and inventory.</p>
-      </div>
-      <div>
-        <p className="font-semibold text-gray-700">4. CMS and Content Governance</p>
-        <p>IT and Owner actors must perform regular audits on published content. Unauthorized or erroneous changes must be corrected immediately to prevent misinformation.</p>
-      </div>
-      <div>
-        <p className="font-semibold text-gray-700">5. Schedule and Fulfillment Management</p>
-        <p>Staff must monitor event schedules accurately to ensure customers are correctly notified of pop-up dates and delivery timelines.</p>
-      </div>
-      <div>
-        <p className="font-semibold text-gray-700">6. Data Confidentiality</p>
-        <p>Sharing of administrative credentials is prohibited. Customer data collected during registration and checkout must be protected at all times.</p>
-      </div>
-    </div>
-  </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 text-base mb-1">Internal Operations Terms & Conditions</h3>
+                <p className="text-xs text-gray-400 mb-3">
+                  This document governs the behavior and responsibilities of personnel with administrative system access.
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <p className="font-semibold text-gray-700">1. Role-Based Access Control (RBAC)</p>
+                    <p>IT and Owners maintain full CRUD capabilities, while Staff roles are limited to operational viewing and POS order processing.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-700">2. Administrative Security & Auth</p>
+                    <p>Secure login practices are mandatory, including MFA (OTP) and strict limits on failed login attempts to prevent account hijacking.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-700">3. POS and Inventory Integrity</p>
+                    <p>Staff must maintain accurate stock availability. Failure to properly process orders may result in discrepancies between the POS and inventory.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-700">4. CMS and Content Governance</p>
+                    <p>IT and Owner actors must perform regular audits on published content. Unauthorized or erroneous changes must be corrected immediately to prevent misinformation.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-700">5. Schedule and Fulfillment Management</p>
+                    <p>Staff must monitor event schedules accurately to ensure customers are correctly notified of pop-up dates and delivery timelines.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-700">6. Data Confidentiality</p>
+                    <p>Sharing of administrative credentials is prohibited. Customer data collected during registration and checkout must be protected at all times.</p>
+                  </div>
+                </div>
+              </div>
 
-</div>
-      {/* ── END OF T&C CONTENT ── */}
+            </div>
 
-      <div className="mt-6 flex justify-end">
-        <button
-          type="button"
-          onClick={() => setShowTerms(false)}
-          className="rounded-xl bg-rose-500 px-6 py-2 text-sm font-semibold text-white hover:bg-rose-600 transition"
-        >
-          I Understand
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowTerms(false)}
+                className="rounded-xl bg-rose-500 px-6 py-2 text-sm font-semibold text-white hover:bg-rose-600 transition"
+              >
+                I Understand
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -38,7 +38,7 @@ class OrderController extends Controller
             'delivery_method'  => 'required|in:pickup,delivery',
             'payment_method'   => 'required|string',
             'reference_number' => 'required|string',
-            'reference_image'  => 'required|image|mimes:jpeg,png,jpg|max:5120',
+            'reference_image'  => 'required|image|mimes:jpeg,png,jpg|max:2048',
             'total_amount'     => 'required|numeric',
             'special_message'  => 'nullable|string',
         ]);

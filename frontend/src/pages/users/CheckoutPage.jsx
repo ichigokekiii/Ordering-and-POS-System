@@ -29,7 +29,7 @@ function CheckoutPage() {
   const [referenceCode, setReferenceCode] = useState("");
 
   // Validation errors
-  const [errors, setErrors] = useState({});
+const [errors, setErrors] = useState({ image: "" });
 
   const GRAND_TOTAL = totalPrice;
 
@@ -68,21 +68,30 @@ function CheckoutPage() {
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setPaymentProof(file);
-      setPreviewUrl(URL.createObjectURL(file));
-    } else {
-      setPaymentProof(null);
-      setPreviewUrl(null);
-    }
-  };
-
-  const resetFileInput = () => {
+  const file = e.target.files[0];
+  if (!file) {
+    setPaymentProof(null);
+    setPreviewUrl(null);
+    return;
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    setErrors(prev => ({ ...prev, image: "Image must be under 2MB. Please compress it first." }));
     setPaymentProof(null);
     setPreviewUrl(null);
     setFileInputKey(prev => prev + 1);
-  };
+    return;
+  }
+  setErrors(prev => ({ ...prev, image: "" }));
+  setPaymentProof(file);
+  setPreviewUrl(URL.createObjectURL(file));
+};
+
+  const resetFileInput = () => {
+  setPaymentProof(null);
+  setPreviewUrl(null);
+  setFileInputKey(prev => prev + 1);
+  setErrors(prev => ({ ...prev, image: "" }));  // ADD THIS LINE
+};
 
   /**
    * Builds the order_items rows from the cart.
@@ -378,7 +387,7 @@ function CheckoutPage() {
                     <p className="mb-1 text-sm text-gray-500">
                       <span className="font-semibold">Click to upload</span> screenshot
                     </p>
-                    <p className="text-xs text-gray-400">PNG, JPG (MAX. 5MB)</p>
+                    <p className="text-xs text-gray-400">PNG, JPG (MAX. 2MB)</p>
                     <input
                       key={fileInputKey}
                       ref={fileInputRef}
@@ -388,6 +397,8 @@ function CheckoutPage() {
                       onChange={handleFileChange}
                     />
                   </label>
+
+                  {errors.image && <p className="mt-1 text-xs text-red-500">{errors.image}</p>}
 
                   {paymentProof && (
                     <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-200 bg-green-50 p-2">

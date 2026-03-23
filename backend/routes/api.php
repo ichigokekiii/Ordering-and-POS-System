@@ -71,6 +71,18 @@ Route::middleware('auth:sanctum')->group(function () {
     // Request email change OTP
     Route::post('/profile/email-otp', [ProfileController::class, 'requestEmailChangeOtp']);
 
+    // Verify email OTP and update email
+    Route::post('/profile/email-verify', [ProfileController::class, 'verifyEmailChangeOtp']);
+
+    // Change password
+    Route::post('/profile/password', [ProfileController::class, 'changePassword']);
+
+    // Request password change OTP
+    Route::post('/profile/password-otp', [ProfileController::class, 'requestPasswordChangeOtp']);
+
+    // Verify password OTP and change password
+    Route::post('/profile/password-verify', [ProfileController::class, 'verifyPasswordChangeOtp']);
+
     // Delete account
     Route::delete('/profile', [ProfileController::class, 'deleteAccount']);
 
@@ -107,5 +119,9 @@ Route::middleware(['auth:sanctum', 'admin.owner'])->group(function () {
         Route::post('/users', [UserController::class, 'store']);
         Route::put('/users/{id}', [UserController::class, 'update']);
         Route::delete('/users/{id}', [UserController::class, 'destroy']);
+
+        // OTP endpoints for admin user management
+        Route::post('/users/{id}/email-otp', [UserController::class, 'sendEmailOtp']);
+        Route::post('/users/{id}/password-otp', [UserController::class, 'sendPasswordOtp']);
     });
 });

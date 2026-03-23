@@ -172,16 +172,83 @@ class UserController extends Controller
             return response()->json(['error' => 'User not found'], 404);
         }
 
+        // Validate phone number if provided
+        if ($request->filled('phone_number')) {
+            $phone = $request->input('phone_number');
+            if (!preg_match('/^\d{11}$/', $phone)) {
+                return response()->json(['error' => 'Phone number must be exactly 11 digits'], 400);
+            }
+        }
+
+        // Validate names
+        if ($request->filled('first_name')) {
+            $firstName = $request->input('first_name');
+            if (!preg_match('/^[A-Za-z\s\-\\\']{2,50}$/', $firstName)) {
+                return response()->json(['error' => 'First name must be 2-50 letters only'], 400);
+            }
+        }
+
+        if ($request->filled('last_name')) {
+            $lastName = $request->input('last_name');
+            if (!preg_match('/^[A-Za-z\s\-\\\']{2,50}$/', $lastName)) {
+                return response()->json(['error' => 'Last name must be 2-50 letters only'], 400);
+            }
+        }
+
+        // Handle email change with OTP
+        if ($request->filled('email')) {
+            if ($request->input('email') !== $user->email) {
+                // Email is being changed, require OTP
+                if (!$request->filled('email_otp')) {
+                    return response()->json(['error' => 'OTP required for email change'], 400);
+                }
+
+                // Verify OTP
+                $otp = Otp::where('user_id', $user->id)
+                         ->where('code', $request->input('email_otp'))
+                         ->where('expires_at', '>', Carbon::now())
+                         ->first();
+
+                if (!$otp) {
+                    return response()->json(['error' => 'Invalid or expired OTP'], 400);
+                }
+
+                // Delete the OTP after use
+                $otp->delete();
+
+                $user->email = $request->input('email');
+                $user->is_verified = true; // Admin-verified change
+            }
+        }
+
+        // Handle password change with OTP
+        if ($request->filled('password')) {
+            if (!$request->filled('password_otp')) {
+                return response()->json(['error' => 'OTP required for password change'], 400);
+            }
+
+            // Verify OTP
+            $otp = Otp::where('user_id', $user->id)
+                     ->where('code', $request->input('password_otp'))
+                     ->where('expires_at', '>', Carbon::now())
+                     ->first();
+
+            if (!$otp) {
+                return response()->json(['error' => 'Invalid or expired OTP'], 400);
+            }
+
+            // Delete the OTP after use
+            $otp->delete();
+
+            $user->password = Hash::make($request->input('password'));
+        }
+
         if ($request->filled('first_name')) {
             $user->first_name = $request->input('first_name');
         }
 
         if ($request->filled('last_name')) {
             $user->last_name = $request->input('last_name');
-        }
-
-        if ($request->filled('email')) {
-            $user->email = $request->input('email');
         }
 
         if ($request->filled('role')) {
@@ -226,5 +293,64 @@ class UserController extends Controller
         $user->delete();
 
         return response()->json(['message' => 'User archived successfully']);
+    }
+
+    // Send email change OTP for admin
+    public function sendEmailOtp(Request $request, $id)
+    {
+        if (!Auth::check() || Auth::user()->role !== 'admin') {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+
+        $email = $request->input('email');
+        if (empty($email)) {
+            return response()->json(['error' => 'Email is required'], 400);
+        }
+
+        if (User::where('email', $email)->where('id', '!=', $id)->exists()) {
+            return response()->json(['error' => 'Email already exists'], 400);
+        }
+
+        $otpCode = rand(100000, 999999);
+
+        Otp::create([
+            'user_id' => $user->id,
+            'code' => $otpCode,
+            'expires_at' => Carbon::now()->addMinutes(5),
+        ]);
+
+        Mail::to($email)->send(new SendOtpMail($otpCode));
+
+        return response()->json(['message' => 'OTP sent to new email address']);
+    }
+
+    // Send password change OTP for admin
+    public function sendPasswordOtp(Request $request, $id)
+    {
+        if (!Auth::check() || Auth::user()->role !== 'admin') {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+
+        $otpCode = rand(100000, 999999);
+
+        Otp::create([
+            'user_id' => $user->id,
+            'code' => $otpCode,
+            'expires_at' => Carbon::now()->addMinutes(5),
+        ]);
+
+        Mail::to($user->email)->send(new SendOtpMail($otpCode));
+
+        return response()->json(['message' => 'OTP sent to user email']);
     }
 }

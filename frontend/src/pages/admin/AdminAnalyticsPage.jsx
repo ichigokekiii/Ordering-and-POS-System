@@ -23,12 +23,16 @@ import {
 } from "recharts";
 
 const AdminAnalyticsPage = () => {
-  const [lineData, setLineData] = useState([
-    { name: "Jan", value: 400 },
-    { name: "Feb", value: 300 },
-    { name: "Mar", value: 600 },
-    { name: "Apr", value: 800 },
-  ]);
+  const [lineData, setLineData] = useState([]);
+  const [analyticsData, setAnalyticsData] = useState({
+    total_orders: 0,
+    total_customers: 0,
+    total_products: 0,
+    total_views: 0,
+    sales_overview: [],
+    total_ratings: 0,
+    ratings_count: 0,
+  });
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -36,24 +40,34 @@ const AdminAnalyticsPage = () => {
         const response = await fetch("http://localhost:8000/api/pos-transactions/analytics");
         if (response.ok) {
           const data = await response.json();
-          setLineData(data);
+          setLineData(data.weekly_revenue || []);
+          setAnalyticsData({
+            total_orders: data.total_orders || 0,
+            total_customers: data.total_customers || 0,
+            total_products: data.total_products || 0,
+            total_views: data.total_views || 0,
+            sales_overview: data.sales_overview || [],
+            total_ratings: data.total_ratings || 0,
+            ratings_count: data.ratings_count || 0,
+          });
         }
       } catch (error) {
         console.warn("Failed to fetch analytics data:", error);
-        // Keep mock data if fetch fails
+        // Keep default values if fetch fails
       }
     };
 
     fetchAnalytics();
   }, []);
 
-  // Mock data matching your screenshot
-  const pieData = [
-    { name: "Roses", value: 5709, color: "#00D1FF" },
-    { name: "Tulips", value: 4095, color: "#FF99CC" },
-    { name: "Lilies", value: 8115, color: "#A5A6F6" },
-    { name: "Peonies", value: 3320, color: "#FFDB5C" },
-  ];
+  // Mock data for pie chart colors
+  const pieColors = ["#00D1FF", "#FF99CC", "#A5A6F6", "#FFDB5C"];
+
+  // Add colors to sales overview data
+  const pieData = analyticsData.sales_overview.map((item, index) => ({
+    ...item,
+    color: pieColors[index % pieColors.length],
+  }));
 
   return (
     <div className="min-h-screen bg-[#F0F7FF] p-8 font-sans text-[#2D3748]">
@@ -79,11 +93,11 @@ const AdminAnalyticsPage = () => {
         <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-50">
           <h3 className="text-gray-500 font-medium mb-4">Total Ratings</h3>
           <div className="flex items-baseline space-x-2">
-            <span className="text-4xl font-bold">4.3k</span>
+            <span className="text-4xl font-bold">{analyticsData.total_ratings.toFixed(1)}k</span>
             <span className="text-green-500 text-sm font-bold">+7%</span>
           </div>
           <p className="text-gray-400 text-xs mt-2 font-medium">
-            Updated 2.3 Secs Ago
+            Based on {analyticsData.ratings_count.toLocaleString()} reviews
           </p>
         </div>
 
@@ -102,25 +116,25 @@ const AdminAnalyticsPage = () => {
             <StatItem
               icon={<Package size={16} />}
               label="Orders"
-              value="2.5k"
+              value={analyticsData.total_orders.toLocaleString()}
               color="bg-green-100 text-green-600"
             />
             <StatItem
               icon={<Users size={16} />}
               label="Customers"
-              value="33.3k"
+              value={analyticsData.total_customers.toLocaleString()}
               color="bg-blue-100 text-blue-600"
             />
             <StatItem
               icon={<TrendingUp size={16} />}
               label="Products"
-              value="5.21k"
+              value={analyticsData.total_products.toLocaleString()}
               color="bg-pink-100 text-pink-600"
             />
             <StatItem
               icon={<Eye size={16} />}
               label="Views"
-              value="13.8k"
+              value={analyticsData.total_views.toLocaleString()}
               color="bg-indigo-100 text-indigo-600"
             />
           </div>
@@ -150,8 +164,8 @@ const AdminAnalyticsPage = () => {
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-2xl font-bold">1k</span>
-                <span className="text-[10px] text-gray-400">Weekly Visits</span>
+                <span className="text-2xl font-bold">{analyticsData.total_orders}</span>
+                <span className="text-[10px] text-gray-400">Total Orders</span>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-x-8 gap-y-4">
@@ -178,7 +192,7 @@ const AdminAnalyticsPage = () => {
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-bold text-lg">Weekly Revenue Report</h3>
             <span className="text-lg font-bold">
-              {lineData.reduce((sum, item) => sum + item.value, 0).toLocaleString()}{" "}
+              ₱{lineData.reduce((sum, item) => sum + item.value, 0).toLocaleString()}{" "}
               <span className="text-green-500 text-xs font-bold">+7%</span>
             </span>
           </div>

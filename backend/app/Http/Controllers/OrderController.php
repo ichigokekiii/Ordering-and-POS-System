@@ -63,7 +63,7 @@ class OrderController extends Controller
                 $order->payment_id      = null;
                 $order->order_date      = $now->toDateString();
                 $order->total_amount    = $request->total_amount;
-                $order->status    = 'pending';
+                $order->order_status    = 'pending';
                 $order->special_message = $request->special_message;
                 $order->address         = $request->address;
                 $order->delivery_method = $request->delivery_method;
@@ -108,7 +108,6 @@ class OrderController extends Controller
     {
         try {
             $request->validate([
-                'status' => 'nullable|string',
                 'order_status' => 'nullable|string'
             ]);
 

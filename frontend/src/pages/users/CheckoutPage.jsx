@@ -15,6 +15,8 @@ function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fileInputKey, setFileInputKey] = useState(0);
 
+  const [showTerms, setShowTerms] = useState(false);
+
   // Auto-filled from logged in user
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
@@ -486,12 +488,124 @@ const [errors, setErrors] = useState({ image: "" });
               </button>
 
               <p className="mt-3 text-center text-xs text-gray-400">
-                By placing this order, you agree to our terms of service.
+                By placing this order, you agree to our{" "}
+                <button
+                  type="button"
+                  onClick={() => setShowTerms(true)}
+                  className="underline text-rose-400 hover:text-rose-500 transition"
+                >
+                  terms of service
+                </button>
+                .
               </p>
             </div>
           </div>
         </form>
       </div>
+
+      {showTerms && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+    <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl max-h-[80vh] flex flex-col">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-800">Terms & Conditions</h2>
+        <button
+          type="button"
+          onClick={() => setShowTerms(false)}
+          className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* ── TERMS & CONDITIONS CONTENT ── */}
+      <div className="overflow-y-auto pr-1 text-sm text-gray-600 space-y-4">
+
+  {/* Customer T&C */}
+  <div>
+    <h3 className="font-semibold text-gray-800 text-base mb-1">Customer Terms & Conditions</h3>
+    <p className="text-xs text-gray-400 mb-3">
+      These terms and conditions act as the legal agreement for all external users accessing the Petal Express PH web platform.
+    </p>
+    <div className="space-y-3">
+      <div>
+        <p className="font-semibold text-gray-700">1. Introduction & Acceptance of Terms</p>
+        <p>Customers acknowledge that by using the service, they agree to abide by the specified usage and purchasing policies.</p>
+      </div>
+      <div>
+        <p className="font-semibold text-gray-700">2. Ordering and Payment Protocols</p>
+        <p>Orders are only confirmed upon validation of payment proof (screenshot and reference number).</p>
+      </div>
+      <div>
+        <p className="font-semibold text-gray-700">3. Cancellation and Modification</p>
+        <p>Cancellation requests are prohibited within the 3-day window preceding a scheduled event.</p>
+      </div>
+      <div>
+        <p className="font-semibold text-gray-700">4. Account Security and Responsibilities</p>
+        <p>Users are responsible for their account credentials. The system enforces security protocols including account lockout procedures after failed login attempts.</p>
+      </div>
+      <div>
+        <p className="font-semibold text-gray-700">5. Electronic Communications</p>
+        <p>Customers grant consent for the system to use the Email API for order receipts, event notifications, and OTP verification during registration and reset flows.</p>
+      </div>
+      <div>
+        <p className="font-semibold text-gray-700">6. Product Customization Disclaimer</p>
+        <p>Custom orders involve manual creation and final results may vary based on flower and filler availability.</p>
+      </div>
+    </div>
+  </div>
+
+  <div className="border-t border-gray-200 my-2" />
+
+  {/* Internal Operations T&C */}
+  <div>
+    <h3 className="font-semibold text-gray-800 text-base mb-1">Internal Operations Terms & Conditions</h3>
+    <p className="text-xs text-gray-400 mb-3">
+      This document governs the behavior and responsibilities of personnel with administrative system access.
+    </p>
+    <div className="space-y-3">
+      <div>
+        <p className="font-semibold text-gray-700">1. Role-Based Access Control (RBAC)</p>
+        <p>IT and Owners maintain full CRUD capabilities, while Staff roles are limited to operational viewing and POS order processing.</p>
+      </div>
+      <div>
+        <p className="font-semibold text-gray-700">2. Administrative Security & Auth</p>
+        <p>Secure login practices are mandatory, including MFA (OTP) and strict limits on failed login attempts to prevent account hijacking.</p>
+      </div>
+      <div>
+        <p className="font-semibold text-gray-700">3. POS and Inventory Integrity</p>
+        <p>Staff must maintain accurate stock availability. Failure to properly process orders may result in discrepancies between the POS and inventory.</p>
+      </div>
+      <div>
+        <p className="font-semibold text-gray-700">4. CMS and Content Governance</p>
+        <p>IT and Owner actors must perform regular audits on published content. Unauthorized or erroneous changes must be corrected immediately to prevent misinformation.</p>
+      </div>
+      <div>
+        <p className="font-semibold text-gray-700">5. Schedule and Fulfillment Management</p>
+        <p>Staff must monitor event schedules accurately to ensure customers are correctly notified of pop-up dates and delivery timelines.</p>
+      </div>
+      <div>
+        <p className="font-semibold text-gray-700">6. Data Confidentiality</p>
+        <p>Sharing of administrative credentials is prohibited. Customer data collected during registration and checkout must be protected at all times.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+      {/* ── END OF T&C CONTENT ── */}
+
+      <div className="mt-6 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setShowTerms(false)}
+          className="rounded-xl bg-rose-500 px-6 py-2 text-sm font-semibold text-white hover:bg-rose-600 transition"
+        >
+          I Understand
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }

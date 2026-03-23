@@ -52,15 +52,23 @@ function AdminPremadePage() {
   const [price, setPrice] = useState("");
   const [isAvailable, setIsAvailable] = useState(1);
 
-  const [errors, setErrors] = useState({ name: "", description: "", price: "" });
+  const [errors, setErrors] = useState({ name: "", description: "", price: "", image: "" });
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) setImage(file);
-  };
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    setErrors(prev => ({ ...prev, image: "Image must be under 2MB. Please compress it first." }));
+    setImage(null);
+    e.target.value = ""; // reset file input
+    return;
+  }
+  setErrors(prev => ({ ...prev, image: "" }));
+  setImage(file);
+};
 
   // Validates a single field and updates errors state
   const handleFieldChange = (field, value, setter) => {
@@ -142,7 +150,7 @@ function AdminPremadePage() {
     setIsAvailable(1);
     setCurrentId(null);
     setIsEditing(false);
-    setErrors({ name: "", description: "", price: "" });
+    setErrors({ name: "", description: "", price: "", image: "" });
   };
 
   return (
@@ -278,6 +286,7 @@ function AdminPremadePage() {
                     No new file chosen — existing image will be kept
                   </p>
                 )}
+                <FieldError error={errors.image} />
               </div>
 
               {/* Price */}

@@ -111,15 +111,23 @@ function AdminProductPage() {
   const [type, setType] = useState("");
   const [isAvailable, setIsAvailable] = useState(1);
 
-  const [errors, setErrors] = useState({ name: "", description: "", price: "" });
+  const [errors, setErrors] = useState({ name: "", description: "", price: "", image: "" });
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) setImage(file);
-  };
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    setErrors(prev => ({ ...prev, image: "Image must be under 2MB. Please compress it first." }));
+    setImage(null);
+    e.target.value = "";
+    return;
+  }
+  setErrors(prev => ({ ...prev, image: "" }));
+  setImage(file);
+};
 
   // Validates a single field and updates errors state
   const handleFieldChange = (field, value, setter) => {
@@ -204,7 +212,7 @@ function AdminProductPage() {
     setIsAvailable(1);
     setCurrentId(null);
     setIsEditing(false);
-    setErrors({ name: "", description: "", price: "" });
+    setErrors({ name: "", description: "", price: "", image: "" });
   };
 
   const bouquets = products.filter((p) => p.category === "Bouquets");
@@ -315,6 +323,7 @@ function AdminProductPage() {
                   required={!isEditing}
                 />
                 {!image && isEditing && <p className="mt-1 text-xs text-gray-400">No new file chosen — existing image will be kept</p>}
+<FieldError error={errors.image} />  {/* ADD THIS LINE */}
               </div>
 
               {/* Price */}

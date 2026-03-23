@@ -38,8 +38,8 @@ const CharCount = ({ value, max }) => (
 const FieldError = ({ error }) =>
   error ? <p className="mt-1 text-xs text-red-500">{error}</p> : null;
 
-const ProductCard = ({ product, onEdit, onDelete }) => (
-  <div className="relative rounded border p-4 shadow-sm">
+const ProductCard = ({ product, onEdit, onDelete, canEdit }) => (
+  <div className="relative rounded border p-4 shadow-sm bg-white">
     <div className="mb-2">
       {product.isAvailable ? (
         <span className="flex items-center text-xs font-bold text-green-600">
@@ -57,24 +57,28 @@ const ProductCard = ({ product, onEdit, onDelete }) => (
     <h1 className="font-medium">{product.name}</h1>
     <h3 className="text-sm text-gray-600">{product.description}</h3>
     <p className="text-gray-500">₱{product.price}</p>
-    <div className="mt-4 flex gap-2">
-      <button
-        onClick={() => onEdit(product)}
-        className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-      >
-        Edit
-      </button>
-      <button
-        onClick={() => onDelete(product.id)}
-        className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
-      >
-        Delete
-      </button>
-    </div>
+    
+    {/* Hide Edit/Delete buttons if user is staff */}
+    {canEdit && (
+      <div className="mt-4 flex gap-2">
+        <button
+          onClick={() => onEdit(product)}
+          className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+        >
+          Edit
+        </button>
+        <button
+          onClick={() => onDelete(product.id)}
+          className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+        >
+          Delete
+        </button>
+      </div>
+    )}
   </div>
 );
 
-const SectionGrid = ({ title, items, emptyMsg, onEdit, onDelete }) => (
+const SectionGrid = ({ title, items, emptyMsg, onEdit, onDelete, canEdit }) => (
   <div>
     {title && (
       <h4 className="mb-3 text-base font-semibold text-gray-600">{title}</h4>
@@ -89,6 +93,7 @@ const SectionGrid = ({ title, items, emptyMsg, onEdit, onDelete }) => (
             product={p}
             onEdit={onEdit}
             onDelete={onDelete}
+            canEdit={canEdit}
           />
         ))}
       </div>
@@ -96,8 +101,12 @@ const SectionGrid = ({ title, items, emptyMsg, onEdit, onDelete }) => (
   </div>
 );
 
-function AdminProductPage() {
+// 1. Accept the 'user' prop
+function AdminProductPage({ user }) {
   const { products, addProduct, updateProduct, deleteProduct } = useProducts();
+
+  // 2. Define who is allowed to edit
+  const canEdit = user?.role === "admin" || user?.role === "owner";
 
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -121,16 +130,13 @@ function AdminProductPage() {
     if (file) setImage(file);
   };
 
-  // Validates a single field and updates errors state
   const handleFieldChange = (field, value, setter) => {
     setter(value);
     setErrors((prev) => ({ ...prev, [field]: validate(field, value) }));
   };
 
-  // Price: strip any non-numeric / non-decimal characters on input
   const handlePriceChange = (e) => {
     const raw = e.target.value.replace(/[^0-9.]/g, "");
-    // Prevent multiple decimal points
     const sanitized = raw.split(".").length > 2 ? raw.slice(0, raw.lastIndexOf(".")) : raw;
     handleFieldChange("price", sanitized, setPrice);
   };
@@ -220,13 +226,25 @@ function AdminProductPage() {
       )}
 
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Products</h2>
-        <button
-          onClick={() => { resetForm(); setShowModal(true); }}
-          className="rounded bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
-        >
-          + Add Product
-        </button>
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-semibold">Products</h2>
+          {/* Show a badge for staff members */}
+          {!canEdit && (
+            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
+              View-Only Mode
+            </span>
+          )}
+        </div>
+        
+        {/* Hide Add Product button if user is staff */}
+        {canEdit && (
+          <button
+            onClick={() => { resetForm(); setShowModal(true); }}
+            className="rounded bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
+          >
+            + Add Product
+          </button>
+        )}
       </div>
 
       <div className="space-y-10">
@@ -235,9 +253,10 @@ function AdminProductPage() {
           <SectionGrid
             title=""
             items={bouquets}
-            emptyMsg="No bouquets yet"
+            emptyMsg={canEdit ? "No bouquets yet" : "No bouquets available"}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            canEdit={canEdit}
           />
         </div>
         <div>
@@ -246,23 +265,25 @@ function AdminProductPage() {
             <SectionGrid
               title="Main Flowers"
               items={mainFlowers}
-              emptyMsg="No main flowers yet"
+              emptyMsg={canEdit ? "No main flowers yet" : "No main flowers available"}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              canEdit={canEdit}
             />
             <SectionGrid
               title="Fillers"
               items={fillers}
-              emptyMsg="No fillers yet"
+              emptyMsg={canEdit ? "No fillers yet" : "No fillers available"}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              canEdit={canEdit}
             />
           </div>
         </div>
       </div>
 
-      {/* Modal */}
-      {showModal && (
+      {/* Modal - only render if the user has permission to edit */}
+      {showModal && canEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-lg bg-white p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="mb-4 text-lg font-semibold">
@@ -426,7 +447,7 @@ function AdminProductPage() {
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => { setShowModal(false); resetForm(); }} className="rounded border px-4 py-2">
+                <button type="button" onClick={() => { setShowModal(false); resetForm(); }} className="rounded border px-4 py-2 hover:bg-gray-50">
                   Cancel
                 </button>
                 <button type="submit" className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">

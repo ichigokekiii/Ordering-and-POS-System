@@ -11,22 +11,31 @@ class PosTransactionsController extends Controller
 {
 public function store(Request $request)
 {
-    // 1. Create the Main Sale Record
-    $pos_transactions = PosTransactions::create([
-        'total_amount' => $request->total_amount,
-    ]);
-
-    // 2. Loop through the cart and save each item individually
-    foreach ($request->items as $item) {
-        $pos_transactions->items()->create([
-            'product_id'   => $item['id'], // <-- Reverted to accept the string ID directly
-            'product_name' => $item['name'],
-            'price'        => $item['price'],
-            'quantity'     => $item['qty'],
+    try {
+        // 1. Create the Main Sale Record
+        $pos_transactions = PosTransactions::create([
+            'total_amount' => $request->total_amount,
         ]);
-    }
 
-    return response()->json(['message' => 'Sale recorded!'], 201);
+        // 2. Loop through the cart and save each item individually
+        foreach ($request->items as $item) {
+            $pos_transactions->items()->create([
+                'product_id'   => $item['id'],
+                'product_name' => $item['name'],
+                'price'        => $item['price'],
+                'quantity'     => $item['qty'],
+            ]);
+        }
+
+        return response()->json(['message' => 'Sale recorded!'], 201);
+
+    } catch (\Exception $e) {
+        // This catches the crash and sends the EXACT reason back to React!
+        return response()->json([
+            'message' => 'Database crash',
+            'error'   => $e->getMessage() // This contains the MySQL error
+        ], 500);
+    }
 }
 
 public function analytics()

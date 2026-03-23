@@ -2,10 +2,10 @@
 /* eslint-disable react-hooks/immutability */
 import React, { useState, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
-import { useAuth } from "../../contexts/AuthContext";
 import api from "../../services/api";
 
-function AdminUsersPage() {
+// 1. Accept the 'user' prop passed from App.jsx
+function AdminUsersPage({ user }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,9 +27,11 @@ function AdminUsersPage() {
     role: "customer",
   });
 
-  const { user: currentUser } = useAuth();
   const [toast, setToast] = useState(null);
-  const isOwner = currentUser?.role?.toLowerCase() === "owner";
+  
+  // 2. Define permissions based on your backend logic
+  const isStaff = user?.role === "staff";
+  const canManageUsers = user?.role === "admin"; // Only admins can edit users based on backend middleware
 
   const [selectedUser, setSelectedUser] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -116,7 +118,6 @@ function AdminUsersPage() {
         return Number(valueA) - Number(valueB);
       }
       if (sortBy === "created_at") {
-        // Default: latest first (descending)
         return new Date(valueB) - new Date(valueA);
       }
 
@@ -144,7 +145,6 @@ function AdminUsersPage() {
       });
   };
 
-  // Edit Modal helpers
   const openEditModal = (user) => {
     setSelectedUser(user);
     setEditForm({
@@ -227,9 +227,18 @@ function AdminUsersPage() {
   return (
     <div className="px-10 py-10">
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-black">Users</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-semibold text-black">Users</h1>
+          {/* 3. Show badge for staff members */}
+          {isStaff && (
+            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
+              View-Only Mode
+            </span>
+          )}
+        </div>
 
-        {!isOwner && (
+        {/* 4. Only Admin can Add User */}
+        {canManageUsers && (
           <button
             onClick={() => setShowCreateModal(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-base font-medium rounded-md transition"
@@ -239,16 +248,13 @@ function AdminUsersPage() {
         )}
       </div>
 
-      <div className="rounded border p-6 shadow-sm">
-
-        {/* Header + Sort + Filter */}
+      <div className="rounded border p-6 shadow-sm bg-white">
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-xl font-semibold text-gray-800">
             Profiles list
           </h2>
 
           <div className="flex space-x-3">
-
             {/* Sort Dropdown */}
             <div className="relative">
               <button
@@ -305,70 +311,23 @@ function AdminUsersPage() {
 
               {showFilterMenu && (
                 <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow-md z-10">
-
                   <div className="px-4 py-3 border-b">
-                    <p className="text-xs font-semibold text-gray-600 mb-2">
-                      ROLE
-                    </p>
-                    <button
-                      onClick={() => setFilterRole("all")}
-                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
-                    >
-                      All
-                    </button>
-                    <button
-                      onClick={() => setFilterRole("admin")}
-                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
-                    >
-                      Admin
-                    </button>
-                    <button
-                      onClick={() => setFilterRole("staff")}
-                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
-                    >
-                      Staff
-                    </button>
-                    <button
-                      onClick={() => setFilterRole("customer")}
-                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
-                    >
-                      Customer
-                    </button>
-                    <button
-                      onClick={() => setFilterRole("owner")}
-                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
-                    >
-                      Owner
-                    </button>
+                    <p className="text-xs font-semibold text-gray-600 mb-2">ROLE</p>
+                    <button onClick={() => setFilterRole("all")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">All</button>
+                    <button onClick={() => setFilterRole("admin")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">Admin</button>
+                    <button onClick={() => setFilterRole("staff")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">Staff</button>
+                    <button onClick={() => setFilterRole("customer")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">Customer</button>
+                    <button onClick={() => setFilterRole("owner")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">Owner</button>
                   </div>
-
                   <div className="px-4 py-3">
-                    <p className="text-xs font-semibold text-gray-600 mb-2">
-                      STATUS
-                    </p>
-                    <button
-                      onClick={() => setFilterStatus("all")}
-                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
-                    >
-                      All
-                    </button>
-                    <button
-                      onClick={() => setFilterStatus("Active")}
-                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
-                    >
-                      Active
-                    </button>
-                    <button
-                      onClick={() => setFilterStatus("Inactive")}
-                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
-                    >
-                      Inactive
-                    </button>
+                    <p className="text-xs font-semibold text-gray-600 mb-2">STATUS</p>
+                    <button onClick={() => setFilterStatus("all")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">All</button>
+                    <button onClick={() => setFilterStatus("Active")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">Active</button>
+                    <button onClick={() => setFilterStatus("Inactive")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">Inactive</button>
                   </div>
                 </div>
               )}
             </div>
-
           </div>
         </div>
 
@@ -383,15 +342,15 @@ function AdminUsersPage() {
                   <th className="pb-4">Role</th>
                   <th className="pb-4">Status</th>
                   <th className="pb-4">Created Date</th>
-                  {/* Actions column removed */}
                 </tr>
               </thead>
               <tbody className="text-sm text-gray-700">
                 {getFilteredAndSortedUsers().map((user) => (
                   <tr
                     key={user.id}
-                    className="hover:bg-gray-50 border-b cursor-pointer"
-                    onClick={() => openEditModal(user)}
+                    // 5. Prevent staff from clicking to edit
+                    className={`border-b transition ${canManageUsers ? "hover:bg-gray-50 cursor-pointer" : ""}`}
+                    onClick={() => canManageUsers && openEditModal(user)}
                   >
                     <td className="py-5">{user.id}</td>
                     <td className="py-5 font-medium">
@@ -399,8 +358,9 @@ function AdminUsersPage() {
                     </td>
                     <td className="py-5">{user.email}</td>
                     <td className="py-5">
-                      {isOwner ? (
-                        <span className="px-3 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
+                      {/* 6. Lock Role dropdown for staff */}
+                      {!canManageUsers ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
                           {formatRole(user.role)}
                         </span>
                       ) : (
@@ -409,7 +369,7 @@ function AdminUsersPage() {
                           value={formatRole(user.role).toLowerCase()}
                           onChange={(e) => handleRoleChange(user.id, e.target.value)}
                           disabled={updatingUserId === user.id}
-                          className="px-3 py-1 border rounded text-sm"
+                          className="px-3 py-1 border rounded text-sm bg-white"
                         >
                           <option value="customer">Customer</option>
                           <option value="staff">Staff</option>
@@ -425,7 +385,7 @@ function AdminUsersPage() {
 
                         return (
                           <span
-                            className={`px-3 py-1 rounded-full text-xs ${
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${
                               isActive
                                 ? "bg-green-100 text-green-800"
                                 : "bg-gray-100 text-gray-700"
@@ -439,7 +399,6 @@ function AdminUsersPage() {
                     <td className="py-5">
                       {new Date(user.created_at).toLocaleDateString("en-US")}
                     </td>
-                    {/* Actions cell removed */}
                   </tr>
                 ))}
               </tbody>
@@ -450,7 +409,7 @@ function AdminUsersPage() {
 
       {toast && (
         <div className="fixed top-6 right-6 z-50">
-          <div className={`px-6 py-3 rounded-lg shadow-lg text-white text-sm ${
+          <div className={`px-6 py-3 rounded-lg shadow-lg text-white text-sm font-medium ${
             toast.type === "success" ? "bg-green-600" : "bg-red-600"
           }`}>
             {toast.message}
@@ -458,7 +417,8 @@ function AdminUsersPage() {
         </div>
       )}
 
-      {showCreateModal && (
+      {/* Add User Modal */}
+      {showCreateModal && canManageUsers && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className="bg-white rounded-3xl w-[90%] max-w-md shadow-xl p-8">
             <h2 className="text-2xl font-bold mb-6">Add User</h2>
@@ -516,7 +476,7 @@ function AdminUsersPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-8">
+            <div className="flex justify-end gap-3 mt-8 border-t pt-4">
               <button
                 onClick={() => setShowCreateModal(false)}
                 className="px-5 py-2 border rounded-xl hover:bg-gray-100"
@@ -533,8 +493,9 @@ function AdminUsersPage() {
           </div>
         </div>
       )}
+
       {/* Edit User Modal */}
-      {showEditModal && selectedUser && (
+      {showEditModal && selectedUser && canManageUsers && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className="bg-white rounded-3xl w-[90%] max-w-md shadow-xl p-8">
             <h2 className="text-2xl font-bold mb-6">Edit User</h2>
@@ -571,10 +532,10 @@ function AdminUsersPage() {
               />
             </div>
 
-            <div className="flex justify-between mt-8">
+            <div className="flex justify-between mt-8 border-t pt-4">
               <button
                 onClick={() => setShowConfirmDelete(true)}
-                className="text-red-600 hover:underline"
+                className="text-red-600 hover:underline font-medium"
               >
                 Delete User
               </button>

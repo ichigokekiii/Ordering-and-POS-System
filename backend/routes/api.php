@@ -32,21 +32,18 @@ Route::get('/landing', function () {
     ]);
 });
 
-//product api route
-Route::apiResource('products', ProductController::class);
+// Product & Premade routes (Public so customers can see menu)
+Route::apiResource('products', ProductController::class)->only(['index', 'show']);
+Route::apiResource('premades', PremadeController::class)->only(['index', 'show']);
 
-//premade api route
-Route::apiResource('premades', PremadeController::class);
-
-//schedule api route
-Route::apiResource('schedules', ScheduleController::class);
+// Schedule routes
+Route::apiResource('schedules', ScheduleController::class)->only(['index', 'show']);
 Route::post('/schedules/{id}/book', [ScheduleController::class, 'book']);
 
-//pos api route
-Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
-Route::get('/pos-transactions/analytics', [PosTransactionsController::class, 'analytics']);
+// Allow customers/guests to place an order
+Route::post('/orders', [OrderController::class, 'store']);
 
-//auth routes
+// Auth routes
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
@@ -57,27 +54,34 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 /*
 |--------------------------------------------------------------------------
-| Authenticated User Routes (Customers & Staff)
+| Authenticated User Routes (Customers, Staff, Admins, Owners)
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->group(function () {
 
-    // Get profile
+    // Profile Management
     Route::get('/profile', [ProfileController::class, 'profile']);
-
-    // Update profile
     Route::put('/profile', [ProfileController::class, 'updateProfile']);
-
-    // Request email change OTP
     Route::post('/profile/email-otp', [ProfileController::class, 'requestEmailChangeOtp']);
-
-    // Delete account
     Route::delete('/profile', [ProfileController::class, 'deleteAccount']);
 
-    // Order tracking
+    // Order tracking for logged-in users
     Route::get('/orders/user/{user_id}', [OrderController::class, 'userOrders']);
-
     Route::post('/order-items', [OrderItemController::class, 'store']);
+
+    // Staff POS Routes
+    Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
+
+    // ====================================================================
+    // STAFF "READ-ONLY" ADMIN ACCESS
+    // Staff are allowed to view this data, but the modifying routes 
+    // are safely locked in the admin group below.
+    // ====================================================================
+    Route::get('/orders', [OrderController::class, 'index']);
+    Route::get('/orders/{id}', [OrderController::class, 'show']);
+    Route::get('/pos-transactions/analytics', [PosTransactionsController::class, 'analytics']);
+    Route::get('/users', [UserController::class, 'index']);
+    Route::get('/users/{id}', [UserController::class, 'show']);
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -86,21 +90,19 @@ Route::middleware('auth:sanctum')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Admin & Owner Routes (Management Only)
+| Admin & Owner Routes (Management & Editing Only)
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:sanctum', 'admin.owner'])->group(function () {
 
-    // Admin Order Management
-    Route::apiResource('orders', OrderController::class);
+    // Admin Order Management (Only updating and deleting)
+    Route::put('/orders/{id}', [OrderController::class, 'update']);
+    Route::delete('/orders/{id}', [OrderController::class, 'destroy']);
 
-    // Transaction & Analytics
-    Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
-    Route::get('/pos-transactions/analytics', [PosTransactionsController::class, 'analytics']);
-
-    // General User Management
-    Route::get('/users', [UserController::class, 'index']);
-    Route::get('/users/{id}', [UserController::class, 'show']);
+    // Product & Schedule Management (Create, Update, Delete)
+    Route::apiResource('products', ProductController::class)->except(['index', 'show']);
+    Route::apiResource('premades', PremadeController::class)->except(['index', 'show']);
+    Route::apiResource('schedules', ScheduleController::class)->except(['index', 'show']);
 
     // Restricted Admin-Only Actions
     Route::middleware('admin.only')->group(function () {

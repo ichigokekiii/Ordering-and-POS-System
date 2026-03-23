@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { Pencil, Trash2, RefreshCw } from "lucide-react";
 
-
-const OrderCard = ({ order, onEdit, onDelete }) => (
+// (OrderCard component remains unchanged, as it serves as a fallback/mobile view)
+const OrderCard = ({ order, onEdit, onDelete, canEdit }) => (
   <div className="rounded border p-4 shadow-sm bg-white">
     <div className="mb-2">
       <span
@@ -36,29 +36,35 @@ const OrderCard = ({ order, onEdit, onDelete }) => (
       ₱{order.total_amount}
     </p>
 
-    <div className="mt-4 flex gap-2">
-      <button
-        onClick={() => onEdit(order)}
-        className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-      >
-        Edit
-      </button>
+    {canEdit && (
+      <div className="mt-4 flex gap-2">
+        <button
+          onClick={() => onEdit(order)}
+          className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+        >
+          Edit
+        </button>
 
-      <button
-        onClick={() => onDelete(order.order_id || order.id)}
-        className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
-      >
-        Delete
-      </button>
-    </div>
+        <button
+          onClick={() => onDelete(order.order_id || order.id)}
+          className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+        >
+          Delete
+        </button>
+      </div>
+    )}
   </div>
 );
 
-function AdminOrdersPage() {
+// 1. Accept the user prop here
+function AdminOrdersPage({ user }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingOrder, setEditingOrder] = useState(null);
   const [status, setStatus] = useState("");
+
+  // 2. Define who is allowed to edit
+  const canEdit = user?.role === "admin" || user?.role === "owner";
 
   const fetchOrders = async () => {
     try {
@@ -123,7 +129,15 @@ function AdminOrdersPage() {
   return (
     <div className="px-10 py-10">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-black">Orders</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-semibold text-black">Orders</h1>
+          {/* 3. Show a badge so staff knows they are in view-only mode */}
+          {!canEdit && (
+            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
+              View-Only Mode
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -132,7 +146,7 @@ function AdminOrdersPage() {
         ) : orders.length === 0 ? (
           <p className="py-6 text-center text-gray-400">No orders yet</p>
         ) : (
-          <div className="rounded border p-6 shadow-sm">
+          <div className="rounded border p-6 shadow-sm bg-white">
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-xl font-semibold text-gray-800">
                 Orders list
@@ -148,7 +162,8 @@ function AdminOrdersPage() {
                   <th className="pb-4">Total</th>
                   <th className="pb-4">Status</th>
                   <th className="pb-4">Created Date</th>
-                  <th className="pb-4">Actions</th>
+                  {/* Hide Actions column for staff */}
+                  {canEdit && <th className="pb-4">Actions</th>}
                 </tr>
               </thead>
 
@@ -156,7 +171,7 @@ function AdminOrdersPage() {
                 {orders.map((order) => (
                   <tr
                     key={order.order_id || order.id}
-                    className="hover:bg-gray-50 border-b cursor-pointer"
+                    className="hover:bg-gray-50 border-b cursor-pointer transition"
                     onClick={() => {
                       setEditingOrder(order);
                       setStatus(order.order_status);
@@ -178,7 +193,7 @@ function AdminOrdersPage() {
 
                     <td className="py-5">
                       <span
-                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                        className={`px-3 py-1 text-xs font-semibold rounded-full ${
                           order.order_status === "Pending"
                             ? "bg-yellow-100 text-yellow-700"
                             : order.order_status === "Processing"
@@ -198,18 +213,20 @@ function AdminOrdersPage() {
                       {new Date(order.created_at).toLocaleDateString()}
                     </td>
 
-                    <td className="py-5 flex gap-2">
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(order.order_id || order.id);
-                        }}
-                        className="px-3 py-1 border rounded text-red-600 hover:bg-red-50"
-                      >
-                        Delete
-                      </button>
-                    </td>
+                    {/* Hide Delete button for staff */}
+                    {canEdit && (
+                      <td className="py-5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevents the modal from opening when clicking delete
+                            handleDelete(order.order_id || order.id);
+                          }}
+                          className="px-3 py-1 border rounded text-red-600 hover:bg-red-50 transition"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -218,12 +235,20 @@ function AdminOrdersPage() {
         )}
       </div>
 
+      {/* --- ORDER DETAILS MODAL --- */}
       {editingOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 w-[640px] max-h-[85vh] overflow-y-auto shadow-xl border border-gray-100">
-            <h2 className="text-xl font-semibold mb-4">
-              Order Details
-            </h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-8 w-full max-w-[640px] max-h-[85vh] overflow-y-auto shadow-xl border border-gray-100">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">
+                Order Details
+              </h2>
+              {!canEdit && (
+                <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
+                  Read Only
+                </span>
+              )}
+            </div>
 
             {/* Order Info */}
             <div className="mb-6 rounded-lg border p-4 bg-gray-50">
@@ -355,45 +380,61 @@ function AdminOrdersPage() {
               </span>
             </div>
 
-            <p className="text-sm font-semibold text-gray-800 mb-2 border-t pt-4">
-              Update Order Status
-            </p>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className={`w-full border rounded-lg px-3 py-2 mb-4 font-medium ${
-                status === "Pending"
-                  ? "bg-yellow-50 text-yellow-700 border-yellow-200"
-                  : status === "Processing"
-                  ? "bg-blue-50 text-blue-700 border-blue-200"
-                  : status === "Shipped"
-                  ? "bg-purple-50 text-purple-700 border-purple-200"
-                  : status === "Delivered"
-                  ? "bg-green-50 text-green-700 border-green-200"
-                  : "bg-red-50 text-red-700 border-red-200"
-              }`}
-            >
-              <option value="Pending">Pending</option>
-              <option value="Processing">Processing</option>
-              <option value="Shipped">Shipped</option>
-              <option value="Delivered">Delivered</option>
-              <option value="Cancelled">Cancelled</option>
-            </select>
+            {/* 4. Conditional Rendering based on permissions */}
+            {canEdit ? (
+              <>
+                <p className="text-sm font-semibold text-gray-800 mb-2 border-t pt-4">
+                  Update Order Status
+                </p>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className={`w-full border rounded-lg px-3 py-2 mb-4 font-medium ${
+                    status === "Pending"
+                      ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                      : status === "Processing"
+                      ? "bg-blue-50 text-blue-700 border-blue-200"
+                      : status === "Shipped"
+                      ? "bg-purple-50 text-purple-700 border-purple-200"
+                      : status === "Delivered"
+                      ? "bg-green-50 text-green-700 border-green-200"
+                      : "bg-red-50 text-red-700 border-red-200"
+                  }`}
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Processing">Processing</option>
+                  <option value="Shipped">Shipped</option>
+                  <option value="Delivered">Delivered</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                onClick={() => setEditingOrder(null)}
-                className="px-4 py-2 border rounded-lg"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdateStatus}
-                className="px-4 py-2 bg-[#3B5BDB] hover:bg-[#2f4ac7] transition text-white rounded-lg"
-              >
-                Save
-              </button>
-            </div>
+                <div className="flex justify-end gap-3 pt-2 border-t mt-4">
+                  <button
+                    onClick={() => setEditingOrder(null)}
+                    className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleUpdateStatus}
+                    className="px-4 py-2 bg-[#3B5BDB] hover:bg-[#2f4ac7] transition text-white rounded-lg"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </>
+            ) : (
+              // View-Only Button for Staff
+              <div className="flex justify-end pt-4 border-t mt-4">
+                <button
+                  onClick={() => setEditingOrder(null)}
+                  className="px-6 py-2 bg-gray-100 text-gray-700 font-semibold border rounded-lg hover:bg-gray-200 transition"
+                >
+                  Close Details
+                </button>
+              </div>
+            )}
+            
           </div>
         </div>
       )}

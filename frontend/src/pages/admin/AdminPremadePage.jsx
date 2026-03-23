@@ -38,8 +38,12 @@ const CharCount = ({ value, max }) => (
 const FieldError = ({ error }) =>
   error ? <p className="mt-1 text-xs text-red-500">{error}</p> : null;
 
-function AdminPremadePage() {
+// 1. Accept the 'user' prop
+function AdminPremadePage({ user }) {
   const { premades, loading, addPremade, updatePremade, deletePremade } = usePremades();
+
+  // 2. Define who is allowed to edit
+  const canEdit = user?.role === "admin" || user?.role === "owner";
 
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -168,13 +172,25 @@ function AdminPremadePage() {
 
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Premades</h2>
-        <button
-          onClick={() => { resetForm(); setShowModal(true); }}
-          className="rounded bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
-        >
-          + Add Premade
-        </button>
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-semibold">Premades</h2>
+          {/* 3. Show badge for staff */}
+          {!canEdit && (
+            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
+              View-Only Mode
+            </span>
+          )}
+        </div>
+        
+        {/* 4. Hide Add button for staff */}
+        {canEdit && (
+          <button
+            onClick={() => { resetForm(); setShowModal(true); }}
+            className="rounded bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
+          >
+            + Add Premade
+          </button>
+        )}
       </div>
 
       {/* Loading State */}
@@ -182,12 +198,14 @@ function AdminPremadePage() {
         <p className="py-10 text-center text-gray-400">Loading premades...</p>
       ) : premades.length === 0 ? (
         <p className="py-10 text-center text-gray-400">
-          No premades yet. Click "+ Add Premade" to get started.
+          {canEdit 
+            ? "No premades yet. Click '+ Add Premade' to get started." 
+            : "No premades available."}
         </p>
       ) : (
         <div className="grid gap-6 md:grid-cols-3">
           {premades.map((premade) => (
-            <div key={premade.id} className="relative rounded border p-4 shadow-sm">
+            <div key={premade.id} className="relative rounded border p-4 shadow-sm bg-white">
               <div className="mb-2">
                 {premade.isAvailable ? (
                   <span className="flex items-center text-xs font-bold text-green-600">
@@ -207,29 +225,33 @@ function AdminPremadePage() {
               <h1 className="font-medium">{premade.name}</h1>
               <h3 className="text-sm text-gray-600">{premade.description}</h3>
               <p className="text-gray-500">₱{premade.price}</p>
-              <div className="mt-4 flex gap-2">
-                <button
-                  onClick={() => handleEdit(premade)}
-                  className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(premade.id)}
-                  className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
-                >
-                  Delete
-                </button>
-              </div>
+              
+              {/* 5. Hide Edit/Delete buttons for staff */}
+              {canEdit && (
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={() => handleEdit(premade)}
+                    className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(premade.id)}
+                    className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
 
-      {/* Add / Edit Modal */}
-      {showModal && (
+      {/* Add / Edit Modal (Hidden completely if user cannot edit, just to be safe) */}
+      {showModal && canEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 max-h-[90vh] overflow-y-auto shadow-xl">
             <h3 className="mb-4 text-lg font-semibold">
               {isEditing ? "Edit Premade" : "Add Premade"}
             </h3>
@@ -339,11 +361,11 @@ function AdminPremadePage() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2 border-t mt-4">
                 <button
                   type="button"
                   onClick={() => { setShowModal(false); resetForm(); }}
-                  className="rounded border px-4 py-2"
+                  className="rounded border px-4 py-2 hover:bg-gray-50"
                 >
                   Cancel
                 </button>

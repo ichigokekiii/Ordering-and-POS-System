@@ -317,7 +317,7 @@ function CheckoutPage() {
                   <div className="space-y-3">
                     <label className="text-xs text-gray-400">Delivery Address *</label>
 
-                    {/* Saved address dropdown */}
+                    
                     {!useManualAddress && (
                       <div className="relative">
                         <select

@@ -26,20 +26,95 @@ class AuthController extends Controller
             ], 401);
         }
 
-        if (!Hash::check($request->password, $user->password)) {
+        // ── PERMANENT LOCK CHECK ──────────────────────────────────────────────
+        if ($user->is_locked) {
             return response()->json([
-                'message' => 'Invalid credentials.'
+                'message' => 'Your account has been locked due to too many failed login attempts. Please contact an administrator to unlock it.',
+                'locked' => true,
+            ], 423);
+        }
+
+        // ── TEMPORARY COOLDOWN CHECK ──────────────────────────────────────────
+        // A cooldown is active after the 3rd fail (2 min) and 6th fail (5 min)
+        $count = $user->failed_attempt_count ?? 0;
+
+        if ($count > 0 && $user->last_failed_attempt_at) {
+            $cooldownMinutes = null;
+
+            if ($count === 3) {
+                $cooldownMinutes = 2;
+            } elseif ($count === 6) {
+                $cooldownMinutes = 5;
+            }
+
+            if ($cooldownMinutes !== null) {
+                $unlockAt = $user->last_failed_attempt_at->addMinutes($cooldownMinutes);
+                if (now()->lt($unlockAt)) {
+                    $remainingSeconds = (int) now()->diffInSeconds($unlockAt);
+                    return response()->json([
+                        'message' => 'Too many failed attempts. Please wait before trying again.',
+                        'cooldown' => true,
+                        'remaining_seconds' => $remainingSeconds,
+                    ], 429);
+                }
+            }
+        }
+
+        // ── PASSWORD CHECK ────────────────────────────────────────────────────
+        if (!Hash::check($request->password, $user->password)) {
+            $newCount = $count + 1;
+            $user->failed_attempt_count = $newCount;
+            $user->last_failed_attempt_at = now();
+
+            // Permanent lock after 9th failure (3 cooldown rounds of 3)
+            if ($newCount >= 9) {
+                $user->is_locked = true;
+                $user->save();
+                return response()->json([
+                    'message' => 'Your account has been permanently locked due to too many failed login attempts. Please contact an administrator.',
+                    'locked' => true,
+                ], 423);
+            }
+
+            $user->save();
+
+            // Trigger a cooldown after the 3rd and 6th failure
+            if ($newCount === 3) {
+                return response()->json([
+                    'message' => 'Too many failed attempts.',
+                    'cooldown' => true,
+                    'remaining_seconds' => 120,
+                ], 429);
+            }
+
+            if ($newCount === 6) {
+                return response()->json([
+                    'message' => 'Too many failed attempts.',
+                    'cooldown' => true,
+                    'remaining_seconds' => 300,
+                ], 429);
+            }
+
+            // Show attempts-remaining warning
+            $attemptsLeft = ($newCount < 3) ? (3 - $newCount) : (6 - $newCount);
+            return response()->json([
+                'message' => 'Invalid credentials.',
+                'attempts_left' => $attemptsLeft,
             ], 401);
         }
 
-        // BLOCK LOGIN IF NOT VERIFIED
+        // ── BLOCK LOGIN IF NOT VERIFIED ───────────────────────────────────────
         if (!$user->is_verified) {
             return response()->json([
                 'message' => 'Please verify your account first.'
             ], 403);
         }
 
-        // Create Sanctum token
+        // ── SUCCESS: reset lockout counters ───────────────────────────────────
+        $user->failed_attempt_count = 0;
+        $user->last_failed_attempt_at = null;
+        $user->save();
+
         $user->tokens()->delete();
         $token = $user->createToken('auth_token')->plainTextToken;
 

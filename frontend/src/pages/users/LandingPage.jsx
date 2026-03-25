@@ -206,7 +206,11 @@ function LandingPage() {
             <div key={`${item.id}-${item.name}`} className="w-64 flex-shrink-0 group cursor-pointer">
               <div className="overflow-hidden rounded-2xl">
                 <img
-                  src={item.image || "https://via.placeholder.com/300"}
+                  src={
+                    item.image
+                      ? `http://localhost:8000${item.image}`
+                      : "https://via.placeholder.com/300"
+                  }
                   alt={item.name}
                   className="h-72 w-full object-cover transition duration-500 group-hover:scale-105"
                 />
@@ -270,7 +274,11 @@ function LandingPage() {
               <div key={schedule.id} className="w-72 flex-shrink-0 group cursor-pointer">
                 <div className="overflow-hidden rounded-2xl">
                   <img
-                    src={schedule.image || "https://via.placeholder.com/600x300"}
+                    src={
+                      schedule.image
+                        ? `http://localhost:8000${schedule.image}`
+                        : "https://via.placeholder.com/600x300"
+                    }
                     alt={schedule.schedule_name}
                     className="h-48 w-full object-cover transition duration-500 group-hover:scale-105"
                   />
@@ -279,10 +287,6 @@ function LandingPage() {
                 <h3 className="mt-4 text-lg font-semibold text-gray-900">
                   {schedule.schedule_name}
                 </h3>
-
-                <p className="mt-2 text-sm text-gray-600 leading-relaxed">
-                  {schedule.schedule_description}
-                </p>
 
                 <Link
                   to="/schedule"

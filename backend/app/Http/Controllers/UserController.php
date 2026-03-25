@@ -197,7 +197,14 @@ class UserController extends Controller
         }
 
         if ($request->filled('is_locked')) {
-            $user->is_locked = $request->input('is_locked');
+            $isLocked = filter_var($request->input('is_locked'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            $user->is_locked = $isLocked;
+
+            // When admin unlocks the account, reset the failed attempt counters
+            if ($isLocked === false) {
+                $user->failed_attempt_count = 0;
+                $user->last_failed_attempt_at = null;
+            }
         }
 
         if ($request->filled('priority')) {

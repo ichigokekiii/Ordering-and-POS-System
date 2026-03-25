@@ -102,10 +102,15 @@ function AdminUsersPage() {
     }
 
     if (filterStatus !== "all") {
-      filteredUsers = filteredUsers.filter((user) => {
-        const normalizedStatus = (user.status || "").toLowerCase();
-        return normalizedStatus === filterStatus.toLowerCase();
-      });
+      if (filterStatus === "Locked") {
+        filteredUsers = filteredUsers.filter((user) => user.is_locked === true);
+      } else {
+        filteredUsers = filteredUsers.filter((user) => {
+          if (user.is_locked) return false; // locked accounts don't appear in Active/Inactive
+          const normalizedStatus = (user.status || "").toLowerCase();
+          return normalizedStatus === filterStatus.toLowerCase();
+        });
+      }
     }
 
     filteredUsers.sort((a, b) => {
@@ -128,6 +133,22 @@ function AdminUsersPage() {
     });
 
     return filteredUsers;
+  };
+
+  const handleUnlockUser = (userId) => {
+    api.put(`/users/${userId}`, { is_locked: false })
+      .then((res) => {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === userId ? res.data : u))
+        );
+        setShowEditModal(false);
+        setToast({ type: "success", message: "Account unlocked successfully" });
+        setTimeout(() => setToast(null), 4000);
+      })
+      .catch(() => {
+        setToast({ type: "error", message: "Failed to unlock account" });
+        setTimeout(() => setToast(null), 4000);
+      });
   };
 
   const handleDeleteUser = (userId) => {
@@ -364,6 +385,12 @@ function AdminUsersPage() {
                     >
                       Inactive
                     </button>
+                    <button
+                      onClick={() => setFilterStatus("Locked")}
+                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
+                    >
+                      Locked
+                    </button>
                   </div>
                 </div>
               )}
@@ -420,9 +447,15 @@ function AdminUsersPage() {
                     </td>
                     <td className="py-5">
                       {(() => {
+                        if (user.is_locked) {
+                          return (
+                            <span className="px-3 py-1 rounded-full text-xs bg-red-100 text-red-700 font-semibold">
+                              Locked
+                            </span>
+                          );
+                        }
                         const normalizedStatus = (user.status || "").toLowerCase();
                         const isActive = normalizedStatus === "active";
-
                         return (
                           <span
                             className={`px-3 py-1 rounded-full text-xs ${
@@ -570,6 +603,19 @@ function AdminUsersPage() {
                 className="w-full border rounded-xl px-4 py-3 text-sm"
               />
             </div>
+
+            {/* Unlock banner if locked */}
+            {selectedUser.is_locked && (
+              <div className="mt-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                <p className="font-semibold mb-2">🔒 This account is locked.</p>
+                <button
+                  onClick={() => handleUnlockUser(selectedUser.id)}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                >
+                  Unlock Account
+                </button>
+              </div>
+            )}
 
             <div className="flex justify-between mt-8">
               <button

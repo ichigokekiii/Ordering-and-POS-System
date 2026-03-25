@@ -184,7 +184,7 @@ function LandingPage() {
       </section>
 
       {/* INTRO STATEMENT SECTION */}
-      <section className="bg-[#f5f7fb] py-20">
+      <section className="bg-white py-20">
         <div className="mx-auto max-w-5xl px-8 text-center">
           <h2 className="text-3xl font-bold text-gray-900">
             {getContentValue("home_intro_title", "The Flower Shop that will never fail you")}
@@ -196,35 +196,37 @@ function LandingPage() {
       </section>
 
       {/* POPULAR PRODUCTS */}
-      <section className="mx-auto max-w-7xl px-8 py-20">
-        <h2 className="mb-10 text-3xl font-bold text-gray-900">
-          {getContentValue("home_products_title", "Popular Products")}
-        </h2>
+      <section className="bg-[#f5f7fb] py-20">
+        <div className="mx-auto max-w-7xl px-8">
+          <h2 className="mb-10 text-3xl font-bold text-gray-900">
+            {getContentValue("home_products_title", "Popular Products")}
+          </h2>
 
-        <div className="flex gap-8 overflow-x-auto scroll-smooth pb-4">
-          {[...products, ...premades].map((item) => (
-            <div key={`${item.id}-${item.name}`} className="w-64 flex-shrink-0 group cursor-pointer">
-              <div className="overflow-hidden rounded-2xl">
-                <img
-                  src={
-                    item.image
-                      ? `http://localhost:8000${item.image}`
-                      : "https://via.placeholder.com/300"
-                  }
-                  alt={item.name}
-                  className="h-72 w-full object-cover transition duration-500 group-hover:scale-105"
-                />
+          <div className="flex gap-8 overflow-x-auto scroll-smooth pb-4">
+            {[...products, ...premades].map((item) => (
+              <div key={`${item.id}-${item.name}`} className="w-64 flex-shrink-0 group cursor-pointer">
+                <div className="overflow-hidden rounded-2xl">
+                  <img
+                    src={
+                      item.image
+                        ? `http://localhost:8000${item.image}`
+                        : "https://via.placeholder.com/300"
+                    }
+                    alt={item.name}
+                    className="h-72 w-full object-cover transition duration-500 group-hover:scale-105"
+                  />
+                </div>
+
+                <h3 className="mt-4 text-base font-semibold text-gray-900">
+                  {item.name}
+                </h3>
+
+                <p className="text-sm text-gray-500">
+                  ₱{item.price}
+                </p>
               </div>
-
-              <h3 className="mt-4 text-base font-semibold text-gray-900">
-                {item.name}
-              </h3>
-
-              <p className="text-sm text-gray-500">
-                ₱{item.price}
-              </p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 

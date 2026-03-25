@@ -11,6 +11,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { LoadingProvider } from "./contexts/LoadingContext";
 import { NavbarProvider } from "./contexts/NavbarContext";
 import { OrderProvider } from "./contexts/OrderContext";
+import { ContentProvider } from "./contexts/ContentContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
@@ -22,7 +23,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               <ScheduleProvider>
                 <AuthProvider>
                   <OrderProvider>
-                    <App />
+                    <ContentProvider>
+                      <App />
+                    </ContentProvider>
                   </OrderProvider>
                 </AuthProvider>
               </ScheduleProvider>

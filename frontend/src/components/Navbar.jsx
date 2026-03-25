@@ -3,10 +3,27 @@ import { Link, useNavigate } from "react-router-dom";
 import { User } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useNavbar } from "../contexts/NavbarContext";
+import { useContents } from "../contexts/ContentContext";
 
 function Navbar() {
   const navigate = useNavigate();
   const { currentUser, logoutUser } = useNavbar();
+
+  const contentContext = useContents();
+  const contents = contentContext?.contents || [];
+
+  const getContentValue = (identifier, fallback = "") => {
+    const item = contents.find(
+      (c) => c.identifier === identifier && !c.isArchived
+    );
+
+    if (!item) return fallback;
+
+    if (item.type === "text") return item.content_text;
+    if (item.type === "image") return item.content_image;
+
+    return fallback;
+  };
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -43,7 +60,7 @@ function Navbar() {
           to="/"
           className="cursor-pointer text-lg font-semibold tracking-wide text-blue-600"
         >
-          petal express
+          {getContentValue("navbar_brand", "petal express")}
         </Link>
 
         <ul className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 text-sm text-gray-700 md:flex">

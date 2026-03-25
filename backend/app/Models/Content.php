@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Content extends Model
 {
-    protected $table = 'cms_contents';
+    protected $table = 'contents';
 
     protected $fillable = [
         'identifier',
@@ -15,5 +15,9 @@ class Content extends Model
         'content_text',
         'content_image',
         'isArchived'
+    ];
+
+    protected $casts = [
+        'isArchived' => 'boolean',
     ];
 }

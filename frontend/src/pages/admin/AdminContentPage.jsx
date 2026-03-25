@@ -1,31 +1,63 @@
+/* eslint-disable react-hooks/rules-of-hooks */
+/* eslint-disable no-unused-vars */
 import { useState } from "react";
+import { useContents } from "../../contexts/ContentContext";
+
+const CONTENT_FIELDS = {
+  home: [
+    { key: "hero_title", label: "Hero Title" },
+    { key: "hero_subtitle", label: "Hero Subtitle" },
+
+    // Banner images (min 2, max 5)
+    { key: "hero_image_1", label: "Banner Image 1" },
+    { key: "hero_image_2", label: "Banner Image 2" },
+    { key: "hero_image_3", label: "Banner Image 3" },
+    { key: "hero_image_4", label: "Banner Image 4" },
+    { key: "hero_image_5", label: "Banner Image 5" },
+  ],
+  about: [
+    { key: "about_title", label: "About Title" },
+    { key: "about_description", label: "About Description" },
+  ],
+  navbar: [
+    { key: "brand_name", label: "Brand Name" },
+    { key: "logo", label: "Navbar Logo" },
+    { key: "navbar_bg", label: "Navbar Background" },
+  ],
+  footer: [
+    { key: "footer_email", label: "Footer Email" },
+    { key: "footer_phone", label: "Footer Phone" },
+  ],
+};
 
 function AdminContentPage() {
   const [showModal, setShowModal] = useState(false);
+  const [selectedPage, setSelectedPage] = useState("");
+  const [editingContent, setEditingContent] = useState(null);
+  const [formDataState, setFormDataState] = useState({
+    identifier: "",
+    page: "",
+    type: "",
+    content_text: "",
+  });
 
-  // temporary placeholder data until backend/context is added
-  const [contents] = useState([
-    {
-      id: 1,
-      identifier: "hero_title",
-      page: "home",
-      type: "text",
-      content: "Fresh flowers delivered daily",
-      isArchived: false,
-    },
-    {
-      id: 2,
-      identifier: "hero_banner",
-      page: "home",
-      type: "image",
-      image:
-        "https://images.unsplash.com/photo-1526045612212-70caf35c14df",
-      isArchived: true,
-    },
-  ]);
+  const contentContext = useContents() || {};
+  const contents = contentContext.contents || [];
+  const addContent = contentContext.addContent;
+  const updateContent = contentContext.updateContent;
+  const toggleArchiveContent = contentContext.toggleArchiveContent;
+  const deleteContent = contentContext.deleteContent;
 
-  const activeContent = contents.filter((c) => !c.isArchived);
-  const archivedContent = contents.filter((c) => c.isArchived);
+  const safeContents = contents || [];
+
+  const groupedActive = {
+    home: safeContents.filter((c) => c.page === "home" && !c.isArchived),
+    about: safeContents.filter((c) => c.page === "about" && !c.isArchived),
+    navbar: safeContents.filter((c) => c.page === "navbar" && !c.isArchived),
+    footer: safeContents.filter((c) => c.page === "footer" && !c.isArchived),
+  };
+
+  const archivedContent = safeContents.filter((c) => c.isArchived);
 
   return (
     <div className="px-10 py-10">
@@ -41,56 +73,86 @@ function AdminContentPage() {
       </div>
 
       <div className="space-y-10">
-        {/* Active Content */}
-        <div>
-          <h3 className="mb-4 text-xl font-semibold text-gray-700 border-b pb-2">
-            Active Content
-          </h3>
+        {Object.keys(groupedActive).map((section) => (
+          <div key={section}>
+            <h3 className="mb-4 text-xl font-semibold text-gray-700 border-b pb-2 capitalize">
+              {section} Content
+            </h3>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            {activeContent.length === 0 ? (
-              <p className="text-gray-400">No active content</p>
-            ) : (
-              activeContent.map((item) => (
-                <div key={item.id} className="rounded border p-4 shadow-sm">
-                  <div className="mb-2">
-                    <span className="flex items-center text-xs font-bold text-green-600">
-                      <span className="mr-1">✓</span> Active
-                    </span>
-                  </div>
+            <div className="grid gap-6 md:grid-cols-3">
+              {groupedActive[section].length === 0 ? (
+                <p className="text-gray-400">No content yet</p>
+              ) : (
+                groupedActive[section].map((item) => {
+                  const fieldLabel =
+                    CONTENT_FIELDS[section]?.find((f) => f.key === item.identifier)
+                      ?.label || item.identifier;
 
-                  {item.type === "image" && (
-                    <img
-                      src={item.image}
-                      alt={item.identifier}
-                      className="mb-3 h-40 w-full rounded object-cover"
-                    />
-                  )}
+                  return (
+                    <div key={item.id} className="rounded border p-4 shadow-sm">
+                      <div className="mb-2">
+                        <span className="flex items-center text-xs font-bold text-green-600">
+                          ✓ Active
+                        </span>
+                      </div>
 
-                  <h3 className="font-medium">{item.identifier}</h3>
+                      {item.type === "image" && item.content_image && (
+                        <img
+                          src={`http://localhost:8000${item.content_image}`}
+                          alt={item.identifier}
+                          className="mb-3 h-40 w-full rounded object-cover"
+                        />
+                      )}
 
-                  <p className="text-sm text-gray-500">Page: {item.page}</p>
+                      <h3 className="font-medium">
+                        {fieldLabel}
+                        {item.identifier.includes("hero_image") && (
+                          <span className="ml-2 text-xs text-blue-500">(Banner)</span>
+                        )}
+                      </h3>
 
-                  {item.type === "text" && (
-                    <p className="mt-2 text-sm text-gray-700">
-                      {item.content}
-                    </p>
-                  )}
+                      <p className="text-xs uppercase text-gray-400">
+                        {item.identifier}
+                      </p>
 
-                  <div className="mt-4 flex gap-2">
-                    <button className="rounded border px-3 py-1 text-sm hover:bg-gray-100">
-                      Edit
-                    </button>
+                      {item.type === "text" && (
+                        <p className="mt-2 text-sm text-gray-700">
+                          {item.content_text}
+                        </p>
+                      )}
 
-                    <button className="rounded border px-3 py-1 text-sm text-gray-700 hover:bg-gray-100">
-                      Archive
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingContent(item);
+                            setSelectedPage(item.page);
+                            setFormDataState({
+                              identifier: item.identifier,
+                              page: item.page,
+                              type: item.type,
+                              content_text: item.content_text || "",
+                            });
+                            setShowModal(true);
+                          }}
+                          className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          onClick={() => toggleArchiveContent && toggleArchiveContent(item)}
+                          className="rounded border px-3 py-1 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          Archive
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
-        </div>
+        ))}
 
         {/* Archived Content */}
         <div>
@@ -110,9 +172,9 @@ function AdminContentPage() {
                     </span>
                   </div>
 
-                  {item.type === "image" && (
+                  {item.type === "image" && item.content_image && (
                     <img
-                      src={item.image}
+                      src={`http://localhost:8000${item.content_image}`}
                       alt={item.identifier}
                       className="mb-3 h-40 w-full rounded object-cover grayscale opacity-60"
                     />
@@ -120,20 +182,38 @@ function AdminContentPage() {
 
                   <h3 className="font-medium">{item.identifier}</h3>
 
-                  <p className="text-sm text-gray-500">Page: {item.page}</p>
+                  <p className="text-xs font-semibold uppercase text-blue-500">
+                    {item.page}
+                  </p>
 
                   {item.type === "text" && (
                     <p className="mt-2 text-sm text-gray-700 opacity-60">
-                      {item.content}
+                      {item.content_text}
                     </p>
                   )}
 
                   <div className="mt-4 flex gap-2">
-                    <button className="rounded border px-3 py-1 text-sm hover:bg-gray-100">
+                    <button
+                      onClick={() => {
+                        setEditingContent(item);
+                        setSelectedPage(item.page);
+                        setFormDataState({
+                          identifier: item.identifier,
+                          page: item.page,
+                          type: item.type,
+                          content_text: item.content_text || "",
+                        });
+                        setShowModal(true);
+                      }}
+                      className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                    >
                       Edit
                     </button>
 
-                    <button className="rounded border px-3 py-1 text-sm text-green-700 hover:bg-green-50">
+                    <button
+                      onClick={() => toggleArchiveContent && toggleArchiveContent(item)}
+                      className="rounded border px-3 py-1 text-sm text-green-700 hover:bg-green-50"
+                    >
                       Restore
                     </button>
                   </div>
@@ -148,35 +228,175 @@ function AdminContentPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-lg bg-white p-6">
-            <h3 className="mb-4 text-lg font-semibold">Add Content</h3>
+            <h3 className="mb-2 text-lg font-semibold">{editingContent ? "Edit Content" : "Add Content"}</h3>
+            <form
+              className="space-y-3"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
 
-            <form className="space-y-4">
-              <input
+                // manually append required fields (important for Laravel validation)
+                formData.append("identifier", formDataState.identifier);
+                formData.append("page", formDataState.page);
+                formData.append("type", formDataState.type);
+
+                // only append text if exists
+                if (formDataState.type === "text") {
+                  formData.set("content_text", formDataState.content_text || "");
+                }
+
+                // TEMPORARY: debug log for payload
+                console.log("Submitting content:", {
+                  identifier: formDataState.identifier,
+                  page: formDataState.page,
+                  type: formDataState.type,
+                });
+
+                // Validate banner image count (min 2)
+                if (formDataState.page === "home" && formDataState.identifier.includes("hero_image")) {
+                  const existingBannerImages = contents.filter(
+                    (c) =>
+                      c.page === "home" &&
+                      c.identifier.includes("hero_image") &&
+                      !c.isArchived
+                  );
+
+                  if (existingBannerImages.length >= 5 && !editingContent) {
+                    alert("Maximum of 5 banner images allowed.");
+                    return;
+                  }
+                }
+
+                try {
+                  if (editingContent) {
+                    await updateContent(editingContent.id, formData);
+                  } else {
+                    await addContent(formData);
+                  }
+                  setShowModal(false);
+                  setEditingContent(null);
+                  setFormDataState({
+                    identifier: "",
+                    page: "",
+                    type: "",
+                    content_text: "",
+                  });
+                  e.target.reset();
+                } catch (err) {
+                  console.error("Failed to add content", err);
+                }
+              }}
+            >
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Select Section
+              </label>
+              <select
+                name="page"
                 className="w-full rounded border px-4 py-2"
-                placeholder="Identifier (ex: hero_title)"
-              />
-
-              <input
-                className="w-full rounded border px-4 py-2"
-                placeholder="Page (ex: home)"
-              />
-
-              <select className="w-full rounded border px-4 py-2">
-                <option value="text">Text Content</option>
-                <option value="image">Image Content</option>
+                required
+                onChange={(e) => {
+                  setSelectedPage(e.target.value);
+                  setFormDataState({
+                    ...formDataState,
+                    page: e.target.value,
+                    identifier: "",
+                    type: "",
+                    content_text: "",
+                  });
+                }}
+                value={formDataState.page}
+              >
+                <option value="">Select Section</option>
+                <option value="home">Home</option>
+                <option value="about">About</option>
+                <option value="navbar">Navbar</option>
+                <option value="footer">Footer</option>
               </select>
 
-              <textarea
-                className="w-full rounded border px-4 py-2"
-                placeholder="Text content..."
-              />
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Content Field
+              </label>
 
-              <input type="file" className="w-full text-sm" />
+              {selectedPage === "home" && (
+                <p className="text-xs text-gray-400 -mt-1 mb-1">
+                  Banner Images: Minimum 2, Maximum 5 (used in homepage slider)
+                </p>
+              )}
+
+              {selectedPage && (
+                <>
+                  <select
+                    name="identifier"
+                    value={formDataState.identifier}
+                    onChange={(e) => {
+                      const selectedKey = e.target.value;
+
+                      // infer type automatically
+                      const isImage = selectedKey.includes("image") || selectedKey.includes("logo");
+
+                      setFormDataState({
+                        ...formDataState,
+                        identifier: selectedKey,
+                        type: isImage ? "image" : "text",
+                        content_text: "",
+                      });
+                    }}
+                    className="w-full rounded border px-4 py-2"
+                    required
+                  >
+                    <option value="">Select Content Field</option>
+                    {CONTENT_FIELDS[selectedPage]?.map((field) => (
+                      <option key={field.key} value={field.key}>
+                        {field.label}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
+
+              {formDataState.identifier && formDataState.type === "text" && (
+                <>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Text Content
+                  </label>
+                  <textarea
+                    name="content_text"
+                    value={formDataState.content_text}
+                    onChange={(e) =>
+                      setFormDataState({ ...formDataState, content_text: e.target.value })
+                    }
+                    className="w-full rounded border px-4 py-2"
+                    placeholder="Enter text content..."
+                  />
+                </>
+              )}
+
+              {formDataState.identifier && formDataState.type === "image" && (
+                <>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Upload Image
+                  </label>
+                  <input
+                    type="file"
+                    name="content_image"
+                    className="w-full text-sm"
+                  />
+                </>
+              )}
 
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingContent(null);
+                    setFormDataState({
+                      identifier: "",
+                      page: "",
+                      type: "",
+                      content_text: "",
+                    });
+                  }}
                   className="rounded border px-4 py-2"
                 >
                   Cancel

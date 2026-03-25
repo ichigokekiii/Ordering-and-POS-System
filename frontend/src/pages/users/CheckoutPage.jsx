@@ -17,6 +17,10 @@ function CheckoutPage() {
 
   const [showTerms, setShowTerms] = useState(false);
 
+  // ── Success modal (same pattern as VerifyOtpPage) ──
+  const [modalMessage, setModalMessage] = useState("");
+  const [showModal, setShowModal] = useState(false);
+
   // Auto-filled from logged in user
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
@@ -208,10 +212,15 @@ function CheckoutPage() {
       const orderItems = buildOrderItems(orderId);
       await api.post("/order-items", { items: orderItems });
 
-      alert(`Order placed! Your Order ID is ${orderId}`);
+      // ── Show success modal then navigate (same pattern as VerifyOtpPage) ──
       clearCart();
       resetFileInput();
-      navigate("/");
+      setModalMessage(`Order placed! Your Order ID is ${orderId}`);
+      setShowModal(true);
+
+      setTimeout(() => {
+        navigate("/");
+      }, 2000);
 
     } catch (error) {
       console.error("Order failed", error);
@@ -317,7 +326,6 @@ function CheckoutPage() {
                   <div className="space-y-3">
                     <label className="text-xs text-gray-400">Delivery Address *</label>
 
-                    
                     {!useManualAddress && (
                       <div className="relative">
                         <select
@@ -580,6 +588,7 @@ function CheckoutPage() {
         </form>
       </div>
 
+      {/* ── Terms Modal ── */}
       {showTerms && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl max-h-[80vh] flex flex-col">
@@ -674,6 +683,45 @@ function CheckoutPage() {
               >
                 I Understand
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Success Modal ── */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-sm transform rounded-2xl bg-white p-6 text-center shadow-2xl transition-all animate-fade-in">
+
+            {/* Success Icon */}
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+              <svg
+                className="h-7 w-7 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+
+            {/* Message */}
+            <h3 className="mb-2 text-lg font-semibold text-gray-800">
+              Success
+            </h3>
+
+            <p className="text-sm text-gray-600">
+              {modalMessage}
+            </p>
+
+            {/* Loading indicator */}
+            <div className="mt-4 flex justify-center">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#5C6F9E] border-t-transparent"></div>
             </div>
           </div>
         </div>

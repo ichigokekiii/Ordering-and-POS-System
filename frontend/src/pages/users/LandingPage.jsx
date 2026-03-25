@@ -125,13 +125,27 @@ function LandingPage() {
                 <div className="absolute inset-0 bg-black/50"></div>
 
                 <div className="relative z-10 max-w-3xl px-6 text-center text-white">
-                  <h1 className="text-5xl font-bold leading-tight md:text-6xl">
-                    {getContentValue("hero_title", landing.title)}
-                  </h1>
+                  {(() => {
+                    const idx = index + 1;
 
-                  <p className="mt-4 text-lg opacity-90">
-                    {getContentValue("hero_subtitle", landing.subtitle)}
-                  </p>
+                    const title =
+                      getContentValue(`hero_title_${idx}`, "") || landing.title;
+
+                    const subtitle =
+                      getContentValue(`hero_subtitle_${idx}`, "") || landing.subtitle;
+
+                    return (
+                      <>
+                        <h1 className="text-5xl font-bold leading-tight md:text-6xl">
+                          {title}
+                        </h1>
+
+                        <p className="mt-4 text-lg opacity-90">
+                          {subtitle}
+                        </p>
+                      </>
+                    );
+                  })()}
 
                   <button className="mt-8 rounded-full bg-white px-8 py-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-200">
                     Browse Flowers
@@ -173,10 +187,10 @@ function LandingPage() {
       <section className="bg-[#f5f7fb] py-20">
         <div className="mx-auto max-w-5xl px-8 text-center">
           <h2 className="text-3xl font-bold text-gray-900">
-            {getContentValue("intro_title", "The Flower Shop that will never fail you")}
+            {getContentValue("home_intro_title", "The Flower Shop that will never fail you")}
           </h2>
           <p className="mt-4 text-gray-600 leading-relaxed">
-            {getContentValue("intro_text", "We carefully craft every bouquet to match your moment — whether it's love, celebration, gratitude, or comfort. Fresh flowers, thoughtfully arranged.")}
+            {getContentValue("home_intro_description", "We carefully craft every bouquet to match your moment — whether it's love, celebration, gratitude, or comfort. Fresh flowers, thoughtfully arranged.")}
           </p>
         </div>
       </section>
@@ -184,7 +198,7 @@ function LandingPage() {
       {/* POPULAR PRODUCTS */}
       <section className="mx-auto max-w-7xl px-8 py-20">
         <h2 className="mb-10 text-3xl font-bold text-gray-900">
-          Popular Products
+          {getContentValue("home_products_title", "Popular Products")}
         </h2>
 
         <div className="flex gap-8 overflow-x-auto scroll-smooth pb-4">
@@ -216,19 +230,23 @@ function LandingPage() {
           
           <div>
             <h2 className="text-4xl font-bold text-gray-900 leading-tight">
-              {getContentValue("promo_title", "Fresh Flowers made specially for you")}
+              {getContentValue("home_promo_title", "Fresh Flowers made specially for you")}
             </h2>
             <p className="mt-6 text-gray-600">
-              {getContentValue("promo_text", "Every bouquet is handcrafted with precision and care. We source locally and arrange passionately to bring joy to every doorstep.")}
+              {getContentValue("home_promo_description", "Every bouquet is handcrafted with precision and care. We source locally and arrange passionately to bring joy to every doorstep.")}
             </p>
             <button className="mt-8 rounded-full bg-[#4f6fa5] px-8 py-3 text-white font-semibold hover:bg-[#3f5b89] transition">
-              Shop Now
+              {getContentValue("home_promo_button_text", "Shop Now")}
             </button>
           </div>
 
           <div className="overflow-hidden rounded-3xl">
             <img
-              src={getContentValue("promo_image", "")}
+              src={
+                getContentValue("home_promo_image", "")
+                  ? `http://localhost:8000${getContentValue("home_promo_image")}`
+                  : "https://via.placeholder.com/600x500"
+              }
               alt="Flower arrangement"
               className="h-[500px] w-full object-cover"
             />
@@ -241,8 +259,11 @@ function LandingPage() {
       <section className="bg-gray-50 py-20">
         <div className="mx-auto max-w-7xl px-8">
           <h2 className="mb-12 text-3xl font-bold text-gray-900">
-            Featured Schedules
+            {getContentValue("home_featured_title", "Featured Schedules")}
           </h2>
+          <p className="mb-8 text-gray-600">
+            {getContentValue("home_featured_description", "Explore our upcoming floral experiences")}
+          </p>
 
           <div className="flex gap-10 overflow-x-auto scroll-smooth pb-4">
             {schedules.map((schedule) => (

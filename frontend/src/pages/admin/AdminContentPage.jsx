@@ -5,15 +5,44 @@ import { useContents } from "../../contexts/ContentContext";
 
 const CONTENT_FIELDS = {
   home: [
-    { key: "hero_title", label: "Hero Title" },
-    { key: "hero_subtitle", label: "Hero Subtitle" },
+    // Banner 1
+    { key: "hero_title_1", label: "Banner 1 Title" },
+    { key: "hero_subtitle_1", label: "Banner 1 Subtitle" },
+    { key: "hero_image_1", label: "Banner 1 Image" },
 
-    // Banner images (min 2, max 5)
-    { key: "hero_image_1", label: "Banner Image 1" },
-    { key: "hero_image_2", label: "Banner Image 2" },
-    { key: "hero_image_3", label: "Banner Image 3" },
-    { key: "hero_image_4", label: "Banner Image 4" },
-    { key: "hero_image_5", label: "Banner Image 5" },
+    // Banner 2
+    { key: "hero_title_2", label: "Banner 2 Title" },
+    { key: "hero_subtitle_2", label: "Banner 2 Subtitle" },
+    { key: "hero_image_2", label: "Banner 2 Image" },
+
+    // Banner 3
+    { key: "hero_title_3", label: "Banner 3 Title" },
+    { key: "hero_subtitle_3", label: "Banner 3 Subtitle" },
+    { key: "hero_image_3", label: "Banner 3 Image" },
+
+    // Banner 4
+    { key: "hero_title_4", label: "Banner 4 Title" },
+    { key: "hero_subtitle_4", label: "Banner 4 Subtitle" },
+    { key: "hero_image_4", label: "Banner 4 Image" },
+
+    // Banner 5
+    { key: "hero_title_5", label: "Banner 5 Title" },
+    { key: "hero_subtitle_5", label: "Banner 5 Subtitle" },
+    { key: "hero_image_5", label: "Banner 5 Image" },
+
+    // Intro Section
+    { key: "home_intro_title", label: "Intro Title" },
+    { key: "home_intro_description", label: "Intro Description" },
+
+    // Featured Section
+    { key: "home_featured_title", label: "Featured Section Title" },
+    { key: "home_featured_description", label: "Featured Description" },
+
+    // Promo Section
+    { key: "home_promo_title", label: "Promo Title" },
+    { key: "home_promo_description", label: "Promo Description" },
+    { key: "home_promo_button_text", label: "Promo Button Text" },
+    { key: "home_promo_image", label: "Promo Image" },
   ],
   about: [
     { key: "about_title", label: "About Title" },
@@ -319,7 +348,7 @@ function AdminContentPage() {
 
               {selectedPage === "home" && (
                 <p className="text-xs text-gray-400 -mt-1 mb-1">
-                  Banner Images: Minimum 2, Maximum 5 (used in homepage slider)
+                  Manage homepage sections: Banners, Intro, Featured, and Promo (images auto-detected)
                 </p>
               )}
 

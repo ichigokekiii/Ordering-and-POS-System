@@ -16,7 +16,7 @@ function VerifyOtpPage() {
   const navigate = useNavigate();
   const { handleLogin } = useAuth();
 
-  const email = location.state?.email;
+  const email = location.state?.email || localStorage.getItem("otp_email");
   const purpose = location.state?.purpose;
 
   // Countdown timer effect
@@ -44,6 +44,13 @@ function VerifyOtpPage() {
       // Store Sanctum token
       if (res.data.token) {
         localStorage.setItem("token", res.data.token);
+      }
+
+      // 🚨 Ensure token exists before proceeding
+      if (!res.data.token) {
+        setError("Authentication failed. Please try logging in again.");
+        setLoading(false);
+        return;
       }
 
       // Determine user source (login or register)
@@ -74,6 +81,9 @@ function VerifyOtpPage() {
 
       // Otherwise continue normal login/register flow
       handleLogin(userData);
+
+      // Clean OTP session data
+      localStorage.removeItem("otp_email");
 
       setShowModal(true);
 
@@ -119,6 +129,7 @@ function VerifyOtpPage() {
   };
 
   if (!email) {
+    localStorage.removeItem("otp_email");
     return (
       <div className="mx-auto max-w-sm px-8 pt-28 pb-32">
         <h2 className="mb-4 text-xl font-semibold">Session expired</h2>

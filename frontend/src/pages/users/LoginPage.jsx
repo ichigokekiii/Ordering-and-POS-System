@@ -82,7 +82,7 @@ function LoginPage({ onLogin }) {
         // Wrong credentials — show attempts remaining if provided
         setError("Invalid email or password.");
         if (data?.attempts_left !== undefined) {
-          setAttemptsLeft(data.attempts_left);
+          setAttemptsLeft(Math.max(0, data.attempts_left));
         }
       } else {
         setError(data?.message || "Invalid credentials.");
@@ -123,7 +123,7 @@ function LoginPage({ onLogin }) {
       {error && !isLocked && !isCoolingDown && (
         <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
           <p>{error}</p>
-          {attemptsLeft !== null && (
+          {attemptsLeft !== null && attemptsLeft > 0 && (
             <p className="mt-1 font-semibold">
               ⚠️ {attemptsLeft} attempt{attemptsLeft !== 1 ? "s" : ""} remaining before lockout.
             </p>
@@ -180,4 +180,3 @@ function LoginPage({ onLogin }) {
 }
 
 export default LoginPage;
-

@@ -31,6 +31,9 @@ function AdminUsersPage() {
   const [toast, setToast] = useState(null);
   const isOwner = currentUser?.role?.toLowerCase() === "owner";
 
+  const [activeTab, setActiveTab] = useState("users");
+  const [activityLogs, setActivityLogs] = useState([]);
+
   const [selectedUser, setSelectedUser] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showConfirmSave, setShowConfirmSave] = useState(false);
@@ -39,11 +42,21 @@ function AdminUsersPage() {
   const [editForm, setEditForm] = useState({
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
+    phone_number: "",
+    first_name: "",
+    last_name: "",
+    status: ""
   });
+
+  const [emailOtp, setEmailOtp] = useState("");
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [passwordOtp, setPasswordOtp] = useState("");
+  const [passwordOtpSent, setPasswordOtpSent] = useState(false);
 
   useEffect(() => {
     fetchUsersFromDatabase();
+    fetchActivityLogs();
   }, []);
 
   const fetchUsersFromDatabase = () => {
@@ -58,6 +71,16 @@ function AdminUsersPage() {
       })
       .finally(() => {
         setLoading(false);
+      });
+  };
+
+  const fetchActivityLogs = () => {
+    api.get("/activity-logs")
+      .then((response) => {
+        setActivityLogs(response.data);
+      })
+      .catch(() => {
+        // Activity logs might not be implemented yet, ignore error
       });
   };
 
@@ -165,33 +188,115 @@ function AdminUsersPage() {
       });
   };
 
-  // Edit Modal helpers
   const openEditModal = (user) => {
     setSelectedUser(user);
     setEditForm({
       email: user.email || "",
       password: "",
-      confirmPassword: ""
+      confirmPassword: "",
+      phone_number: user.phone_number || "",
+      first_name: user.first_name || "",
+      last_name: user.last_name || "",
+      status: user.status || "Active"
     });
     setShowEditModal(true);
   };
 
   const handleSaveChanges = () => {
+    // Validate phone number
+    if (editForm.phone_number && !/^\d{11}$/.test(editForm.phone_number.trim())) {
+      setToast({ type: "error", message: "Phone number must be exactly 11 digits" });
+      setTimeout(() => setToast(null), 4000);
+      return;
+    }
+
+    // Validate names
+    const namePattern = /^[A-Za-z\s\-']{2,50}$/;
+    if (!editForm.first_name.trim() || !namePattern.test(editForm.first_name.trim())) {
+      setToast({ type: "error", message: "First name must be 2-50 letters only" });
+      setTimeout(() => setToast(null), 4000);
+      return;
+    }
+    if (!editForm.last_name.trim() || !namePattern.test(editForm.last_name.trim())) {
+      setToast({ type: "error", message: "Last name must be 2-50 letters only" });
+      setTimeout(() => setToast(null), 4000);
+      return;
+    }
+
+    // Check if email is being changed
+    const emailChanged = editForm.email !== selectedUser.email;
+    // Check if password is being set
+    const passwordChanged = editForm.password && editForm.password.trim() !== "";
+
+    if (emailChanged && !emailOtpSent) {
+      // Need to send OTP for email change
+      sendEmailOtp();
+      return;
+    }
+
+    if (passwordChanged && !passwordOtpSent) {
+      // Need to send OTP for password change
+      sendPasswordOtp();
+      return;
+    }
+
+    if ((emailChanged && !emailOtp) || (passwordChanged && !passwordOtp)) {
+      setToast({ type: "error", message: "Please enter the OTP codes" });
+      setTimeout(() => setToast(null), 4000);
+      return;
+    }
+
     if (editForm.password && editForm.password !== editForm.confirmPassword) {
       setToast({ type: "error", message: "Passwords do not match" });
       setTimeout(() => setToast(null), 4000);
       return;
     }
+
     setShowConfirmSave(true);
+  };
+
+  const sendEmailOtp = async () => {
+    try {
+      await api.post(`/users/${selectedUser.id}/email-otp`, { email: editForm.email });
+      setEmailOtpSent(true);
+      setToast({ type: "success", message: "OTP sent to new email address" });
+      setTimeout(() => setToast(null), 4000);
+    } catch (err) {
+      setToast({ type: "error", message: err.response?.data?.message || "Failed to send email OTP" });
+      setTimeout(() => setToast(null), 4000);
+    }
+  };
+
+  const sendPasswordOtp = async () => {
+    try {
+      await api.post(`/users/${selectedUser.id}/password-otp`);
+      setPasswordOtpSent(true);
+      setToast({ type: "success", message: "OTP sent to user's email" });
+      setTimeout(() => setToast(null), 4000);
+    } catch (err) {
+      setToast({ type: "error", message: err.response?.data?.message || "Failed to send password OTP" });
+      setTimeout(() => setToast(null), 4000);
+    }
   };
 
   const confirmSaveChanges = () => {
     const payload = {
-      email: editForm.email
+      first_name: editForm.first_name,
+      last_name: editForm.last_name,
+      phone_number: editForm.phone_number,
+      status: editForm.status
     };
 
+    // Only include email if it changed and OTP is provided
+    if (editForm.email !== selectedUser.email) {
+      payload.email = editForm.email;
+      payload.email_otp = emailOtp;
+    }
+
+    // Only include password if it's being changed and OTP is provided
     if (editForm.password) {
       payload.password = editForm.password;
+      payload.password_otp = passwordOtp;
     }
 
     api.put(`/users/${selectedUser.id}`, payload)
@@ -203,11 +308,17 @@ function AdminUsersPage() {
         setShowConfirmSave(false);
         setShowEditModal(false);
 
+        // Reset OTP states
+        setEmailOtp("");
+        setEmailOtpSent(false);
+        setPasswordOtp("");
+        setPasswordOtpSent(false);
+
         setToast({ type: "success", message: "User updated successfully" });
         setTimeout(() => setToast(null), 4000);
       })
-      .catch(() => {
-        setToast({ type: "error", message: "Failed to update user" });
+      .catch((err) => {
+        setToast({ type: "error", message: err.response?.data?.message || "Failed to update user" });
         setTimeout(() => setToast(null), 4000);
       });
   };
@@ -247,18 +358,48 @@ function AdminUsersPage() {
 
   return (
     <div className="px-10 py-10">
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-black">Users</h1>
+      <div className="mb-8">
+        <h1 className="text-2xl font-semibold text-black mb-6">User Management</h1>
 
-        {!isOwner && (
+        {/* Tabs */}
+        <div className="flex border-b">
           <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-base font-medium rounded-md transition"
+            onClick={() => setActiveTab("users")}
+            className={`px-6 py-3 font-medium ${
+              activeTab === "users"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
           >
-            + Add User
+            User Profiles
           </button>
-        )}
+          <button
+            onClick={() => setActiveTab("logs")}
+            className={`px-6 py-3 font-medium ${
+              activeTab === "logs"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Activity Logs
+          </button>
+        </div>
       </div>
+
+      {activeTab === "users" && (
+        <>
+          <div className="mb-8 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-800">Profiles List</h2>
+
+            {!isOwner && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-base font-medium rounded-md transition"
+              >
+                + Add User
+              </button>
+            )}
+          </div>
 
       <div className="rounded border p-6 shadow-sm">
 
@@ -407,6 +548,7 @@ function AdminUsersPage() {
                   <th className="pb-4">ID</th>
                   <th className="pb-4">Name</th>
                   <th className="pb-4">Email</th>
+                  <th className="pb-4">Phone</th>
                   <th className="pb-4">Role</th>
                   <th className="pb-4">Status</th>
                   <th className="pb-4">Created Date</th>
@@ -425,6 +567,7 @@ function AdminUsersPage() {
                       {user.first_name} {user.last_name}
                     </td>
                     <td className="py-5">{user.email}</td>
+                    <td className="py-5">{user.phone_number || "N/A"}</td>
                     <td className="py-5">
                       {isOwner ? (
                         <span className="px-3 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
@@ -480,6 +623,37 @@ function AdminUsersPage() {
           </div>
         )}
       </div>
+      </>
+      )}
+
+      {activeTab === "logs" && (
+        <div className="rounded border p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-gray-800 mb-6">Activity Logs</h2>
+
+          {activityLogs.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No activity logs available yet.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {activityLogs.map((log, index) => (
+                <div key={index} className="border rounded p-4 bg-gray-50">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium text-gray-800">{log.action}</p>
+                      <p className="text-sm text-gray-600">{log.description}</p>
+                    </div>
+                    <div className="text-right text-sm text-gray-500">
+                      <p>{log.user_name}</p>
+                      <p>{new Date(log.created_at).toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {toast && (
         <div className="fixed top-6 right-6 z-50">
@@ -569,39 +743,129 @@ function AdminUsersPage() {
       {/* Edit User Modal */}
       {showEditModal && selectedUser && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-white rounded-3xl w-[90%] max-w-md shadow-xl p-8">
+          <div className="bg-white rounded-3xl w-[90%] max-w-lg shadow-xl p-8 max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-6">Edit User</h2>
 
             <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  placeholder="First Name"
+                  value={editForm.first_name}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, first_name: e.target.value })
+                  }
+                  className="w-full border rounded-xl px-4 py-3 text-sm"
+                />
+
+                <input
+                  type="text"
+                  placeholder="Last Name"
+                  value={editForm.last_name}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, last_name: e.target.value })
+                  }
+                  className="w-full border rounded-xl px-4 py-3 text-sm"
+                />
+              </div>
+
               <input
-                type="email"
-                placeholder="Email"
-                value={editForm.email}
+                type="tel"
+                placeholder="Phone Number (11 digits)"
+                value={editForm.phone_number}
                 onChange={(e) =>
-                  setEditForm({ ...editForm, email: e.target.value })
+                  setEditForm({ ...editForm, phone_number: e.target.value })
                 }
                 className="w-full border rounded-xl px-4 py-3 text-sm"
               />
 
-              <input
-                type="password"
-                placeholder="New Password"
-                value={editForm.password}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, password: e.target.value })
-                }
-                className="w-full border rounded-xl px-4 py-3 text-sm"
-              />
+              <div>
+                <label className="block text-sm font-medium mb-2">Status</label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, status: e.target.value })
+                  }
+                  className="w-full border rounded-xl px-4 py-3 text-sm"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
 
-              <input
-                type="password"
-                placeholder="Confirm Password"
-                value={editForm.confirmPassword}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, confirmPassword: e.target.value })
-                }
-                className="w-full border rounded-xl px-4 py-3 text-sm"
-              />
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-3">Change Email</h3>
+                <input
+                  type="email"
+                  placeholder="New Email"
+                  value={editForm.email}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, email: e.target.value })
+                  }
+                  className="w-full border rounded-xl px-4 py-3 text-sm mb-2"
+                />
+
+                {editForm.email !== selectedUser.email && !emailOtpSent && (
+                  <button
+                    onClick={sendEmailOtp}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm"
+                  >
+                    Send OTP to New Email
+                  </button>
+                )}
+
+                {emailOtpSent && (
+                  <input
+                    type="text"
+                    placeholder="Enter Email OTP"
+                    value={emailOtp}
+                    onChange={(e) => setEmailOtp(e.target.value)}
+                    className="w-full border rounded-xl px-4 py-3 text-sm"
+                  />
+                )}
+              </div>
+
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-3">Change Password</h3>
+                <input
+                  type="password"
+                  placeholder="New Password"
+                  value={editForm.password}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, password: e.target.value })
+                  }
+                  className="w-full border rounded-xl px-4 py-3 text-sm mb-2"
+                />
+
+                <input
+                  type="password"
+                  placeholder="Confirm New Password"
+                  value={editForm.confirmPassword}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, confirmPassword: e.target.value })
+                  }
+                  className="w-full border rounded-xl px-4 py-3 text-sm mb-2"
+                />
+
+                {editForm.password && !passwordOtpSent && (
+                  <button
+                    onClick={sendPasswordOtp}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm"
+                  >
+                    Send OTP to Current Email
+                  </button>
+                )}
+
+                {passwordOtpSent && (
+                  <input
+                    type="text"
+                    placeholder="Enter Password OTP"
+                    value={passwordOtp}
+                    onChange={(e) => setPasswordOtp(e.target.value)}
+                    className="w-full border rounded-xl px-4 py-3 text-sm"
+                  />
+                )}
+              </div>
             </div>
 
             {/* Unlock banner if locked */}
@@ -627,7 +891,13 @@ function AdminUsersPage() {
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowEditModal(false)}
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEmailOtp("");
+                    setEmailOtpSent(false);
+                    setPasswordOtp("");
+                    setPasswordOtpSent(false);
+                  }}
                   className="px-5 py-2 border rounded-xl hover:bg-gray-100"
                 >
                   Cancel

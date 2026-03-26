@@ -267,9 +267,6 @@ function LandingPage() {
           <h2 className="mb-12 text-3xl font-bold text-gray-900">
             {getContentValue("home_featured_title", "Featured Schedules")}
           </h2>
-          <p className="mb-8 text-gray-600">
-            {getContentValue("home_featured_description", "Explore our upcoming floral experiences")}
-          </p>
 
           <div className="flex gap-10 overflow-x-auto scroll-smooth pb-4">
             {schedules.map((schedule) => (

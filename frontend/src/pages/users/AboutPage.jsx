@@ -1,27 +1,33 @@
 import { useEffect, useState } from "react";
+import { useContents } from "../../contexts/ContentContext";
 
 function AboutPage() {
+  const { contents } = useContents();
+
+  // helper to read CMS values
+  const getContentValue = (key, defaultValue) => {
+    const item = contents.find((c) => c.identifier === key);
+    return item?.content_text || item?.content_image || defaultValue;
+  };
+
   const slides = [
     {
-      image:
-        "https://images.unsplash.com/photo-1526045478516-99145907023c",
-      title: "Fresh Flowers",
-      subtitle: "Made Just For You",
-      description: "Open 24/7 • 1234 Culinary Blvd, Flavor Town",
+      image: getContentValue("about_hero_image_1", "https://images.unsplash.com/photo-1526045478516-99145907023c"),
+      title: getContentValue("about_hero_title_1", "Fresh Flowers"),
+      subtitle: getContentValue("about_hero_subtitle_1", "Made Just For You"),
+      description: getContentValue("about_hero_desc_1", "Open 24/7 • 1234 Culinary Blvd, Flavor Town"),
     },
     {
-      image:
-        "https://images.unsplash.com/photo-1490750967868-88aa4486c946",
-      title: "Handcrafted Bouquets",
-      subtitle: "For Every Occasion",
-      description: "Weddings • Birthdays • Anniversaries",
+      image: getContentValue("about_hero_image_2", "https://images.unsplash.com/photo-1490750967868-88aa4486c946"),
+      title: getContentValue("about_hero_title_2", "Handcrafted Bouquets"),
+      subtitle: getContentValue("about_hero_subtitle_2", "For Every Occasion"),
+      description: getContentValue("about_hero_desc_2", "Weddings • Birthdays • Anniversaries"),
     },
     {
-      image:
-        "https://images.unsplash.com/photo-1468327768560-75b778cbb551",
-      title: "Locally Sourced",
-      subtitle: "Sustainably Grown",
-      description: "Supporting Local Flower Farmers",
+      image: getContentValue("about_hero_image_3", "https://images.unsplash.com/photo-1468327768560-75b778cbb551"),
+      title: getContentValue("about_hero_title_3", "Locally Sourced"),
+      subtitle: getContentValue("about_hero_subtitle_3", "Sustainably Grown"),
+      description: getContentValue("about_hero_desc_3", "Supporting Local Flower Farmers"),
     },
   ];
 
@@ -89,13 +95,14 @@ function AboutPage() {
       {/* MISSION SECTION */}
       <div className="py-24 px-6 text-center max-w-4xl mx-auto">
         <p className="text-gray-600 text-lg leading-relaxed">
-          Our mission is to deliver the freshest, most beautiful bouquets
-          right to your door, focusing on sustainable practices and
-          locally sourced flowers.
+          {getContentValue(
+            "about_mission_text",
+            "Our mission is to deliver the freshest, most beautiful bouquets right to your door, focusing on sustainable practices and locally sourced flowers."
+          )}
         </p>
 
         <div className="mt-8">
-          <p className="italic text-2xl font-light tracking-wide">Apphia and Pearl</p>
+          <p className="italic text-2xl font-light tracking-wide">{getContentValue("about_founders", "Apphia and Pearl")}</p>
           <p className="text-sm text-gray-400 uppercase tracking-widest mt-1">Founders</p>
         </div>
       </div>
@@ -108,15 +115,29 @@ function AboutPage() {
 
         <div className="grid md:grid-cols-3 gap-10 max-w-6xl mx-auto px-6">
           {[
-            { title: "Custom Flowers" },
-            { title: "Pop-up Stores" },
-            { title: "Secret Delivery" },
+            { 
+              title: getContentValue("about_service_1", "Custom Flowers"),
+            },
+            { 
+              title: getContentValue("about_service_2", "Pop-up Stores"),
+            },
+            { 
+              title: getContentValue("about_service_3", "Secret Delivery"),
+            },
           ].map((service, index) => (
             <div
               key={index}
               className="bg-white rounded-2xl shadow-sm hover:shadow-md transition p-10 text-center"
             >
-              <div className="h-32 w-32 mx-auto mb-6 rounded-xl bg-[#eef2f8]" />
+              <img
+                src={
+                  getContentValue(`about_service_image_${index + 1}`, "")
+                    ? `http://localhost:8000${getContentValue(`about_service_image_${index + 1}`)}`
+                    : "https://via.placeholder.com/150"
+                }
+                alt={service.title}
+                className="h-32 w-32 mx-auto mb-6 rounded-xl object-cover"
+              />
               <h3 className="text-lg font-semibold mb-2">{service.title}</h3>
               <p className="text-gray-500 text-sm">
                 Lorem ipsum dolor sit amet, consectetur adipiscing elit.
@@ -137,9 +158,10 @@ function AboutPage() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent flex items-center">
           <div className="max-w-4xl px-10 text-white">
             <h2 className="text-3xl md:text-5xl font-light leading-snug tracking-tight">
-              Founded in 2010, Petal Express has blossomed into a leading
-              flower delivery service, celebrated for quality and
-              innovation.
+              {getContentValue(
+                "about_story_text",
+                "Founded in 2010, Petal Express has blossomed into a leading flower delivery service, celebrated for quality and innovation."
+              )}
             </h2>
           </div>
         </div>

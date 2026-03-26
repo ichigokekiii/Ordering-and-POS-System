@@ -1,7 +1,7 @@
-import { usePremades } from "../../contexts/PremadeContext";
+import { useProducts } from "../../contexts/ProductContext";
 
 function ProductPage() {
-  const { premades, loading } = usePremades();
+  const { premades, loading } = useProducts();
 
   if (loading) return <p>Loading products...</p>;
 

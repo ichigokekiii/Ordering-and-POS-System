@@ -97,7 +97,16 @@ const SectionGrid = ({ title, items, emptyMsg, onEdit, onDelete }) => (
 );
 
 function AdminProductPage() {
-  const { products, addProduct, updateProduct, deleteProduct } = useProducts();
+  const {
+    products,
+    premades,
+    addProduct,
+    addPremade,
+    updateProduct,
+    updatePremade,
+    deleteProduct,
+    deletePremade,
+  } = useProducts();
 
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -115,6 +124,7 @@ function AdminProductPage() {
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [activeTab, setActiveTab] = useState("products");
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -149,12 +159,22 @@ function AdminProductPage() {
     e.preventDefault();
     if (!validateAll()) return;
     try {
-      if (isEditing) {
-        await updateProduct(currentId, { name, image, price, description, category, type, isAvailable });
-        setMessage("Product updated successfully!");
+      if (activeTab === "products") {
+        if (isEditing) {
+          await updateProduct(currentId, { name, image, price, description, category, type, isAvailable });
+          setMessage("Product updated successfully!");
+        } else {
+          await addProduct({ name, image, price, description, category, type, isAvailable });
+          setMessage("Product added successfully!");
+        }
       } else {
-        await addProduct({ name, image, price, description, category, type, isAvailable });
-        setMessage("Product added successfully!");
+        if (isEditing) {
+          await updatePremade(currentId, { name, image, price, description, isAvailable });
+          setMessage("Premade updated successfully!");
+        } else {
+          await addPremade({ name, image, price, description, isAvailable });
+          setMessage("Premade added successfully!");
+        }
       }
       setMessageType("success");
       resetForm();
@@ -170,11 +190,15 @@ function AdminProductPage() {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this product?")) return;
     try {
-      await deleteProduct(id);
-      setMessage("Product deleted successfully!");
+      if (activeTab === "products") {
+        await deleteProduct(id);
+      } else {
+        await deletePremade(id);
+      }
+      setMessage(`${activeTab === "products" ? "Product" : "Premade"} deleted successfully!`);
       setMessageType("success");
     } catch (error) {
-      setMessage("Failed to delete product.");
+      setMessage(`Failed to delete ${activeTab === "products" ? "product" : "premade"}.`);
       setMessageType("error");
     }
     setTimeout(() => { setMessage(""); setMessageType(""); }, 3000);
@@ -225,48 +249,90 @@ function AdminProductPage() {
           onClick={() => { resetForm(); setShowModal(true); }}
           className="rounded bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
         >
-          + Add Product
+          {activeTab === "products" ? "+ Add Product" : "+ Add Premade"}
         </button>
       </div>
 
-      <div className="space-y-10">
-        <div>
-          <h3 className="mb-4 text-xl font-semibold text-gray-700 border-b pb-2">Bouquets</h3>
-          <SectionGrid
-            title=""
-            items={bouquets}
-            emptyMsg="No bouquets yet"
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
-        </div>
-        <div>
-          <h3 className="mb-6 text-xl font-semibold text-gray-700 border-b pb-2">Additional</h3>
-          <div className="space-y-8">
+      {/* Tabs */}
+      <div className="flex gap-4 border-b mb-6">
+        <button
+          onClick={() => setActiveTab("products")}
+          className={`px-4 py-2 border-b-2 ${activeTab === "products" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"}`}
+        >
+          Products
+        </button>
+        <button
+          onClick={() => setActiveTab("premades")}
+          className={`px-4 py-2 border-b-2 ${activeTab === "premades" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"}`}
+        >
+          Premades
+        </button>
+      </div>
+
+      {activeTab === "products" && (
+        <div className="space-y-10">
+          <div>
+            <h3 className="mb-4 text-xl font-semibold text-gray-700 pb-2">Bouquets</h3>
             <SectionGrid
-              title="Main Flowers"
-              items={mainFlowers}
-              emptyMsg="No main flowers yet"
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
-            <SectionGrid
-              title="Fillers"
-              items={fillers}
-              emptyMsg="No fillers yet"
+              title=""
+              items={bouquets}
+              emptyMsg="No bouquets yet"
               onEdit={handleEdit}
               onDelete={handleDelete}
             />
           </div>
+          <div>
+            <h3 className="mb-6 text-xl font-semibold text-gray-700 pb-2">Additional</h3>
+            <div className="space-y-8">
+              <SectionGrid
+                title="Main Flowers"
+                items={mainFlowers}
+                emptyMsg="No main flowers yet"
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+              <SectionGrid
+                title="Fillers"
+                items={fillers}
+                emptyMsg="No fillers yet"
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {activeTab === "premades" && (
+        <div className="space-y-6">
+          <h3 className="text-xl font-semibold text-gray-700 pb-2">Premades</h3>
+          {premades.length === 0 ? (
+            <div className="flex h-40 items-center justify-center rounded-lg bg-gray-50">
+              <p className="text-gray-400">No premades yet</p>
+            </div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-3">
+              {premades.map((premade) => (
+                <ProductCard
+                  key={premade.id}
+                  product={premade}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-lg bg-white p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="mb-4 text-lg font-semibold">
-              {isEditing ? "Edit Product" : "Add Product"}
+              {isEditing
+                ? activeTab === "products" ? "Edit Product" : "Edit Premade"
+                : activeTab === "products" ? "Add Product" : "Add Premade"}
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -336,64 +402,69 @@ function AdminProductPage() {
                 <FieldError error={errors.price} />
               </div>
 
-              {/* Category */}
-              <div className="rounded border p-4">
-                <label className="mb-2 block text-sm font-medium text-gray-700">Category</label>
-                <div className="flex gap-6">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="category"
-                      value="Bouquets"
-                      checked={category === "Bouquets"}
-                      onChange={(e) => { setCategory(e.target.value); setType(""); }}
-                      className="h-4 w-4 text-blue-600"
-                    />
-                    <span className="text-sm font-medium">Bouquets</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="category"
-                      value="Additional"
-                      checked={category === "Additional"}
-                      onChange={(e) => setCategory(e.target.value)}
-                      className="h-4 w-4 text-blue-600"
-                    />
-                    <span className="text-sm font-medium">Additional</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Type */}
-              {category === "Additional" && (
-                <div className="rounded border p-4">
-                  <label className="mb-2 block text-sm font-medium text-gray-700">Type</label>
-                  <div className="flex gap-6">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="type"
-                        value="Main Flowers"
-                        checked={type === "Main Flowers"}
-                        onChange={(e) => setType(e.target.value)}
-                        className="h-4 w-4 text-blue-600"
-                      />
-                      <span className="text-sm font-medium">Main Flowers</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="type"
-                        value="Fillers"
-                        checked={type === "Fillers"}
-                        onChange={(e) => setType(e.target.value)}
-                        className="h-4 w-4 text-blue-600"
-                      />
-                      <span className="text-sm font-medium">Fillers</span>
-                    </label>
+              {/* Category + Type */}
+              {activeTab === "products" && (
+                <>
+                  {/* Category */}
+                  <div className="rounded border p-4">
+                    <label className="mb-2 block text-sm font-medium text-gray-700">Category</label>
+                    <div className="flex gap-6">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="category"
+                          value="Bouquets"
+                          checked={category === "Bouquets"}
+                          onChange={(e) => { setCategory(e.target.value); setType(""); }}
+                          className="h-4 w-4 text-blue-600"
+                        />
+                        <span className="text-sm font-medium">Bouquets</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="category"
+                          value="Additional"
+                          checked={category === "Additional"}
+                          onChange={(e) => setCategory(e.target.value)}
+                          className="h-4 w-4 text-blue-600"
+                        />
+                        <span className="text-sm font-medium">Additional</span>
+                      </label>
+                    </div>
                   </div>
-                </div>
+
+                  {/* Type */}
+                  {category === "Additional" && (
+                    <div className="rounded border p-4">
+                      <label className="mb-2 block text-sm font-medium text-gray-700">Type</label>
+                      <div className="flex gap-6">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="type"
+                            value="Main Flowers"
+                            checked={type === "Main Flowers"}
+                            onChange={(e) => setType(e.target.value)}
+                            className="h-4 w-4 text-blue-600"
+                          />
+                          <span className="text-sm font-medium">Main Flowers</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="type"
+                            value="Fillers"
+                            checked={type === "Fillers"}
+                            onChange={(e) => setType(e.target.value)}
+                            className="h-4 w-4 text-blue-600"
+                          />
+                          <span className="text-sm font-medium">Fillers</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Availability */}

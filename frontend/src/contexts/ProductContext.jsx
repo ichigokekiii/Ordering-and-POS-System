@@ -6,6 +6,7 @@ const ProductContext = createContext();
 export function ProductProvider({ children }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [premades, setPremades] = useState([]);
 
   // Fetch all products
   const fetchProducts = async () => {
@@ -19,8 +20,18 @@ export function ProductProvider({ children }) {
     }
   };
 
+  const fetchPremades = async () => {
+    try {
+      const res = await api.get("/premades");
+      setPremades(res.data);
+    } catch (error) {
+      console.error("Premade fetch error", error);
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
+    fetchPremades();
   }, []);
 
   // Add product
@@ -44,6 +55,29 @@ const addProduct = async (productData) => {
     return res.data;
   } catch (error) {
     console.error("Failed to add product", error);
+    throw error;
+  }
+};
+
+const addPremade = async (premadeData) => {
+  try {
+    const formData = new FormData();
+    formData.append("name", premadeData.name);
+    formData.append("description", premadeData.description);
+    formData.append("price", premadeData.price);
+    formData.append("isAvailable", Number(premadeData.isAvailable));
+    if (premadeData.image) {
+      formData.append("image", premadeData.image);
+    }
+
+    const res = await api.post("/premades", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    setPremades((prev) => [res.data, ...prev]);
+    return res.data;
+  } catch (error) {
+    console.error("Failed to add premade", error);
     throw error;
   }
 };
@@ -76,6 +110,33 @@ const updateProduct = async (id, updatedData) => {
   }
 };
 
+const updatePremade = async (id, updatedData) => {
+  try {
+    const formData = new FormData();
+    formData.append("_method", "PUT");
+    formData.append("name", updatedData.name);
+    formData.append("description", updatedData.description);
+    formData.append("price", updatedData.price);
+    formData.append("isAvailable", Number(updatedData.isAvailable));
+    if (updatedData.image) {
+      formData.append("image", updatedData.image);
+    }
+
+    const res = await api.post(`/premades/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    setPremades((prev) =>
+      prev.map((p) => (p.id === id ? res.data : p))
+    );
+
+    return res.data;
+  } catch (error) {
+    console.error("Failed to update premade", error);
+    throw error;
+  }
+};
+
   // Delete product
   const deleteProduct = async (id) => {
     try {
@@ -87,15 +148,34 @@ const updateProduct = async (id, updatedData) => {
     }
   };
 
+  const deletePremade = async (id) => {
+    try {
+      await api.delete(`/premades/${id}`);
+      setPremades((prev) => prev.filter((p) => p.id !== id));
+    } catch (error) {
+      console.error("Failed to delete premade", error);
+      throw error;
+    }
+  };
+
   return (
     <ProductContext.Provider
       value={{
         products,
+        premades,
         loading,
+
         fetchProducts,
+        fetchPremades,
+
         addProduct,
+        addPremade,
+
         updateProduct,
+        updatePremade,
+
         deleteProduct,
+        deletePremade,
       }}
     >
       {children}

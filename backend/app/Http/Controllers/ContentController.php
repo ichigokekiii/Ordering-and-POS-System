@@ -123,4 +123,31 @@ class ContentController extends Controller
             ], 500);
         }
     }
+
+    // Delete archived content only (Admin)
+    public function destroyArchived($id)
+    {
+        try {
+            $content = Content::findOrFail($id);
+
+            // Ensure only archived content can be deleted
+            if (!$content->isArchived) {
+                return response()->json([
+                    'message' => 'Only archived content can be deleted'
+                ], 403);
+            }
+
+            $content->delete();
+
+            return response()->json([
+                'message' => 'Archived content deleted successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to delete archived content',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

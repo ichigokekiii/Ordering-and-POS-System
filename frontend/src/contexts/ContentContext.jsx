@@ -89,6 +89,18 @@ export const ContentProvider = ({ children }) => {
     }
   };
 
+  // Delete archived content permanently (Admin only)
+  const deleteArchivedContent = async (id) => {
+    try {
+      await api.delete(`/contents/archived/${id}`);
+
+      setContents((prev) => prev.filter((item) => item.id !== id));
+    } catch (error) {
+      console.error("Failed to delete archived content", error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     fetchContents();
   }, []);
@@ -102,6 +114,7 @@ export const ContentProvider = ({ children }) => {
         updateContent,
         toggleArchiveContent,
         deleteContent,
+        deleteArchivedContent,
       }}
     >
       {children}

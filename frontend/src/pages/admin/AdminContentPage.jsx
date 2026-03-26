@@ -45,15 +45,54 @@ const CONTENT_FIELDS = {
     { key: "home_promo_image", label: "Promo Image" },
   ],
   about: [
-    { key: "about_title", label: "About Title" },
-    { key: "about_description", label: "About Description" },
+    // Hero Slides (3)
+    { key: "about_hero_title_1", label: "Hero 1 Title" },
+    { key: "about_hero_subtitle_1", label: "Hero 1 Subtitle" },
+    { key: "about_hero_image_1", label: "Hero 1 Image" },
+    { key: "about_hero_desc_1", label: "Hero 1 Description" },
+
+    { key: "about_hero_title_2", label: "Hero 2 Title" },
+    { key: "about_hero_subtitle_2", label: "Hero 2 Subtitle" },
+    { key: "about_hero_image_2", label: "Hero 2 Image" },
+    { key: "about_hero_desc_2", label: "Hero 2 Description" },
+
+    { key: "about_hero_title_3", label: "Hero 3 Title" },
+    { key: "about_hero_subtitle_3", label: "Hero 3 Subtitle" },
+    { key: "about_hero_image_3", label: "Hero 3 Image" },
+    { key: "about_hero_desc_3", label: "Hero 3 Description" },
+
+    // Mission Section
+    { key: "about_mission_text", label: "Mission Text" },
+    { key: "about_founders", label: "Founders Name" },
+
+    // Services Section
+    { key: "about_service_1", label: "Service 1 Title" },
+    { key: "about_service_image_1", label: "Service 1 Image" },
+
+    { key: "about_service_2", label: "Service 2 Title" },
+    { key: "about_service_image_2", label: "Service 2 Image" },
+
+    { key: "about_service_3", label: "Service 3 Title" },
+    { key: "about_service_image_3", label: "Service 3 Image" },
+
+    // Story Section
+    { key: "about_story_text", label: "Story Text" },
   ],
   navbar: [
-    { key: "brand_name", label: "Brand Name" },
-    { key: "logo", label: "Navbar Logo" },
-    { key: "navbar_bg", label: "Navbar Background" },
+    { key: "navbar_brand", label: "Brand Name" },
+    { key: "navbar_bg_color", label: "Navbar Background Color" },
+    { key: "navbar_bg_image", label: "Navbar Background Image" },
+    { key: "navbar_text_color", label: "Navbar Text Color" },
   ],
   footer: [
+    { key: "footer_brand", label: "Footer Brand Name" },
+
+    { key: "footer_bg_color", label: "Footer Background Color" },
+    { key: "footer_bg_image", label: "Footer Background Image" },
+
+    { key: "footer_text_color", label: "Footer Text Color" },
+    { key: "footer_subtext_color", label: "Footer Subtext Color" },
+
     { key: "footer_email", label: "Footer Email" },
     { key: "footer_phone", label: "Footer Phone" },
   ],
@@ -76,6 +115,8 @@ function AdminContentPage() {
   const updateContent = contentContext.updateContent;
   const toggleArchiveContent = contentContext.toggleArchiveContent;
   const deleteContent = contentContext.deleteContent;
+  const currentUser = JSON.parse(localStorage.getItem("user"));
+  const isAdmin = currentUser?.role === "admin";
 
   const safeContents = contents || [];
 
@@ -87,6 +128,8 @@ function AdminContentPage() {
   };
 
   const archivedContent = safeContents.filter((c) => c.isArchived);
+
+  const [activeTab, setActiveTab] = useState("home");
 
   return (
     <div className="px-10 py-10">
@@ -101,153 +144,186 @@ function AdminContentPage() {
         </button>
       </div>
 
-      <div className="space-y-10">
-        {Object.keys(groupedActive).map((section) => (
-          <div key={section}>
-            <h3 className="mb-4 text-xl font-semibold text-gray-700 border-b pb-2 capitalize">
-              {section} Content
-            </h3>
+      <div>
+        {/* Tabs */}
+        <div className="flex gap-4 border-b mb-6">
+          {Object.keys(groupedActive).map((section) => (
+            <button
+              key={section}
+              onClick={() => setActiveTab(section)}
+              className={`px-4 py-2 text-sm font-medium capitalize border-b-2 transition ${
+                activeTab === section
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {section}
+            </button>
+          ))}
+        </div>
 
-            <div className="grid gap-6 md:grid-cols-3">
-              {groupedActive[section].length === 0 ? (
-                <p className="text-gray-400">No content yet</p>
-              ) : (
-                groupedActive[section].map((item) => {
-                  const fieldLabel =
-                    CONTENT_FIELDS[section]?.find((f) => f.key === item.identifier)
-                      ?.label || item.identifier;
+        {/* Active Tab Content */}
+        <div className="min-h-[300px]">
+          <h3 className="mb-4 text-xl font-semibold text-gray-700 capitalize">
+            {activeTab} Content
+          </h3>
 
-                  return (
-                    <div key={item.id} className="rounded border p-4 shadow-sm">
-                      <div className="mb-2">
-                        <span className="flex items-center text-xs font-bold text-green-600">
-                          ✓ Active
-                        </span>
-                      </div>
+          <div className="grid gap-6 md:grid-cols-3 items-start">
+            {groupedActive[activeTab].length === 0 ? (
+              <div className="flex h-40 items-center justify-center rounded-lg bg-gray-50 col-span-full">
+                <p className="text-gray-400 text-sm">No content yet</p>
+              </div>
+            ) : (
+              groupedActive[activeTab].map((item) => {
+                const fieldLabel =
+                  CONTENT_FIELDS[activeTab]?.find((f) => f.key === item.identifier)
+                    ?.label || item.identifier;
 
-                      {item.type === "image" && item.content_image && (
+                return (
+                  <div key={item.id} className="rounded-xl border bg-white p-4 flex flex-col h-[260px] transition-all duration-200 ease-in-out hover:scale-[1.02]">
+                    <div className="mb-2">
+                      <span className="flex items-center text-xs font-bold text-green-600">
+                        ✓ Active
+                      </span>
+                    </div>
+
+                    {item.type === "image" && item.content_image && (
+                      <div className="mb-3 h-28 w-full overflow-hidden rounded-lg bg-gray-100">
                         <img
                           src={`http://localhost:8000${item.content_image}`}
                           alt={item.identifier}
-                          className="mb-3 h-40 w-full rounded object-cover"
+                          className="h-full w-full object-cover"
                         />
-                      )}
-
-                      <h3 className="font-medium">
-                        {fieldLabel}
-                        {item.identifier.includes("hero_image") && (
-                          <span className="ml-2 text-xs text-blue-500">(Banner)</span>
-                        )}
-                      </h3>
-
-                      <p className="text-xs uppercase text-gray-400">
-                        {item.identifier}
-                      </p>
-
-                      {item.type === "text" && (
-                        <p className="mt-2 text-sm text-gray-700">
-                          {item.content_text}
-                        </p>
-                      )}
-
-                      <div className="mt-4 flex gap-2">
-                        <button
-                          onClick={() => {
-                            setEditingContent(item);
-                            setSelectedPage(item.page);
-                            setFormDataState({
-                              identifier: item.identifier,
-                              page: item.page,
-                              type: item.type,
-                              content_text: item.content_text || "",
-                            });
-                            setShowModal(true);
-                          }}
-                          className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          onClick={() => toggleArchiveContent && toggleArchiveContent(item)}
-                          className="rounded border px-3 py-1 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          Archive
-                        </button>
                       </div>
+                    )}
+
+                    <h3 className="font-semibold text-gray-900">{fieldLabel}</h3>
+
+                    <p className="text-xs uppercase text-gray-400 tracking-wide">
+                      {item.identifier}
+                    </p>
+
+                    {item.type === "text" && (
+                      <p className="mt-2 text-sm text-gray-600 line-clamp-2">
+                        {item.content_text}
+                      </p>
+                    )}
+
+                    <div className="mt-auto pt-4 flex gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingContent(item);
+                          setSelectedPage(item.page);
+                          setFormDataState({
+                            identifier: item.identifier,
+                            page: item.page,
+                            type: item.type,
+                            content_text: item.content_text || "",
+                          });
+                          setShowModal(true);
+                        }}
+                        className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() => toggleArchiveContent && toggleArchiveContent(item)}
+                        className="rounded border px-3 py-1 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Archive
+                      </button>
                     </div>
-                  );
-                })
-              )}
-            </div>
+                  </div>
+                );
+              })
+            )}
           </div>
-        ))}
+        </div>
 
         {/* Archived Content */}
-        <div>
-          <h3 className="mb-4 text-xl font-semibold text-gray-700 border-b pb-2">
-            Archived Content
+        <div className="mt-10">
+          <h3 className="mb-4 text-xl font-semibold text-gray-700">
+            Archived
           </h3>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            {archivedContent.length === 0 ? (
-              <p className="text-gray-400">No archived content</p>
+          <div className="grid gap-6 md:grid-cols-3 items-start">
+            {archivedContent.filter((item) => item.page === activeTab).length === 0 ? (
+              <div className="flex h-32 items-center justify-center rounded-lg bg-gray-50 col-span-full">
+                <p className="text-gray-400 text-sm">No archived content</p>
+              </div>
             ) : (
-              archivedContent.map((item) => (
-                <div key={item.id} className="rounded border p-4 shadow-sm">
-                  <div className="mb-2">
-                    <span className="text-xs font-bold text-gray-500">
-                      Archived
-                    </span>
-                  </div>
+              archivedContent
+                .filter((item) => item.page === activeTab)
+                .map((item) => (
+                  <div key={item.id} className="rounded-xl border bg-white p-4 flex flex-col h-[260px] opacity-80 transition-all duration-200 ease-in-out hover:scale-[1.02]">
+                    <div className="mb-2">
+                      <span className="text-xs font-bold text-gray-500">
+                        Archived
+                      </span>
+                    </div>
 
-                  {item.type === "image" && item.content_image && (
-                    <img
-                      src={`http://localhost:8000${item.content_image}`}
-                      alt={item.identifier}
-                      className="mb-3 h-40 w-full rounded object-cover grayscale opacity-60"
-                    />
-                  )}
+                    {item.type === "image" && item.content_image && (
+                      <div className="mb-3 h-28 w-full overflow-hidden rounded-lg bg-gray-100">
+                        <img
+                          src={`http://localhost:8000${item.content_image}`}
+                          alt={item.identifier}
+                          className="h-full w-full object-cover grayscale opacity-60"
+                        />
+                      </div>
+                    )}
 
-                  <h3 className="font-medium">{item.identifier}</h3>
+                    <h3 className="font-semibold text-gray-900">{item.identifier}</h3>
 
-                  <p className="text-xs font-semibold uppercase text-blue-500">
-                    {item.page}
-                  </p>
-
-                  {item.type === "text" && (
-                    <p className="mt-2 text-sm text-gray-700 opacity-60">
-                      {item.content_text}
+                    <p className="text-xs font-semibold uppercase text-blue-500">
+                      {item.page}
                     </p>
-                  )}
 
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={() => {
-                        setEditingContent(item);
-                        setSelectedPage(item.page);
-                        setFormDataState({
-                          identifier: item.identifier,
-                          page: item.page,
-                          type: item.type,
-                          content_text: item.content_text || "",
-                        });
-                        setShowModal(true);
-                      }}
-                      className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-                    >
-                      Edit
-                    </button>
+                    {item.type === "text" && (
+                      <p className="mt-2 text-sm text-gray-700 opacity-60">
+                        {item.content_text}
+                      </p>
+                    )}
 
-                    <button
-                      onClick={() => toggleArchiveContent && toggleArchiveContent(item)}
-                      className="rounded border px-3 py-1 text-sm text-green-700 hover:bg-green-50"
-                    >
-                      Restore
-                    </button>
+                    <div className="mt-auto pt-4 flex gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingContent(item);
+                          setSelectedPage(item.page);
+                          setFormDataState({
+                            identifier: item.identifier,
+                            page: item.page,
+                            type: item.type,
+                            content_text: item.content_text || "",
+                          });
+                          setShowModal(true);
+                        }}
+                        className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() => toggleArchiveContent && toggleArchiveContent(item)}
+                        className="rounded border px-3 py-1 text-sm text-green-700 hover:bg-green-50"
+                      >
+                        Restore
+                      </button>
+
+                      {isAdmin && (
+                        <button
+                          onClick={() => {
+                            if (!window.confirm("Are you sure you want to permanently delete this content?")) return;
+                            deleteContent(item.id);
+                          }}
+                          className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                ))
             )}
           </div>
         </div>
@@ -386,17 +462,40 @@ function AdminContentPage() {
               {formDataState.identifier && formDataState.type === "text" && (
                 <>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Text Content
+                    {formDataState.identifier.includes("color") ? "Pick Color" : "Text Content"}
                   </label>
-                  <textarea
-                    name="content_text"
-                    value={formDataState.content_text}
-                    onChange={(e) =>
-                      setFormDataState({ ...formDataState, content_text: e.target.value })
-                    }
-                    className="w-full rounded border px-4 py-2"
-                    placeholder="Enter text content..."
-                  />
+
+                  {formDataState.identifier.includes("color") ? (
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={formDataState.content_text || "#ffffff"}
+                        onChange={(e) =>
+                          setFormDataState({ ...formDataState, content_text: e.target.value })
+                        }
+                        className="h-10 w-16 cursor-pointer border rounded"
+                      />
+                      <input
+                        type="text"
+                        value={formDataState.content_text}
+                        onChange={(e) =>
+                          setFormDataState({ ...formDataState, content_text: e.target.value })
+                        }
+                        placeholder="#ffffff"
+                        className="w-full rounded border px-4 py-2"
+                      />
+                    </div>
+                  ) : (
+                    <textarea
+                      name="content_text"
+                      value={formDataState.content_text}
+                      onChange={(e) =>
+                        setFormDataState({ ...formDataState, content_text: e.target.value })
+                      }
+                      className="w-full rounded border px-4 py-2"
+                      placeholder="Enter text content..."
+                    />
+                  )}
                 </>
               )}
 

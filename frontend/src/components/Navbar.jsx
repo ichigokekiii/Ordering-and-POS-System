@@ -53,12 +53,23 @@ function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur-md">
+    <nav
+      className="sticky top-0 z-50 w-full border-b border-gray-200 backdrop-blur-md"
+      style={{
+        backgroundColor: getContentValue("navbar_bg_color", "#ffffffee"),
+        backgroundImage: getContentValue("navbar_bg_image", "")
+          ? `url(http://localhost:8000${getContentValue("navbar_bg_image")})`
+          : "none",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
 
         <Link
           to="/"
-          className="cursor-pointer text-lg font-semibold tracking-wide text-blue-600"
+          className="cursor-pointer text-lg font-semibold tracking-wide"
+          style={{ color: getContentValue("navbar_text_color", "#2563eb") }}
         >
           {getContentValue("navbar_brand", "petal express")}
         </Link>

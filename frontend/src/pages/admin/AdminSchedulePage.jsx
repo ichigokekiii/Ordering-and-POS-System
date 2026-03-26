@@ -2,13 +2,17 @@
 import { useEffect, useState } from "react";
 import { useSchedules } from "../../contexts/ScheduleContext";
 
-function AdminSchedulePage() {
+// 1. Accept the 'user' prop
+function AdminSchedulePage({ user }) {
   const {
     schedules,
     fetchSchedules,
     addSchedule,
     updateSchedule,
   } = useSchedules();
+
+  // 2. Define who is allowed to edit
+  const canEdit = user?.role === "admin" || user?.role === "owner";
 
   const [showModal, setShowModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
@@ -133,14 +137,25 @@ function AdminSchedulePage() {
       )}
 
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Schedules</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-semibold">Schedules</h2>
+          {/* 3. Show badge for staff */}
+          {!canEdit && (
+            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
+              View-Only Mode
+            </span>
+          )}
+        </div>
 
-        <button
-          onClick={() => setShowModal(true)}
-          className="rounded bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
-        >
-          + Add Schedule
-        </button>
+        {/* 4. Hide Add button for staff */}
+        {canEdit && (
+          <button
+            onClick={() => setShowModal(true)}
+            className="rounded bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
+          >
+            + Add Schedule
+          </button>
+        )}
       </div>
 
       <div className="space-y-10">
@@ -153,7 +168,7 @@ function AdminSchedulePage() {
               activeSchedules.map((schedule) => (
                 <div
                   key={schedule.id}
-                  className="rounded border p-4 shadow-sm"
+                  className="rounded border p-4 shadow-sm bg-white"
                 >
                   <div className="mb-2">
                     {!schedule.isAvailable ? (
@@ -187,21 +202,24 @@ function AdminSchedulePage() {
                     {schedule.event_date?.split(" ")[0]}
                   </p>
 
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={() => handleEdit(schedule)}
-                      className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-                    >
-                      Edit
-                    </button>
+                  {/* 5. Hide Edit/Archive buttons for staff */}
+                  {canEdit && (
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        onClick={() => handleEdit(schedule)}
+                        className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                      >
+                        Edit
+                      </button>
 
-                    <button
-                      onClick={() => handleToggleArchive(schedule)}
-                      className="rounded border px-3 py-1 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Archive
-                    </button>
-                  </div>
+                      <button
+                        onClick={() => handleToggleArchive(schedule)}
+                        className="rounded border px-3 py-1 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Archive
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -217,7 +235,7 @@ function AdminSchedulePage() {
               archivedSchedules.map((schedule) => (
                 <div
                   key={schedule.id}
-                  className="rounded border p-4 shadow-sm"
+                  className="rounded border p-4 shadow-sm bg-white"
                 >
                   <div className="mb-2">
                     {!schedule.isAvailable ? (
@@ -251,21 +269,24 @@ function AdminSchedulePage() {
                     {schedule.event_date?.split(" ")[0]}
                   </p>
 
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={() => handleEdit(schedule)}
-                      className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-                    >
-                      Edit
-                    </button>
+                  {/* Hide Edit/Restore buttons for staff */}
+                  {canEdit && (
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        onClick={() => handleEdit(schedule)}
+                        className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                      >
+                        Edit
+                      </button>
 
-                    <button
-                      onClick={() => handleToggleArchive(schedule)}
-                      className="rounded border px-3 py-1 text-sm text-green-700 hover:bg-green-50"
-                    >
-                      Restore
-                    </button>
-                  </div>
+                      <button
+                        onClick={() => handleToggleArchive(schedule)}
+                        className="rounded border px-3 py-1 text-sm text-green-700 hover:bg-green-50"
+                      >
+                        Restore
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -273,9 +294,10 @@ function AdminSchedulePage() {
         </div>
       </div>
 
-      {showModal && (
+      {/* Hide Modal for staff just in case */}
+      {showModal && canEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
             <h3 className="mb-4 text-lg font-semibold">
               {editingSchedule ? "Edit Schedule" : "Add Schedule"}
             </h3>
@@ -333,14 +355,14 @@ function AdminSchedulePage() {
                 )}
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2 border-t mt-4">
                 <button
                   type="button"
                   onClick={() => {
                     setShowModal(false);
                     setEditingSchedule(null);
                   }}
-                  className="rounded border px-4 py-2"
+                  className="rounded border px-4 py-2 hover:bg-gray-50"
                 >
                   Cancel
                 </button>

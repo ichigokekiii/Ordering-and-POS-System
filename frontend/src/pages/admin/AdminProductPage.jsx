@@ -263,7 +263,7 @@ function AdminProductPage({ user }) {
           onClick={() => { resetForm(); setShowModal(true); }}
           className="rounded bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
         >
-          {activeTab === "products" ? "+ Add Product" : "+ Add Premade"}
+          {activeTab === "products" ? "+ Add Custom" : "+ Add Premade"}
         </button>
       </div>
 
@@ -273,13 +273,13 @@ function AdminProductPage({ user }) {
           onClick={() => setActiveTab("products")}
           className={`px-4 py-2 border-b-2 ${activeTab === "products" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"}`}
         >
-          Products
+          Custom
         </button>
         <button
           onClick={() => setActiveTab("premades")}
           className={`px-4 py-2 border-b-2 ${activeTab === "premades" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"}`}
         >
-          Premades
+          Premade
         </button>
       </div>
 

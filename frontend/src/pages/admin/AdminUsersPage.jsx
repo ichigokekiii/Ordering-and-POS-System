@@ -31,6 +31,7 @@ function AdminUsersPage({ user }) {
   
   // 2. Define permissions based on your backend logic
   const isStaff = user?.role === "staff";
+  const isOwner = user?.role === "owner";
   const canManageUsers = user?.role === "admin"; // Only admins can edit users based on backend middleware
 
   const [activeTab, setActiveTab] = useState("users");
@@ -392,7 +393,7 @@ function AdminUsersPage({ user }) {
           <div className="mb-8 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-800">Profiles List</h2>
 
-            {!isOwner && (
+            {canManageUsers && (
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-base font-medium rounded-md transition"
@@ -821,18 +822,6 @@ function AdminUsersPage({ user }) {
               </div>
             </div>
 
-            {/* Unlock banner if locked */}
-            {selectedUser.is_locked && (
-              <div className="mt-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                <p className="font-semibold mb-2">🔒 This account is locked.</p>
-                <button
-                  onClick={() => handleUnlockUser(selectedUser.id)}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-                >
-                  Unlock Account
-                </button>
-              </div>
-            )}
 
             {/* Unlock banner if locked */}
             {selectedUser.is_locked && (

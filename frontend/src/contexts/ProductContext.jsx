@@ -15,8 +15,6 @@ export function ProductProvider({ children }) {
       setProducts(res.data);
     } catch (error) {
       console.error("Product fetch error", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -30,8 +28,20 @@ export function ProductProvider({ children }) {
   };
 
   useEffect(() => {
-    fetchProducts();
-    fetchPremades();
+    const loadAll = async () => {
+      try {
+        await Promise.all([
+          fetchProducts(),
+          fetchPremades()
+        ]);
+      } catch (error) {
+        console.error("Failed to load data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAll();
   }, []);
 
   // Add product

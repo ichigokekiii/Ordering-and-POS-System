@@ -1,30 +1,21 @@
 /* eslint-disable react-hooks/purity */
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
 import { useProducts } from "../../contexts/ProductContext";
 import { useCart } from "../../contexts/CartContext";
 
 const MAX_GREETING_CHARS = 150;
 const GREETING_CARD_PRICE = 5;
 
-function OrderCustomAdditional() {
+function OrderCustomAdditional({ data, onBack, onFinish }) {
   const { products } = useProducts();
   const { addToCart } = useCart();
-  const navigate = useNavigate();
-  const location = useLocation();
 
-  const { bouquet, fillers = [], basePrice = 0 } = location.state || {};
+  const { bouquet, fillers = [], basePrice = 0 } = data || {};
 
   const [quantities, setQuantities] = useState({});
   const [added, setAdded] = useState(false);
   const [greetingCard, setGreetingCard] = useState(false);
   const [greetingMessage, setGreetingMessage] = useState("");
-
-  useEffect(() => {
-    if (!bouquet) {
-      navigate("/order/custom");
-    }
-  }, [bouquet, navigate]);
 
   if (!bouquet) return null;
 
@@ -90,7 +81,7 @@ function OrderCustomAdditional() {
     setAdded(true);
 
     setTimeout(() => {
-      navigate("/order");
+      onFinish();
     }, 800);
   };
 
@@ -151,7 +142,7 @@ function OrderCustomAdditional() {
     <div className="min-h-screen bg-gray-50 px-6 py-10">
       <div className="mx-auto max-w-5xl">
         <button
-          onClick={() => navigate("/order/custom")}
+          onClick={onBack}
           className="mb-6 flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
         >
           ← Back

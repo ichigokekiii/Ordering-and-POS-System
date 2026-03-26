@@ -1,11 +1,9 @@
 /* eslint-disable react-hooks/purity */
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useProducts } from "../../contexts/ProductContext";
 
-function OrderCustom() {
+function OrderCustom({ onBack, onNext }) {
   const { products, loading } = useProducts();
-  const navigate = useNavigate();
 
   const [selectedBouquet, setSelectedBouquet] = useState(null);
   const [fillerCounts, setFillerCounts] = useState({});
@@ -36,13 +34,10 @@ function OrderCustom() {
       .filter((p) => (fillerCounts[p.id] || 0) > 0)
       .map((p) => ({ ...p, quantity: fillerCounts[p.id] }));
 
-    // Pass selections to the next page via navigation state
-    navigate("/order/custom/additional", {
-      state: {
-        bouquet: selectedBouquet,
-        fillers: selectedFillers,
-        basePrice: selectedBouquet.price,
-      },
+    onNext({
+      bouquet: selectedBouquet,
+      fillers: selectedFillers,
+      basePrice: selectedBouquet.price,
     });
   };
 
@@ -57,7 +52,7 @@ function OrderCustom() {
     <div className="min-h-screen bg-gray-50 px-6 py-10">
       <div className="mx-auto max-w-5xl">
         <button
-          onClick={() => navigate("/order")}
+          onClick={onBack}
           className="mb-6 flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
         >
           ← Back

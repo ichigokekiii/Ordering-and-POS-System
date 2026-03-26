@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { usePremades } from "../../contexts/PremadeContext";
+import { useProducts } from "../../contexts/ProductContext";
 import { useCart } from "../../contexts/CartContext";
 
 const MAX_GREETING_CHARS = 150;
@@ -155,10 +154,9 @@ function OrderModal({ product, onClose, onConfirm }) {
   );
 }
 
-function OrderPremadePage() {
-  const { premades, loading } = usePremades();
+function OrderPremadePage({ onBack }) {
+  const { premades, loading } = useProducts();
   const { addToCart } = useCart();
-  const navigate = useNavigate();
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [addedId, setAddedId] = useState(null);
@@ -178,7 +176,6 @@ function OrderPremadePage() {
     setAddedId(product.id);
     setTimeout(() => {
       setAddedId(null);
-      navigate("/order");
     }, 100);
   };
 
@@ -201,7 +198,7 @@ function OrderPremadePage() {
       <div className="min-h-screen bg-gray-50 px-6 py-10">
         <div className="mx-auto max-w-5xl">
           <button
-            onClick={() => navigate("/order")}
+            onClick={onBack}
             className="mb-6 flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
           >
             ← Back

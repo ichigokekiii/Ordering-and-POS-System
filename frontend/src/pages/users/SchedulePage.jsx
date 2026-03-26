@@ -157,7 +157,7 @@ function SchedulePage() {
                   <div className="overflow-hidden rounded-2xl">
                     {schedule.image && (
                       <img
-                        src={schedule.image}
+                        src={`${import.meta.env.VITE_API_URL?.replace("/api","") || "http://localhost:8000"}${schedule.image}`}
                         alt={schedule.schedule_name}
                         className="h-56 w-full object-cover transition duration-500 group-hover:scale-105"
                       />
@@ -220,7 +220,7 @@ function SchedulePage() {
         {/* IMAGE SIDE (Fixed Size with consistent cropping) */}
         <div className="h-full w-full bg-gray-100 overflow-hidden flex items-center justify-center">
           <img
-            src={selectedSchedule.image}
+            src={`${import.meta.env.VITE_API_URL?.replace("/api","") || "http://localhost:8000"}${selectedSchedule.image}`}
             alt={selectedSchedule.schedule_name}
             className="h-full w-full object-cover object-center"
           />

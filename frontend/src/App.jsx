@@ -42,7 +42,6 @@ import AdminProductPage from "./pages/admin/AdminProductPage";
 import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
 import AdminSchedulePage from "./pages/admin/AdminSchedulePage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
-import AdminPremadePage from "./pages/admin/AdminPremadePage";
 import AdminContentPage from "./pages/admin/AdminContentPage";
 
 
@@ -168,23 +167,6 @@ function App() {
                 )
               }
             />
-
-            <Route
-  path="/admin/premades"
-  element={
-    !user ? <Navigate to="/login" replace /> :
-    (user.role === "admin" || user.role === "owner") ? (
-      <div className="flex min-h-screen">
-        <AdminSidebar onLogout={handleLogout} />
-        <div className="flex-1 p-6 bg-gray-50">
-          <AdminPremadePage />
-        </div>
-      </div>
-    ) : (
-      <Navigate to="/" />
-    )
-  }
-/>
 
     <Route
       path="/admin/content"

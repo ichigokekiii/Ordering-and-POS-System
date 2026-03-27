@@ -62,6 +62,8 @@ function AdminOrdersPage({ user }) {
   const [loading, setLoading] = useState(true);
   const [editingOrder, setEditingOrder] = useState(null);
   const [status, setStatus] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
+
 
   // 2. Define who is allowed to edit
   const canEdit = user?.role === "admin" || user?.role === "owner";
@@ -416,7 +418,7 @@ function AdminOrdersPage({ user }) {
                     Cancel
                   </button>
                   <button
-                    onClick={handleUpdateStatus}
+                    onClick={() => setShowConfirm(true)}
                     className="px-4 py-2 bg-[#3B5BDB] hover:bg-[#2f4ac7] transition text-white rounded-lg"
                   >
                     Save Changes
@@ -438,6 +440,61 @@ function AdminOrdersPage({ user }) {
           </div>
         </div>
       )}
+
+      {/* ── Confirmation Modal ── */}
+{showConfirm && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl text-center">
+
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
+        <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+        </svg>
+      </div>
+
+      <h3 className="text-lg font-semibold text-gray-800 mb-1">Confirm Status Change</h3>
+      <p className="text-sm text-gray-500 mb-1">
+        You are updating order <span className="font-medium text-gray-700">{editingOrder?.order_id}</span>
+      </p>
+      <p className="text-sm text-gray-500 mb-6">
+        New status:{" "}
+        <span className={`font-semibold ${
+          status === "Pending"    ? "text-yellow-600" :
+          status === "Processing" ? "text-blue-600"   :
+          status === "Shipped"    ? "text-purple-600" :
+          status === "Delivered"  ? "text-green-600"  :
+                                    "text-red-600"
+        }`}>
+          {status}
+        </span>
+      </p>
+
+      <p className="text-xs text-gray-400 mb-6">
+        A notification email will be sent to the customer.
+      </p>
+
+      <div className="flex gap-3">
+        <button
+          onClick={() => setShowConfirm(false)}
+          className="flex-1 px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-50 transition text-sm font-medium"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => {
+            setShowConfirm(false);
+            handleUpdateStatus();
+          }}
+          className="flex-1 px-4 py-2 bg-[#3B5BDB] hover:bg-[#2f4ac7] text-white rounded-lg transition text-sm font-semibold"
+        >
+          Confirm
+        </button>
+      </div>
+
+    </div>
+  </div>
+)}
+
     </div>
   );
 }

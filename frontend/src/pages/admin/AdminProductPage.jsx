@@ -335,6 +335,7 @@ function AdminProductPage({ user }) {
                   product={premade}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  canEdit={canEdit}
                 />
               ))}
             </div>

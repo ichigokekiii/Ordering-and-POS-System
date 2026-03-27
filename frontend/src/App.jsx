@@ -13,7 +13,6 @@ import { AuthContext } from "./contexts/AuthContext";
 
 import Navbar from "./components/Navbar";
 import AdminSidebar from "./components/AdminSidebar";
-import StaffNavbar from "./components/StaffNavbar";
 import Footer from "./components/Footer";
 import OrderLayout from "./components/OrderLayout";
 
@@ -241,7 +240,6 @@ function App() {
           element={
             !user ? <Navigate to="/login" replace /> : user.role === "staff" ? (
               <div className="min-h-screen flex flex-col">
-                <StaffNavbar user={user} onLogout={handleLogout} />
                 <div className="flex-1">
                   <StaffPage user={user} />
                 </div>

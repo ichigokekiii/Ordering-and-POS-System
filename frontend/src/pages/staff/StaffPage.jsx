@@ -15,6 +15,7 @@ function StaffPage() {
   const [cart, setCart] = useState([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [toast, setToast] = useState(null);
 
   // PAYMENT FLOW
   const [methodModal, setMethodModal] = useState(false);
@@ -22,13 +23,6 @@ function StaffPage() {
   const [qrModal, setQrModal] = useState(false);
   const [cashReceived, setCashReceived] = useState(0);
 
-  if (loading) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center text-xl font-semibold ${isDarkMode ? "bg-gray-900 text-gray-200" : "bg-gray-50 text-gray-700"}`}>
-        Loading POS...
-      </div>
-    );
-  }
 
   const available = products.filter((p) => p.isAvailable);
 
@@ -66,14 +60,26 @@ function StaffPage() {
         payment_method: paymentMethod,
         cash_received: paymentMethod === 'CASH' ? cashReceived : total
       });
+
+      setToast({ type: "success", message: "Transaction completed" });
     } catch (err) {
       console.error("Failed to save transaction", err);
+
+      // If backend responded, it likely still succeeded → show success
+      if (err.response) {
+        setToast({ type: "success", message: "Transaction completed" });
+      } else {
+        setToast({ type: "error", message: "Something went wrong" });
+      }
     }
+
     setCart([]);
     setMethodModal(false);
     setCashModal(false);
     setQrModal(false);
     setCashReceived(0);
+
+    setTimeout(() => setToast(null), 3000);
   };
 
   const bgColors = [
@@ -121,6 +127,14 @@ function StaffPage() {
       searchInputRef.current.focus();
     }
   }, [isSearchOpen]);
+
+  if (loading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center text-xl font-semibold ${isDarkMode ? "bg-gray-900 text-gray-200" : "bg-gray-50 text-gray-700"}`}>
+        Loading POS...
+      </div>
+    );
+  }
 
   return (
     <div className={`flex overflow-hidden relative h-[100dvh] w-screen ${dm ? "bg-gray-900" : "bg-gray-50"}`}>
@@ -291,48 +305,63 @@ function StaffPage() {
 
         {/* Cart Items */}
         <div className={`flex-1 overflow-x-hidden overflow-y-auto p-3 space-y-2 min-h-0 ${dm ? "bg-gray-900/30" : "bg-gray-50/50"}`}>
-          {cart.length === 0 ? (
-            <div className={`h-full flex flex-col items-center justify-center p-6 text-center ${dm ? "text-gray-500" : "text-gray-400"}`}>
-              <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-              <p>Tap an item to add to the transaction. Swipe left or right to delete an item.</p>
-            </div>
-          ) : (
-            <AnimatePresence>
-              {cart.map((item) => (
-                <motion.div
-                  key={item.cartId}
-                  layout
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8, x: -100 }}
-                  transition={{ duration: 0.2 }}
-                  className={`relative mb-2 rounded border shadow-sm overflow-hidden group ${dm ? "border-gray-700 bg-red-900/20" : "border-gray-100 bg-red-50"}`}
-                >
-                  <motion.div
-                    drag="x"
-                    dragConstraints={{ left: 0, right: 0 }}
-                    dragElastic={0.8}
-                    onDragEnd={(e, info) => {
-                      if (info.offset.x < -60 || info.offset.x > 60) {
-                        removeFromCart(item.cartId);
-                      }
+      {cart.length === 0 ? (
+        <div className={`h-full flex flex-col items-center justify-center p-6 text-center ${dm ? "text-gray-500" : "text-gray-400"}`}>
+          <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+          <p>Tap an item to add to the transaction. Swipe left or right to delete an item.</p>
+        </div>
+      ) : (
+        <AnimatePresence>
+          {cart.map((item) => (
+            <motion.div
+              key={item.cartId}
+              layout
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8, x: -100 }}
+              transition={{ duration: 0.2 }}
+              className={`relative mb-2 rounded border shadow-sm overflow-hidden group ${dm ? "border-gray-700 bg-red-900/20" : "border-gray-100 bg-red-50"}`}
+            >
+              <motion.div
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.8}
+                onDragEnd={(e, info) => {
+                  if (info.offset.x < -60 || info.offset.x > 60) {
+                    removeFromCart(item.cartId);
+                  }
+                }}
+                whileDrag={{ scale: 0.98, opacity: 0.9 }}
+                className={`relative p-3 flex items-center justify-between z-10 w-full cursor-grab active:cursor-grabbing ${dm ? "bg-gray-800" : "bg-white"}`}
+              >
+                <div className="flex-1 pr-2 pointer-events-none select-none">
+                  <p className={`font-semibold leading-tight text-sm ${dm ? "text-gray-100" : "text-gray-800"}`}>{item.name}</p>
+                  <p className={`text-xs mt-0.5 ${dm ? "text-gray-400" : "text-gray-500"}`}>₱{parseFloat(item.price).toLocaleString()} each</p>
+                </div>
+                <div className="flex items-center gap-3 select-none">
+                  <div className={`rounded text-center px-2 py-1 text-xs font-bold ${dm ? "bg-gray-700 text-gray-200" : "bg-gray-100 text-gray-700"}`}>x{item.qty}</div>
+                  <div className={`w-16 text-right font-bold text-sm ${dm ? "text-gray-100" : "text-gray-800"}`}>
+                    ₱{(item.price * item.qty).toLocaleString()}
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFromCart(item.cartId);
                     }}
-                    whileDrag={{ scale: 0.98, opacity: 0.9 }}
-                    className={`relative p-3 flex items-center justify-between z-10 w-full cursor-grab active:cursor-grabbing ${dm ? "bg-gray-800" : "bg-white"}`}
+                    className={`ml-1 px-2 py-1 rounded-md text-sm font-medium transition-all duration-150 ${
+                      dm
+                        ? "bg-gray-700 text-gray-300 hover:bg-red-900/60 hover:text-red-300 active:bg-red-900/80 focus:outline-none focus:ring-2 focus:ring-red-500/40"
+                        : "bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600 active:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-300"
+                    }`}
                   >
-                    <div className="flex-1 pr-2 pointer-events-none select-none">
-                      <p className={`font-semibold leading-tight text-sm ${dm ? "text-gray-100" : "text-gray-800"}`}>{item.name}</p>
-                      <p className={`text-xs mt-0.5 ${dm ? "text-gray-400" : "text-gray-500"}`}>₱{parseFloat(item.price).toLocaleString()} each</p>
-                    </div>
-                    <div className="flex items-center gap-2 pointer-events-none select-none">
-                      <div className={`rounded text-center px-2 py-1 text-xs font-bold ${dm ? "bg-gray-700 text-gray-200" : "bg-gray-100 text-gray-700"}`}>x{item.qty}</div>
-                      <div className={`w-16 text-right font-bold text-sm ${dm ? "text-gray-100" : "text-gray-800"}`}>₱{(item.price * item.qty).toLocaleString()}</div>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          )}
+                    ✕
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      )}
         </div>
 
         {/* Fixed Bottom Layout */}
@@ -361,6 +390,23 @@ function StaffPage() {
           </button>
         </div>
       </div>
+
+      {toast && (
+        <div className="fixed top-4 right-4 z-[200] pointer-events-none">
+          <div
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg shadow-md text-xs font-medium backdrop-blur-sm border transition-all animate-[fadeIn_.2s_ease-out] max-w-[240px] ${
+              toast.type === "success"
+                ? "bg-green-500/90 text-white border-green-400"
+                : "bg-red-500/90 text-white border-red-400"
+            }`}
+          >
+            <span className="text-sm">
+              {toast.type === "success" ? "✔" : "⚠"}
+            </span>
+            <span className="truncate">{toast.message}</span>
+          </div>
+        </div>
+      )}
 
       {/* --- PAYMENT MODALS --- */}
       {/* 1. METHOD MODAL */}

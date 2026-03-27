@@ -75,6 +75,7 @@ const addPremade = async (premadeData) => {
     formData.append("name", premadeData.name);
     formData.append("description", premadeData.description);
     formData.append("price", premadeData.price);
+    formData.append("category", premadeData.category || "");
     formData.append("isAvailable", Number(premadeData.isAvailable));
     if (premadeData.image) {
       formData.append("image", premadeData.image);
@@ -127,6 +128,7 @@ const updatePremade = async (id, updatedData) => {
     formData.append("name", updatedData.name);
     formData.append("description", updatedData.description);
     formData.append("price", updatedData.price);
+    formData.append("category", updatedData.category || "");
     formData.append("isAvailable", Number(updatedData.isAvailable));
     if (updatedData.image) {
       formData.append("image", updatedData.image);

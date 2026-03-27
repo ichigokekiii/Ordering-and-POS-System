@@ -20,7 +20,7 @@ public function store(Request $request)
         // 2. Loop through the cart and save each item individually
         foreach ($request->items as $item) {
             $pos_transactions->items()->create([
-                'product_id'   => $item['id'],
+                'product_id'   => $item['product_id'] ?? null,
                 'product_name' => $item['name'],
                 'price'        => $item['price'],
                 'quantity'     => $item['qty'],

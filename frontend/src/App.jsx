@@ -46,8 +46,8 @@ import AdminContentPage from "./pages/admin/AdminContentPage";
 
 
 
-// STAFF PAGE
-import StaffPage from "./pages/staff/StaffPage";
+import StaffCustomPage from "./pages/staff/StaffCustomPage";
+import StaffPremadePage from "./pages/staff/StaffPremadePage";
 
 function App() {
   const navigate = useNavigate();
@@ -239,11 +239,27 @@ function App() {
           path="/staff"
           element={
             !user ? <Navigate to="/login" replace /> : user.role === "staff" ? (
-              <div className="min-h-screen flex flex-col">
-                <div className="flex-1">
-                  <StaffPage user={user} />
-                </div>
-              </div>
+              <Navigate to="/staff/ordercustom" replace />
+            ) : (
+              <Navigate to="/" />
+            )
+          }
+        />
+        <Route
+          path="/staff/ordercustom"
+          element={
+            !user ? <Navigate to="/login" replace /> : user.role === "staff" ? (
+              <StaffCustomPage />
+            ) : (
+              <Navigate to="/" />
+            )
+          }
+        />
+        <Route
+          path="/staff/orderpremade"
+          element={
+            !user ? <Navigate to="/login" replace /> : user.role === "staff" ? (
+              <StaffPremadePage />
             ) : (
               <Navigate to="/" />
             )

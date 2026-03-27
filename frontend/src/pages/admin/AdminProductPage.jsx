@@ -21,6 +21,14 @@ const VALIDATION = {
   },
 };
 
+const PREMADE_CATEGORIES = [
+  "Roses",
+  "Lilies",
+  "Tulips",
+  "Carnation",
+  "Addons",
+];
+
 const validate = (field, value) => {
   const rule = VALIDATION[field];
   if (!value) return "This field is required";
@@ -183,10 +191,10 @@ function AdminProductPage({ user }) {
         }
       } else {
         if (isEditing) {
-          await updatePremade(currentId, { name, image, price, description, isAvailable });
+          await updatePremade(currentId, { name, image, price, description, category, isAvailable });
           setMessage("Premade updated successfully!");
         } else {
-          await addPremade({ name, image, price, description, isAvailable });
+          await addPremade({ name, image, price, description, category, isAvailable });
           setMessage("Premade added successfully!");
         }
       }
@@ -335,6 +343,7 @@ function AdminProductPage({ user }) {
                   product={premade}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  canEdit={canEdit}
                 />
               ))}
             </div>
@@ -483,6 +492,27 @@ function AdminProductPage({ user }) {
                     </div>
                   )}
                 </>
+              )}
+
+              {activeTab === "premades" && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">Category</label>
+                  <select
+                    className="w-full rounded border px-4 py-2"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    required
+                  >
+                    <option value="" disabled>
+                      Select premade category
+                    </option>
+                    {PREMADE_CATEGORIES.map((premadeCategory) => (
+                      <option key={premadeCategory} value={premadeCategory}>
+                        {premadeCategory}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
 
               {/* Availability */}

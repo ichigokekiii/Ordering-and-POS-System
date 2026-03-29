@@ -89,7 +89,7 @@ function StaffPage({ children, customCategories }) {
     return `${main.id}::${fillerIds.join("|")}`;
   };
 
-  const startPromoBouquet = () => {
+  const startPromoBouquet = (product) => {
     if (activePromoBuilder) {
       showToast("info", "Finish the current promo bouquet first.");
       if (displayCategories.Main) {
@@ -100,12 +100,12 @@ function StaffPage({ children, customCategories }) {
 
     const promoCartItem = {
       cartId: Date.now() + Math.random(),
-      id: null,
-      product_id: null,
-      productSource: "promo",
+      id: product.id,
+      product_id: product.id,
+      productSource: product.productSource || "product",
       kind: "promo-bouquet",
-      name: "Promo Bouquet",
-      price: 0,
+      name: product.name,
+      price: Number(product.price) || 0,
       qty: 1,
       isBuilding: true,
       selections: {
@@ -122,7 +122,10 @@ function StaffPage({ children, customCategories }) {
   };
 
   const finalizePromoBouquetSelection = (nextItem, prevCart) => {
-    const signature = buildPromoSignature(nextItem.selections.main, nextItem.selections.fillers);
+    const signature = `${nextItem.product_id}::${buildPromoSignature(
+      nextItem.selections.main,
+      nextItem.selections.fillers
+    )}`;
     const existingIndex = prevCart.findIndex(
       (item) =>
         item.kind === "promo-bouquet" &&
@@ -272,7 +275,7 @@ function StaffPage({ children, customCategories }) {
 
   const addToCartWithId = (product) => {
     if (product.builderKind === "promo-bouquet") {
-      startPromoBouquet();
+      startPromoBouquet(product);
       return;
     }
 

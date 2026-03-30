@@ -88,7 +88,7 @@ function Feedback() {
             {/* Feedback Text */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Tell us more about your visit
+                Tell us more !
               </label>
               <p className="text-xs text-gray-400 mb-2">
                 What did you love? What could we do better?

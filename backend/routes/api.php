@@ -16,6 +16,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PosTransactionsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContentController;
+use App\Http\Controllers\FeedbackController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -31,6 +33,12 @@ Route::get('/landing', function () {
         'title' => 'Landing Page JSON Test',
         'subtitle' => 'Laravel API is Connected',
     ]);
+});
+
+//feedback routes
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/feedbacks', [FeedbackController::class, 'index']);
+    Route::post('/feedbacks', [FeedbackController::class, 'store']);
 });
 
 // Product & Premade routes (Public so customers can see menu)

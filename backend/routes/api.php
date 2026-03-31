@@ -45,8 +45,8 @@ Route::post('/schedules/{id}/book', [ScheduleController::class, 'book']);
 Route::apiResource('contents', ContentController::class);
 
 //pos api route
-Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
 Route::get('/pos-transactions/analytics', [PosTransactionsController::class, 'analytics']);
+Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
 
 // Allow customers/guests to place an order
 Route::post('/orders', [OrderController::class, 'store']);
@@ -91,9 +91,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/orders/user/{user_id}', [OrderController::class, 'userOrders']);
     Route::post('/order-items', [OrderItemController::class, 'store']);
 
-    // Staff POS Routes
-    Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
-
     // ====================================================================
     // STAFF "READ-ONLY" ADMIN ACCESS
     // Staff are allowed to view this data, but the modifying routes 
@@ -101,7 +98,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // ====================================================================
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{id}', [OrderController::class, 'show']);
-    Route::get('/pos-transactions/analytics', [PosTransactionsController::class, 'analytics']);
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/{id}', [UserController::class, 'show']);
 

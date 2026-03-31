@@ -35,6 +35,13 @@
     .total-row { display: flex; justify-content: space-between; padding: 16px 0 0; font-size: 16px; font-weight: 800; color: #111827; border-top: 2px solid #e5e7eb; margin-top: 8px; }
     .total-row span:last-child { color: #3B5BDB; }
 
+    /* ── Feedback Section ── */
+    .feedback-section { margin: 0 24px 24px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px; padding: 24px; text-align: center; }
+    .feedback-section .emoji { font-size: 32px; margin-bottom: 8px; }
+    .feedback-section h3 { margin: 0 0 6px; font-size: 16px; color: #166534; font-weight: 700; }
+    .feedback-section p { margin: 0 0 16px; font-size: 13px; color: #4b7a5a; line-height: 1.5; }
+    .feedback-btn { display: inline-block; background: #166534; color: #ffffff !important; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 600; letter-spacing: 0.3px; }
+
     .footer { text-align: center; padding: 24px; font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6; }
   </style>
 </head>
@@ -93,6 +100,22 @@
       </div>
 
     </div>
+
+    {{-- Feedback Section (only shown when Delivered) --}}
+    @if($newStatus === 'Delivered')
+    <div class="feedback-section">
+      <div class="emoji">🌸</div>
+      <h3>How was your experience?</h3>
+      <p>
+        We hope your order brought a smile! We'd love to hear your thoughts —
+        it only takes a minute and helps us serve you better.
+      </p>
+      {{-- ✏️ Replace the href below with your actual feedback page URL --}}
+      <a href="http://localhost:5173/feedback" class="feedback-btn">
+        Leave a Review
+      </a>
+    </div>
+    @endif
 
     <div class="footer">
       This is an automated message from Petal Express PH.<br>

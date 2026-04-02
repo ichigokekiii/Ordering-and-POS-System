@@ -21,8 +21,7 @@ import OrderLayout from "./components/OrderLayout";
 import LandingPage from "./pages/users/LandingPage";
 import ProductPage from "./pages/users/ProductPage";
 import Feedback from "./pages/users/Feedback";
-import LoginPage from "./pages/users/LoginPage";
-import RegisterPage from "./pages/users/RegisterPage";
+import AuthPage from "./pages/users/AuthPage";
 import ForgotPasswordPage from "./pages/users/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/users/ResetPasswordPage";
 import VerifyOtpPage from "./pages/users/VerifyOtpPage";
@@ -109,8 +108,8 @@ function App() {
           <Route path="/checkout" element={<CheckoutPage />} />
         </Route>
 
-        <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/login" element={<AuthPage onLogin={handleLogin} initialView="login" />} />
+        <Route path="/register" element={<AuthPage onLogin={handleLogin} initialView="register" />} />
         <Route path="/verify-otp" element={<VerifyOtpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />

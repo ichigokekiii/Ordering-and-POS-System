@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useContext, useEffect } from "react";
@@ -43,6 +44,7 @@ import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
 import AdminSchedulePage from "./pages/admin/AdminSchedulePage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminContentPage from "./pages/admin/AdminContentPage";
+import AdminLogsPage from "./pages/admin/AdminLogsPage";
 
 
 
@@ -226,6 +228,23 @@ function App() {
                   <AdminSidebar onLogout={handleLogout} />
                   <div className="flex-1 p-6 bg-gray-50">
                     <AdminUsersPage user={user} />
+                  </div>
+                </div>
+              ) : (
+                <Navigate to="/" />
+              )
+            }
+          />
+
+          <Route
+            path="/admin/logs"
+            element={
+              !user ? <Navigate to="/login" replace /> :
+              hasAdminAccess ? (
+                <div className="flex min-h-screen">
+                  <AdminSidebar onLogout={handleLogout} />
+                  <div className="flex-1 p-6 bg-gray-50">
+                    <AdminLogsPage />
                   </div>
                 </div>
               ) : (

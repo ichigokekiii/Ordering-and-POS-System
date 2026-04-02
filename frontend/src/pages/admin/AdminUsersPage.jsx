@@ -34,9 +34,6 @@ function AdminUsersPage({ user }) {
   const isOwner = user?.role === "owner";
   const canManageUsers = user?.role === "admin"; // Only admins can edit users based on backend middleware
 
-  const [activeTab, setActiveTab] = useState("users");
-  const [activityLogs, setActivityLogs] = useState([]);
-
   const [selectedUser, setSelectedUser] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showConfirmSave, setShowConfirmSave] = useState(false);
@@ -59,7 +56,6 @@ function AdminUsersPage({ user }) {
 
   useEffect(() => {
     fetchUsersFromDatabase();
-    fetchActivityLogs();
   }, []);
 
   const fetchUsersFromDatabase = () => {
@@ -74,16 +70,6 @@ function AdminUsersPage({ user }) {
       })
       .finally(() => {
         setLoading(false);
-      });
-  };
-
-  const fetchActivityLogs = () => {
-    api.get("/activity-logs")
-      .then((response) => {
-        setActivityLogs(response.data);
-      })
-      .catch(() => {
-        // Activity logs might not be implemented yet, ignore error
       });
   };
 
@@ -360,48 +346,18 @@ function AdminUsersPage({ user }) {
 
   return (
     <div className="px-10 py-10">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-black mb-6">User Management</h1>
+      <div className="mb-8 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-black mb-6">Users</h1>
 
-        {/* Tabs */}
-        <div className="flex border-b">
+        {canManageUsers && (
           <button
-            onClick={() => setActiveTab("users")}
-            className={`px-6 py-3 font-medium ${
-              activeTab === "users"
-                ? "border-b-2 border-blue-600 text-blue-600"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
+            onClick={() => setShowCreateModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-base font-medium rounded-md transition"
           >
-            User Profiles
+            + Add User
           </button>
-          <button
-            onClick={() => setActiveTab("logs")}
-            className={`px-6 py-3 font-medium ${
-              activeTab === "logs"
-                ? "border-b-2 border-blue-600 text-blue-600"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Activity Logs
-          </button>
-        </div>
+        )}
       </div>
-
-      {activeTab === "users" && (
-        <>
-          <div className="mb-8 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-800">Profiles List</h2>
-
-            {canManageUsers && (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-base font-medium rounded-md transition"
-              >
-                + Add User
-              </button>
-            )}
-          </div>
 
       <div className="rounded border p-6 shadow-sm bg-white">
         <div className="flex justify-between items-center mb-8">
@@ -575,37 +531,6 @@ function AdminUsersPage({ user }) {
           </div>
         )}
       </div>
-      </>
-      )}
-
-      {activeTab === "logs" && (
-        <div className="rounded border p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Activity Logs</h2>
-
-          {activityLogs.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No activity logs available yet.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {activityLogs.map((log, index) => (
-                <div key={index} className="border rounded p-4 bg-gray-50">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium text-gray-800">{log.action}</p>
-                      <p className="text-sm text-gray-600">{log.description}</p>
-                    </div>
-                    <div className="text-right text-sm text-gray-500">
-                      <p>{log.user_name}</p>
-                      <p>{new Date(log.created_at).toLocaleString()}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {toast && (
         <div className="fixed top-6 right-6 z-50">

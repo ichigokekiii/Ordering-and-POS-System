@@ -68,6 +68,13 @@ function AdminSidebar({ onLogout }) {
         >
           Users
         </NavLink>
+
+        <NavLink
+          to="/admin/logs"
+          className={({ isActive }) => (isActive ? activeClass : baseClass)}
+        >
+          Logs
+        </NavLink>
       </ul>
 
       {/* Logout */}

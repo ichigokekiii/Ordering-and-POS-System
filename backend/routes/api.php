@@ -16,6 +16,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PosTransactionsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContentController;
+use App\Http\Controllers\LogController;
 
 /*
 |--------------------------------------------------------------------------
@@ -104,6 +105,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/pos-transactions/analytics', [PosTransactionsController::class, 'analytics']);
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/{id}', [UserController::class, 'show']);
+    Route::get('/logs', [LogController::class, 'index']);
+    Route::get('/logs/export', [LogController::class, 'export']);
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);

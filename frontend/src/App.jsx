@@ -23,7 +23,6 @@ import ProductPage from "./pages/users/ProductPage";
 import Feedback from "./pages/users/Feedback";
 import AuthPage from "./pages/users/AuthPage";
 import ForgotPasswordPage from "./pages/users/ForgotPasswordPage";
-import ResetPasswordPage from "./pages/users/ResetPasswordPage";
 import VerifyOtpPage from "./pages/users/VerifyOtpPage";
 import ProfilePage from "./pages/users/ProfilePage";
 import AboutPage from "./pages/users/AboutPage";
@@ -112,7 +111,6 @@ function App() {
         <Route path="/register" element={<AuthPage onLogin={handleLogin} initialView="register" />} />
         <Route path="/verify-otp" element={<VerifyOtpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Admin Routes */}
         <>

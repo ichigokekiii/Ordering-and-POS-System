@@ -123,7 +123,7 @@ function LandingPage() {
                 onClick={() => setHeroIndex(index)}
                 // We use flex grow transitions. Ease out cubic for a natural settle.
                 className={`group relative rounded-[2rem] md:rounded-[3rem] overflow-hidden cursor-pointer transition-[flex,transform,filter] duration-[800ms] ease-out flex flex-col justify-end 
-                  ${isActive ? "flex-[4_4_0%] md:flex-[3_3_0%] shadow-2xl" : "flex-[1_1_0%] brightness-75 hover:brightness-100"}`}
+                  ${isActive ? "flex-[4_4_0%] md:flex-[3_3_0%] hover:shadow-2xl" : "flex-[1_1_0%] brightness-75 hover:brightness-100"}`}
               >
                 <img 
                   src={item.image} 
@@ -180,54 +180,69 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* 2. BEST SELLING FLOWERS (Landing products list) */}
+      {/* 2. BEST SELLING FLOWERS (Grid Layout) */}
       <section className="mx-auto max-w-[1400px] px-4 sm:px-8 mb-32">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
           <h2 className="text-4xl md:text-5xl font-playfair font-bold text-gray-900">
             Best Selling Flowers
           </h2>
         </div>
-        
-        {/* Horizontal Scroll Grid of Products */}
-        <div className="flex gap-6 md:gap-8 overflow-x-auto scroll-smooth py-12 px-4 md:px-6 -mx-4 md:-mx-6 snap-x hide-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+
+        {/* GRID (4 per row, 8 items, flex-wrap, centered rows) */}
+        <div className="flex flex-wrap justify-center gap-8 py-12">
           {[...products, ...premades].slice(0, 8).map((item) => (
-            <div key={`${item.id}-${item.name || item.product_name}`} className="min-w-[280px] max-w-[280px] md:min-w-[320px] md:max-w-[320px] flex-shrink-0 group cursor-pointer snap-start">
-              <div className="bg-white p-4 rounded-[2rem] shadow-md hover:shadow-xl transition-all duration-500 border border-gray-100">
-                <div className="rounded-[1.5rem] relative bg-gray-100">
+            <div key={`${item.id}-${item.name || item.product_name}`} className="group cursor-pointer w-full sm:w-[48%] md:w-[30%] lg:w-[22%] max-w-[320px]">
+              
+              <div className="bg-white p-4 rounded-[2rem] hover:shadow-xl transition-all duration-500 border border-gray-100">
+                
+                {/* Image */}
+                <div className="rounded-[1.5rem] relative bg-gray-100 overflow-hidden">
                   <img
                     src={item.image ? `http://localhost:8000${item.image}` : "https://via.placeholder.com/300"}
                     alt={item.name || item.product_name}
-                    className="h-[300px] w-full object-cover transition duration-700 group-hover:scale-110"
+                    className="h-[240px] w-full object-cover transition duration-700 group-hover:scale-110"
                   />
-                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold text-gray-900 shadow-sm border border-white tracking-widest uppercase">
+
+                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold text-gray-900 border border-white tracking-widest uppercase">
                     Best Seller
                   </div>
                 </div>
 
+                {/* Content */}
                 <div className="mt-5 px-1 text-left">
                   <h3 className="text-lg font-semibold text-gray-900 font-playfair leading-tight">
                     {item.name || item.product_name}
                   </h3>
+
                   <p className="text-lg font-semibold text-[#4f6fa5] mt-1 mb-4">
                     ₱{item.price}
                   </p>
-                  <Link to="/products" className="inline-block bg-gray-900 text-white px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-wide hover:bg-[#4f6fa5] transition-all">
+
+                  <Link
+                    to="/products"
+                    className="block w-full text-center bg-gray-900 text-white px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300"
+                  >
                     Order Now
                   </Link>
                 </div>
+
               </div>
             </div>
           ))}
         </div>
+
         <div className="mt-10 text-center">
-          <Link to="/products" className="inline-block bg-gray-900 text-white px-10 py-4 rounded-full text-sm font-semibold uppercase tracking-wide hover:bg-[#4f6fa5] transition-all duration-300 shadow-lg">
+          <Link
+            to="/products"
+            className="inline-block bg-gray-900 text-white px-10 py-4 rounded-full text-sm font-semibold uppercase tracking-wide border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300"
+          >
             See More Collections
           </Link>
         </div>
       </section>
 
       {/* 3. UPCOMING EVENTS (Schedule component) */}
-      <section className="bg-white py-24 border-y border-gray-100 shadow-[0_0_50px_rgba(0,0,0,0.02)]">
+      <section className="bg-white py-24 border-y border-gray-100">
         <div className="mx-auto max-w-[1400px] px-4 sm:px-8">
            <h2 className="text-4xl md:text-5xl font-playfair font-bold text-gray-900 mb-16 text-center">
               Upcoming Events
@@ -236,28 +251,44 @@ function LandingPage() {
               {schedules.slice(0,3).map(schedule => (
                  <motion.div 
                    key={schedule.id}
-                   whileHover={{ y: -10 }}
-                   className="group relative bg-[#fcfaf9] pb-8 rounded-[2.5rem] overflow-hidden shadow-md hover:shadow-2xl transition-all duration-500 border border-gray-100"
+                   whileHover={{ y: -6 }}
+                   className="group relative rounded-[2.5rem] overflow-hidden hover:shadow-2xl transition-all duration-500 border border-gray-100"
                  >
-                   <div className="w-full h-72 overflow-hidden relative">
-                      <img 
-                        src={schedule.image ? `http://localhost:8000${schedule.image}` : "https://via.placeholder.com/600x300"} 
-                        alt={schedule.schedule_name} 
-                        className="w-full h-full object-cover transition-transform duration-[1.5s] group-hover:scale-110" 
-                      />
-                      <div className="absolute top-4 right-4 bg-gray-900/80 backdrop-blur-md px-4 py-2 rounded-full text-white text-xs font-bold tracking-widest uppercase flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        Featured
-                      </div>
-                   </div>
-                   <div className="p-8">
-                      <h3 className="text-3xl font-playfair font-bold mb-4 group-hover:text-[#4f6fa5] transition-colors">{schedule.schedule_name}</h3>
-                      <p className="text-gray-500 text-base mb-8 line-clamp-3 leading-relaxed">
-                        Join us for an exclusive floral showcase and arrangement session highlighting the beautiful {schedule.schedule_name} collection. Discover the art of modern floristry.
-                      </p>
-                      <Link to="/schedule" className="inline-flex rounded-full border-2 border-gray-900 text-gray-900 px-6 py-2.5 text-sm font-semibold hover:bg-gray-900 hover:text-white transition-all items-center gap-2">
-                         See Schedule <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
-                      </Link>
+                   <div className="relative w-full h-[420px] rounded-[2rem] overflow-hidden">
+                     <img 
+                       src={schedule.image ? `http://localhost:8000${schedule.image}` : "https://via.placeholder.com/600x300"} 
+                       alt={schedule.schedule_name} 
+                       className="w-full h-full object-cover transition-transform duration-1000 ease-out group-hover:scale-105"
+                     />
+
+                     {/* Featured Badge (keep current style) */}
+                     <div className="absolute top-4 right-4 bg-gray-900/80 backdrop-blur-md px-4 py-2 rounded-full text-white text-xs font-bold tracking-widest uppercase flex items-center gap-2">
+                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                       Featured
+                     </div>
+
+                     {/* Base dark overlay for readability */}
+                     <div className="absolute inset-0 bg-black/20"></div>
+                     {/* Strong bottom-weighted gradient for readability */}
+                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-90 group-hover:opacity-100 transition duration-500"></div>
+
+                     {/* Content */}
+                     <div className="absolute bottom-6 left-6 right-6 text-white">
+                       <h3 className="text-2xl md:text-3xl font-playfair font-bold mb-2 leading-tight drop-shadow-lg">
+                         {schedule.schedule_name}
+                       </h3>
+
+                       <p className="text-sm md:text-base text-white font-medium mb-4 leading-relaxed drop-shadow">
+                         {schedule.description || `Join us for an exclusive floral showcase and arrangement session highlighting the ${schedule.schedule_name} collection.`}
+                       </p>
+
+                       <Link
+                         to="/schedule"
+                         className="inline-block bg-white text-gray-900 px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border-2 border-white hover:bg-transparent hover:text-white transition-all duration-300"
+                       >
+                         See Schedule
+                       </Link>
+                     </div>
                    </div>
                  </motion.div>
               ))}
@@ -316,13 +347,6 @@ function LandingPage() {
          </div>
 
       </section>
-
-      {/* Global CSS injected specifically for the horizontal scroll hiding since Tailwind requires a plugin for it usually */}
-      <style>{`
-        .hide-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
     </div>
   );
 }

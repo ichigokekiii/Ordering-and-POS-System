@@ -1,5 +1,8 @@
-import { useEffect, useState } from "react";
+/* eslint-disable no-unused-vars */
+import { useState, useEffect } from "react";
 import { useContents } from "../../contexts/ContentContext";
+import { motion, AnimatePresence } from "framer-motion";
+import { Link } from "react-router-dom";
 
 function AboutPage() {
   const { contents } = useContents();
@@ -10,245 +13,259 @@ function AboutPage() {
     return item?.content_text || item?.content_image || defaultValue;
   };
 
-  const slides = [
-    {
-      image: getContentValue("about_hero_image_1", "https://images.unsplash.com/photo-1526045478516-99145907023c"),
-      title: getContentValue("about_hero_title_1", "Fresh Flowers"),
-      subtitle: getContentValue("about_hero_subtitle_1", "Made Just For You"),
-      description: getContentValue("about_hero_desc_1", "Open 24/7 • 1234 Culinary Blvd, Flavor Town"),
-    },
-    {
-      image: getContentValue("about_hero_image_2", "https://images.unsplash.com/photo-1490750967868-88aa4486c946"),
-      title: getContentValue("about_hero_title_2", "Handcrafted Bouquets"),
-      subtitle: getContentValue("about_hero_subtitle_2", "For Every Occasion"),
-      description: getContentValue("about_hero_desc_2", "Weddings • Birthdays • Anniversaries"),
-    },
-    {
-      image: getContentValue("about_hero_image_3", "https://images.unsplash.com/photo-1468327768560-75b778cbb551"),
-      title: getContentValue("about_hero_title_3", "Locally Sourced"),
-      subtitle: getContentValue("about_hero_subtitle_3", "Sustainably Grown"),
-      description: getContentValue("about_hero_desc_3", "Supporting Local Flower Farmers"),
-    },
-  ];
+  const [openFaq, setOpenFaq] = useState(null);
 
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [stats, setStats] = useState({
+    deliveries: 0,
+    florists: 0,
+    years: 0,
+  });
 
   useEffect(() => {
+    const target = {
+      deliveries: 15840,
+      florists: 120,
+      years: 22,
+    };
+
+    let frame = 0;
+    const duration = 40; // controls speed (higher = slower)
+
     const interval = setInterval(() => {
-      setCurrentSlide((prev) =>
-        prev === slides.length - 1 ? 0 : prev + 1
-      );
-    }, 5000);
+      frame++;
+
+      setStats({
+        deliveries: Math.floor(Math.random() * target.deliveries),
+        florists: Math.floor(Math.random() * target.florists),
+        years: Math.floor(Math.random() * target.years),
+      });
+
+      if (frame >= duration) {
+        setStats(target);
+        clearInterval(interval);
+      }
+    }, 40);
 
     return () => clearInterval(interval);
-  }, [slides.length]);
+  }, []);
+
+  const team = [
+    { name: "Apphia", role: "Co-Founder & Lead Florist", image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=300" },
+    { name: "Pearl", role: "Co-Founder & Operations", image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300" },
+    { name: "Carter Oliver", role: "Delivery Manager", image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=300" },
+    { name: "Buster Carson", role: "Customer Support", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=300" },
+    { name: "Sarah Mitchell", role: "Floral Designer", image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=300" },
+  ];
+
+  const faqs = [
+    { q: "Do you offer same-day delivery?", a: "Yes, we offer same day delivery for orders placed before 2 PM local time. Our speedy courier service guarantees freshness upon arrival." },
+    { q: "Can I customize a bouquet?", a: "Absolutely! Our florists would love to work with you to craft the perfect bespoke arrangement for your special occasion." },
+    { q: "Where do you source your flowers?", a: "We proudly source our blooms from local, sustainable farms, ensuring our carbon footprint remains small while supporting community agriculture." },
+    { q: "What is your return policy?", a: "Due to the perishable nature of our products, we do not accept returns. However, if your order arrives damaged, we will replace it immediately." },
+  ];
 
   return (
-    <div className="bg-white text-gray-800">
-      {/* HERO SECTION */}
-      <div className="relative w-full h-[600px] md:h-[650px] overflow-hidden">
-        {slides.map((slide, index) => (
-          <div
-            key={index}
-            className={`absolute inset-0 transition-opacity duration-700 ${
-              index === currentSlide ? "opacity-100" : "opacity-0"
-            }`}
+    <div className="bg-[#fcfaf9] text-gray-900 font-sans min-h-screen overflow-x-hidden pt-20 pb-0">
+      
+      {/* 1. HUMBLE BEGINNINGS (Hero & Stats) */}
+      <section className="max-w-[1400px] mx-auto px-6 md:px-12 mb-32">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          
+          {/* Left: Text */}
+          <motion.div 
+            initial={{ opacity: 0, x: -30 }} 
+            whileInView={{ opacity: 1, x: 0 }} 
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="order-2 lg:order-1"
           >
-            <img
-              src={slide.image}
-              alt={slide.title}
-              className="w-full h-full object-cover"
-            />
-
-            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/60 flex items-center justify-center text-center">
-              <div className="text-white px-6 max-w-3xl">
-                <h1 className="text-4xl md:text-6xl font-semibold tracking-tight">
-                  {slide.title}
-                </h1>
-                <h2 className="text-2xl md:text-3xl font-light mt-3">
-                  {slide.subtitle}
-                </h2>
-                <p className="mt-6 text-sm md:text-base opacity-90 tracking-wide">
-                  {slide.description}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {/* PAGINATION DOTS */}
-        <div className="absolute bottom-6 w-full flex justify-center gap-3">
-          {slides.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentSlide(index)}
-              className={`h-3 w-3 rounded-full transition ${
-                index === currentSlide
-                  ? "bg-white"
-                  : "bg-white/50 hover:bg-white"
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* MISSION SECTION */}
-      <div className="py-24 px-6 text-center max-w-4xl mx-auto">
-        <p className="text-gray-600 text-lg leading-relaxed">
-          {getContentValue(
-            "about_mission_text",
-            "Our mission is to deliver the freshest, most beautiful bouquets right to your door, focusing on sustainable practices and locally sourced flowers."
-          )}
-        </p>
-
-        <div className="mt-8">
-          <p className="italic text-2xl font-light tracking-wide">{getContentValue("about_founders", "Apphia and Pearl")}</p>
-          <p className="text-sm text-gray-400 uppercase tracking-widest mt-1">Founders</p>
-        </div>
-      </div>
-
-      {/* SERVICES SECTION (from old design, restyled) */}
-      <div className="py-24 bg-gray-50">
-        <h2 className="text-3xl md:text-4xl font-semibold text-center mb-14">
-          Services made for You
-        </h2>
-
-        <div className="grid md:grid-cols-3 gap-10 max-w-6xl mx-auto px-6">
-          {[
-            { 
-              title: getContentValue("about_service_1", "Custom Flowers"),
-            },
-            { 
-              title: getContentValue("about_service_2", "Pop-up Stores"),
-            },
-            { 
-              title: getContentValue("about_service_3", "Secret Delivery"),
-            },
-          ].map((service, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-2xl shadow-sm hover:shadow-md transition p-10 text-center"
+            <p className="text-[#4f6fa5] font-semibold tracking-widest uppercase text-sm mb-4">Our Story</p>
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-playfair font-bold text-gray-900 leading-[1.1] mb-6">
+              Explore our <br className="hidden lg:block"/>
+              <span className="font-dancing text-[#4f6fa5] font-normal text-6xl md:text-8xl block mt-2 lg:ml-4 transform -rotate-2">
+                humble beginnings
+              </span>
+            </h1>
+            <p className="text-gray-600 text-lg leading-relaxed mb-10 max-w-lg">
+              {getContentValue("about_mission_text", "We strive to set new standards in floristry, efficiency, and sustainability by using advanced sourcing techniques. Whether it's a grand celebration or a simple gesture, we are dedicated to perfection in every petal.")}
+            </p>
+            <Link
+              to="/products"
+              className="inline-block border-2 border-gray-900 text-white rounded-full px-10 py-4 font-bold tracking-widest uppercase text-sm bg-gray-900 hover:bg-white hover:text-gray-900 transition-all duration-300 shadow-sm hover:shadow-md"
             >
-              <img
-                src={
-                  getContentValue(`about_service_image_${index + 1}`, "")
-                    ? `http://localhost:8000${getContentValue(`about_service_image_${index + 1}`)}`
-                    : "https://via.placeholder.com/150"
-                }
-                alt={service.title}
-                className="h-32 w-32 mx-auto mb-6 rounded-xl object-cover"
-              />
-              <h3 className="text-lg font-semibold mb-2">{service.title}</h3>
-              <p className="text-gray-500 text-sm">
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-              </p>
-            </div>
-          ))}
+              Shop Collections
+            </Link>
+          </motion.div>
+
+          {/* Right: Image & Bento Stats */}
+          <motion.div 
+            initial={{ opacity: 0, x: 30 }} 
+            whileInView={{ opacity: 1, x: 0 }} 
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="order-1 lg:order-2 grid grid-cols-3 gap-4 h-[520px] lg:h-[640px] relative"
+          >
+             {/* Tall Main Image */}
+             <div className="col-span-2 row-span-3 rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 bg-gray-100 border border-gray-100">
+                <img 
+                  src={getContentValue("about_hero_image_1", "https://images.unsplash.com/photo-1542458567-5491753966ce?q=80&w=1000")} 
+                  alt="Florist working" 
+                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-[1.5s]"
+                />
+             </div>
+             
+             {/* Text / Stat Box 1 */}
+             <div className="col-span-1 row-span-1 flex flex-col justify-center items-center text-center border-2 border-gray-900 rounded-2xl py-5 px-3 transition-all duration-300">
+                <h3 className="text-2xl md:text-4xl font-playfair font-bold text-gray-900 mb-1 drop-shadow-sm">{stats.deliveries.toLocaleString()}+</h3>
+                <p className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-snug">Deliveries Sent</p>
+             </div>
+             
+             {/* Text / Stat Box 2 */}
+             <div className="col-span-1 row-span-1 flex flex-col justify-center items-center text-center border-2 border-gray-900 rounded-2xl py-5 px-3 transition-all duration-300">
+                <h3 className="text-2xl md:text-4xl font-playfair font-bold text-gray-900 mb-1 drop-shadow-sm">{stats.florists}+</h3>
+                <p className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-snug">Active Florists</p>
+             </div>
+             
+             {/* Text / Stat Box 3 */}
+             <div className="col-span-1 row-span-1 flex flex-col justify-center items-center text-center border-2 border-gray-900 rounded-2xl py-5 px-3 transition-all duration-300">
+                <h3 className="text-2xl md:text-4xl font-playfair font-bold text-gray-900 mb-1 drop-shadow-sm">{stats.years}+</h3>
+                <p className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-snug">Years Experience</p>
+             </div>
+          </motion.div>
         </div>
-      </div>
+      </section>
 
-      {/* STORY SECTION */}
-      <div className="relative h-[500px] md:h-[550px]">
-        <img
-          src="https://images.unsplash.com/photo-1501004318641-b39e6451bec6"
-          alt="flowers story"
-          className="w-full h-full object-cover"
-        />
-
-        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent flex items-center">
-          <div className="max-w-4xl px-10 text-white">
-            <h2 className="text-3xl md:text-5xl font-light leading-snug tracking-tight">
-              {getContentValue(
-                "about_story_text",
-                "Founded in 2010, Petal Express has blossomed into a leading flower delivery service, celebrated for quality and innovation."
-              )}
-            </h2>
-          </div>
-        </div>
-      </div>
-
-      {/* TESTIMONIALS */}
-      <div className="py-28 px-6 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-semibold text-center">
-            What Our Customers Are Saying
+      {/* 2. THE PEOPLE BEHIND IT ALL (Marquee) */}
+      <section className="py-24 bg-white border-y border-gray-100 shadow-[0_0_50px_rgba(0,0,0,0.015)] overflow-hidden">
+        <div className="max-w-[1400px] mx-auto px-6 md:px-12 mb-16 text-center">
+          <p className="text-[#4f6fa5] font-semibold tracking-widest uppercase text-sm mb-4">Our Team</p>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-playfair font-bold text-gray-900 mb-6">
+             The people behind it all
           </h2>
+          <p className="text-gray-500 max-w-xl mx-auto leading-relaxed">
+            Meet the dedicated and passionate team that carefully crafts every bouquet and guarantees perfect delivery.
+          </p>
+        </div>
 
-          <div className="w-24 h-1 bg-[#4f6fa5] mx-auto mt-4 rounded-full" />
-
-          <div className="grid gap-8 md:grid-cols-4 mt-16">
-            {[
-              { name: "Dylan Field", role: "CEO at Figma", text: "The flowers were fresh and stunning. They brightened my entire day!" },
-              { name: "Poppy Petals", role: "Florist", text: "Fast delivery and absolutely gorgeous arrangements!" },
-              { name: "Sophie R.", role: "Blogger", text: "Petal Express is truly a breath of fresh air." },
-              { name: "Noah V.", role: "Entrepreneur", text: "Petal Express always delivers smiles!" },
-            ].map((review, index) => (
-              <div
-                key={index}
-                className="bg-gray-50 rounded-2xl p-8 shadow-sm hover:shadow-md transition duration-300"
-              >
-                <div className="flex items-center gap-4 mb-5">
-                  <div className="h-12 w-12 rounded-full bg-[#4f6fa5] text-white flex items-center justify-center font-semibold">
-                    {review.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">{review.name}</p>
-                    <p className="text-xs text-gray-400">{review.role}</p>
+        <div className="relative w-full flex overflow-visible py-8">
+           {/* Auto scrolling track */}
+           <div className="flex animate-marquee whitespace-nowrap w-max hover:[animation-play-state:paused]">
+             {/* Duplicated thrice to ensure seamless endless scrolling */}
+             {[...team, ...team, ...team].map((person, i) => (
+                <div key={i} className="inline-block w-[280px] md:w-[320px] mx-4 md:mx-6 group cursor-pointer perspective">
+                  <div className="bg-[#fcfaf9] border border-gray-100 rounded-[3rem] p-10 flex flex-col items-center text-center shadow-sm hover:shadow-xl hover:border-blue-50 transition-all duration-500 hover:-translate-y-2">
+                     <div className="w-32 h-32 md:w-36 md:h-36 rounded-full overflow-hidden mb-8 ring-4 ring-offset-8 ring-[#eaf2ff] group-hover:ring-[#4f6fa5] transition-all duration-500">
+                        <img src={person.image} alt={person.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                     </div>
+                     <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2 truncate w-full">{person.name}</h3>
+                     <p className="text-xs font-bold text-[#4f6fa5] uppercase tracking-widest truncate w-full">{person.role}</p>
                   </div>
                 </div>
+             ))}
+           </div>
+        </div>
+      </section>
 
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  “{review.text}”
-                </p>
-              </div>
-            ))}
+      {/* 3. SERVICES */}
+      <section className="py-32 max-w-[1400px] mx-auto px-6 md:px-12 text-center">
+        <h2 className="text-4xl md:text-5xl lg:text-6xl font-playfair font-bold text-gray-900 mb-20">
+          Our Services for you
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 md:gap-8">
+          {[
+            { title: getContentValue("about_service_1", "Custom Flowers"), desc: "Fully bespoke arrangements crafted for your aesthetic.", image: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=1000" },
+            { title: getContentValue("about_service_2", "Pop-up Stores"), desc: "Find us in vibrant local markets and events.", image: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?q=80&w=1000" },
+            { title: getContentValue("about_service_3", "Secret Delivery"), desc: "Surprise deliveries with a mysterious touch.", image: "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1000" },
+            { title: "Event Styling", desc: "Elegant floral styling for special occasions.", image: "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?q=80&w=1000" },
+            { title: "Corporate Gifts", desc: "Premium floral gifts for businesses.", image: "https://images.unsplash.com/photo-1490750967868-88cb4aca2033?q=80&w=1000" }
+          ].map((service, index) => (
+             <motion.div 
+               whileHover={{ y: -10 }} style={{ marginTop: index % 2 === 0 ? '0px' : '40px' }}
+               key={index}
+               className="relative rounded-[1.8rem] overflow-hidden h-[260px] md:h-[280px] group cursor-pointer"
+             >
+                <img
+                  src={service.image}
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-all duration-500"></div>
+
+                <div className="absolute bottom-6 left-6 right-6 text-left text-white">
+                  <h3 className="text-xl md:text-2xl font-playfair font-bold mb-2">
+                    {service.title}
+                  </h3>
+                  <p className="text-xs md:text-sm opacity-90 leading-relaxed">
+                    {service.desc}
+                  </p>
+                </div>
+             </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* 4. FAQ ACCORDION */}
+      <section className="relative pt-32 pb-24 mb-0 bg-white border-y border-gray-100">
+        <div className="max-w-4xl mx-auto px-6 md:px-12">
+          <div className="text-center mb-20">
+            <h2 className="text-sm font-semibold text-[#4f6fa5] uppercase tracking-widest mb-4">FAQ's</h2>
+            <h3 className="text-4xl md:text-5xl lg:text-6xl font-playfair font-bold text-gray-900 leading-tight">
+              Frequently Asked <br className="hidden md:block"/>Questions
+            </h3>
+          </div>
+
+          <div className="space-y-4">
+             {faqs.map((faq, index) => {
+               const isOpen = openFaq === index;
+               return (
+                 <div key={index} className={`border rounded-[1.5rem] overflow-hidden transition-all duration-300 ${isOpen ? 'border-gray-900 bg-white' : 'border-gray-200 bg-white hover:border-gray-400'}`}>
+                   <button 
+                     onClick={() => setOpenFaq(isOpen ? null : index)}
+                     className="w-full px-8 py-8 text-left flex justify-between items-center focus:outline-none"
+                   >
+                     <span className={`font-bold text-lg md:text-xl pr-8 transition-colors ${isOpen ? 'text-gray-900' : 'text-gray-900'}`}>{faq.q}</span>
+                     <span className={`flex-shrink-0 transition-transform duration-500 transform ${isOpen ? 'rotate-180 text-gray-900' : 'rotate-0 text-gray-400'}`}>
+                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                     </span>
+                   </button>
+                   <AnimatePresence>
+                     {isOpen && (
+                       <motion.div 
+                         initial={{ opacity: 0, y: -8 }}
+                         animate={{ opacity: 1, y: 0 }}
+                         exit={{ opacity: 0, y: -8 }}
+                         transition={{ duration: 0.25, ease: "easeOut" }}
+                         className="px-8 pb-8 text-gray-600 leading-relaxed text-sm md:text-lg border-t border-gray-100 pt-6 overflow-visible"
+                       >
+                         {faq.a}
+                       </motion.div>
+                     )}
+                   </AnimatePresence>
+                 </div>
+               );
+             })}
           </div>
         </div>
-      </div>
+      </section>
+      <div className="h-0 m-0 p-0"></div>
 
-      {/* CONTACT SECTION */}
-      <div className="py-24 px-6 text-center bg-white">
-        <h2 className="text-3xl md:text-4xl font-semibold mb-6">Contact Us</h2>
-        <p className="text-gray-500 mb-12 max-w-xl mx-auto">
-          We'd love to hear from you! Whether you have questions,
-          feedback, or just want to say hi.
-        </p>
+      {/* Global CSS for Marquee and Fade Mask */}
+      <style>{`
+        .animate-marquee { 
+           animation: marquee 35s linear infinite; 
+           will-change: transform;
+        }
+        
+        @keyframes marquee {
+          0% { transform: translateX(0%); }
+          100% { transform: translateX(-33.33333%); }
+        }
 
-        <form className="max-w-3xl mx-auto space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <input
-              className="w-full border border-gray-200 rounded-md px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4f6fa5] transition"
-              placeholder="First name"
-            />
-            <input
-              className="w-full border border-gray-200 rounded-md px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4f6fa5] transition"
-              placeholder="Last name"
-            />
-          </div>
-
-          <input
-            className="w-full border border-gray-200 rounded-md px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4f6fa5] transition"
-            placeholder="Email"
-          />
-
-          <textarea
-            rows="4"
-            className="w-full border border-gray-200 rounded-md px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4f6fa5] transition"
-            placeholder="Message"
-          />
-
-          <button
-            type="submit"
-            className="bg-[#4f6fa5] text-white px-8 py-3 rounded-md hover:bg-[#3f5b89] transition shadow-md hover:shadow-lg"
-          >
-            Submit
-          </button>
-        </form>
-      </div>
-
+        /* Adds a nice fade off effect on the left and right bounds of the scrolling marquee container */
+        .mask-edges {
+          mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+          -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+        }
+      `}</style>
     </div>
   );
 }

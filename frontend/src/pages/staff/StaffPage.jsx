@@ -1,5 +1,4 @@
 /* eslint-disable react-hooks/rules-of-hooks */
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useRef } from "react";
 import { useProducts } from "../../contexts/ProductContext";
 import api from "../../services/api";
@@ -53,12 +52,27 @@ function StaffPage({ children, customCategories }) {
   const categories = {
     Bouquets: available
       .filter((p) => p.category === "Bouquets")
-      .map((product) => ({ ...product, productSource: "product" })),
+      .map((product) => ({
+        ...product,
+        builderKind: "promo-bouquet",
+        productSource: "product",
+      })),
+    Main: available
+      .filter((p) => p.category === "Additional" && p.type === "Main Flowers")
+      .map((product) => ({
+        ...product,
+        selectionRole: "main",
+        productSource: "product",
+      })),
     Fillers: available
-      .filter((p) => p.type === "Fillers")
-      .map((product) => ({ ...product, productSource: "product" })),
-    Addons: available
-      .filter((p) => p.category === "Additional")
+      .filter((p) => p.category === "Additional" && p.type === "Fillers")
+      .map((product) => ({
+        ...product,
+        selectionRole: "filler",
+        productSource: "product",
+      })),
+    "Add-ons": available
+      .filter((p) => p.category === "Additional" && !["Main Flowers", "Fillers"].includes(p.type))
       .map((product) => ({ ...product, productSource: "product" })),
   };
 
@@ -81,12 +95,15 @@ function StaffPage({ children, customCategories }) {
     toastTimeoutRef.current = window.setTimeout(() => setToast(null), 3000);
   };
 
-  const buildPromoSignature = (main, fillers) => {
+  const buildPromoSignature = (mains, fillers) => {
+    const mainIds = mains
+      .map((main) => main.id)
+      .sort((a, b) => String(a).localeCompare(String(b)));
     const fillerIds = fillers
       .map((filler) => filler.id)
       .sort((a, b) => String(a).localeCompare(String(b)));
 
-    return `${main.id}::${fillerIds.join("|")}`;
+    return `${mainIds.join("|")}::${fillerIds.join("|")}`;
   };
 
   const startPromoBouquet = (product) => {
@@ -107,23 +124,54 @@ function StaffPage({ children, customCategories }) {
       name: product.name,
       price: Number(product.price) || 0,
       qty: 1,
+      required_main_count: Number(product.required_main_count ?? 1),
+      required_filler_count: Number(product.required_filler_count ?? 2),
       isBuilding: true,
       selections: {
-        main: null,
+        mains: [],
         fillers: [],
       },
     };
 
-    setCart((prev) => [...prev, promoCartItem]);
-    if (displayCategories.Main) {
-      setActiveTab("Main");
+    if (promoCartItem.required_main_count === 0 && promoCartItem.required_filler_count === 0) {
+      setCart((prev) => [
+        ...prev,
+        {
+          ...promoCartItem,
+          isBuilding: false,
+          bundleSignature: "::",
+        },
+      ]);
+      showToast("success", "Bouquet added to cart.");
+      return;
     }
-    showToast("success", "Select 1 main flower and 2 fillers.");
+
+    setCart((prev) => [...prev, promoCartItem]);
+    if (promoCartItem.required_main_count > 0 && displayCategories.Main) {
+      setActiveTab("Main");
+    } else if (promoCartItem.required_filler_count > 0 && displayCategories.Fillers) {
+      setActiveTab("Fillers");
+    }
+    const builderSteps = [
+      promoCartItem.required_main_count > 0
+        ? `${promoCartItem.required_main_count} main flower${promoCartItem.required_main_count !== 1 ? "s" : ""}`
+        : null,
+      promoCartItem.required_filler_count > 0
+        ? `${promoCartItem.required_filler_count} filler${promoCartItem.required_filler_count !== 1 ? "s" : ""}`
+        : null,
+    ].filter(Boolean);
+
+    showToast(
+      "success",
+      builderSteps.length > 0
+        ? `Select ${builderSteps.join(" and ")}.`
+        : "Bouquet added to cart."
+    );
   };
 
   const finalizePromoBouquetSelection = (nextItem, prevCart) => {
     const signature = `${nextItem.product_id}::${buildPromoSignature(
-      nextItem.selections.main,
+      nextItem.selections.mains,
       nextItem.selections.fillers
     )}`;
     const existingIndex = prevCart.findIndex(
@@ -163,51 +211,72 @@ function StaffPage({ children, customCategories }) {
     }
 
     if (product.selectionRole === "main") {
-      if (activePromoBuilder.selections.main) {
-        showToast("info", "This promo bouquet already has a main flower.");
+      if (activePromoBuilder.selections.mains.length >= activePromoBuilder.required_main_count) {
+        showToast("info", `This promo bouquet already has ${activePromoBuilder.required_main_count} main flower${activePromoBuilder.required_main_count !== 1 ? "s" : ""}.`);
         if (displayCategories.Fillers) {
           setActiveTab("Fillers");
         }
         return true;
       }
 
-      setCart((prev) =>
-        prev.map((item) =>
-          item.cartId === activePromoBuilder.cartId
-            ? {
-                ...item,
-                price: Number(product.price) || 0,
-                selections: {
-                  ...item.selections,
-                  main: {
-                    id: product.id,
-                    name: product.name,
-                    price: Number(product.price) || 0,
-                  },
-                },
-              }
-            : item
-        )
-      );
+      setCart((prev) => {
+        const currentBuilder = prev.find((item) => item.cartId === activePromoBuilder.cartId);
+        if (!currentBuilder) return prev;
 
-      if (displayCategories.Fillers) {
+        const nextMains = [
+          ...currentBuilder.selections.mains,
+          {
+            id: product.id,
+            name: product.name,
+            price: Number(product.price) || 0,
+          },
+        ];
+
+        const nextItem = {
+          ...currentBuilder,
+          selections: {
+            ...currentBuilder.selections,
+            mains: nextMains,
+          },
+        };
+
+        if (
+          nextMains.length === currentBuilder.required_main_count &&
+          currentBuilder.required_filler_count === 0
+        ) {
+          return finalizePromoBouquetSelection(nextItem, prev);
+        }
+
+        return prev.map((item) =>
+          item.cartId === activePromoBuilder.cartId ? nextItem : item
+        );
+      });
+
+      if (displayCategories.Fillers && activePromoBuilder.required_filler_count > 0) {
         setActiveTab("Fillers");
       }
-      showToast("success", "Main flower added. Choose 2 fillers next.");
+      showToast(
+        "success",
+        activePromoBuilder.selections.mains.length + 1 < activePromoBuilder.required_main_count
+          ? `Main flower added. Choose ${activePromoBuilder.required_main_count - (activePromoBuilder.selections.mains.length + 1)} more.`
+          : activePromoBuilder.required_filler_count > 0
+            ? `Main selection complete. Choose ${activePromoBuilder.required_filler_count} filler${activePromoBuilder.required_filler_count !== 1 ? "s" : ""} next.`
+            : "Bouquet requirements complete."
+      );
       return true;
     }
 
     if (product.selectionRole === "filler") {
-      if (!activePromoBuilder.selections.main) {
-        showToast("error", "Select the main flower first.");
+      if (activePromoBuilder.selections.mains.length < activePromoBuilder.required_main_count) {
+        showToast("error", "Select the required main flowers first.");
         if (displayCategories.Main) {
           setActiveTab("Main");
         }
         return true;
       }
 
-      if (activePromoBuilder.selections.fillers.length >= 2) {
-        showToast("info", "This promo bouquet already has 2 fillers.");
+      if (activePromoBuilder.selections.fillers.length >= activePromoBuilder.required_filler_count) {
+        showToast("info", `This promo bouquet already has ${activePromoBuilder.required_filler_count} filler${activePromoBuilder.required_filler_count !== 1 ? "s" : ""}.`);
         return true;
       }
 
@@ -228,7 +297,10 @@ function StaffPage({ children, customCategories }) {
           },
         };
 
-        if (nextFillers.length === 2) {
+        if (
+          nextFillers.length === currentBuilder.required_filler_count &&
+          currentBuilder.selections.mains.length === currentBuilder.required_main_count
+        ) {
           return finalizePromoBouquetSelection(nextItem, prev);
         }
 
@@ -237,8 +309,13 @@ function StaffPage({ children, customCategories }) {
         );
       });
 
-      if (activePromoBuilder.selections.fillers.length + 1 < 2) {
-        showToast("success", "Filler added. Choose 1 more filler.");
+      if (activePromoBuilder.selections.fillers.length + 1 < activePromoBuilder.required_filler_count) {
+        showToast(
+          "success",
+          `Filler added. Choose ${activePromoBuilder.required_filler_count - (activePromoBuilder.selections.fillers.length + 1)} more.`
+        );
+      } else {
+        showToast("success", "Bouquet requirements complete.");
       }
       return true;
     }

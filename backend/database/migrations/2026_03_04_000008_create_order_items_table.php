@@ -24,6 +24,7 @@ return new class extends Migration
             // IDs from both the `products` table and the `premades` table
             // without a foreign key constraint failing.
             $table->unsignedBigInteger('product_id');
+            $table->foreignId('catalog_product_id')->nullable()->constrained('products')->nullOnDelete();
 
             // Snapshot of the product name at time of purchase
             $table->string('product_name')->nullable();
@@ -45,6 +46,8 @@ return new class extends Migration
             $table->text('special_message')->nullable();
 
             $table->timestamps();
+
+            $table->index(['order_id', 'catalog_product_id']);
         });
     }
 

@@ -19,6 +19,20 @@ const formatPromoFillers = (fillers = []) =>
     .map((filler) => `${filler.name} x${filler.qty}`)
     .join(", ");
 
+const formatPromoMains = (mains = []) =>
+  Object.values(
+    mains.reduce((summary, main) => {
+      const key = main.name;
+      if (!summary[key]) {
+        summary[key] = { name: main.name, qty: 0 };
+      }
+      summary[key].qty += 1;
+      return summary;
+    }, {})
+  )
+    .map((main) => `${main.name} x${main.qty}`)
+    .join(", ");
+
 function CartSection({
   cart,
   total,
@@ -140,23 +154,23 @@ function CartSection({
                             dm ? "text-gray-400" : "text-gray-500"
                           }`}
                         >
-                          {item.isBuilding
-                            ? item.selections?.main?.name
-                              ? `${item.selections.main.name} x1`
-                              : "Please select your flower"
-                            : `${item.selections.main?.name || "Flower"} x1`}
+                          {(item.required_main_count ?? 1) === 0
+                            ? "No main flowers required"
+                            : item.selections?.mains?.length
+                            ? formatPromoMains(item.selections.mains)
+                            : `Please select ${item.required_main_count ?? 1} main flower${(item.required_main_count ?? 1) !== 1 ? "s" : ""}`}
                         </p>
-                        {(item.selections?.fillers?.length > 0 || item.selections?.main?.name) && (
-                          <p
-                            className={`text-[11px] ${
-                              dm ? "text-gray-400" : "text-gray-500"
-                            }`}
-                          >
-                            {item.selections?.fillers?.length
-                              ? formatPromoFillers(item.selections.fillers)
-                              : "Please select 2 fillers"}
-                          </p>
-                        )}
+                        <p
+                          className={`text-[11px] ${
+                            dm ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
+                          {(item.required_filler_count ?? 2) === 0
+                            ? "No fillers required"
+                            : item.selections?.fillers?.length
+                            ? formatPromoFillers(item.selections.fillers)
+                            : `Please select ${item.required_filler_count ?? 2} filler${(item.required_filler_count ?? 2) !== 1 ? "s" : ""}`}
+                        </p>
                       </>
                     )}
                   </div>

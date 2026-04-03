@@ -102,7 +102,7 @@ class ScheduleController extends Controller
         }
 
         // Store booking
-        ScheduleBooking::create([
+        ScheduleBooking::firstOrCreate([
             'schedule_id' => $schedule->id,
             'email' => $request->email,
         ]);

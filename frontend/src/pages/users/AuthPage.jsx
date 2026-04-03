@@ -154,7 +154,7 @@ function AuthPage({ onLogin, initialView = "login" }) {
   const loginFormDisabled = isCoolingDown || isLocked || loginLoading;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-start justify-center pt-10 pb-4">
+    <div className="min-h-screen bg-[#fcfaf9] flex items-start justify-center pt-10 pb-4">
       <div className="relative overflow-hidden w-full max-w-4xl min-h-[520px] md:min-h-[600px] bg-white rounded-3xl shadow-2xl flex flex-col md:flex-row">
         
         {/* ======================================= */}

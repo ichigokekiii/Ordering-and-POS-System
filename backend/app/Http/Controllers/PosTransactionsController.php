@@ -6,26 +6,33 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\PosTransactions;
 use Illuminate\Support\Facades\DB;
+use App\Support\ProductService;
 
 class PosTransactionsController extends Controller
 {
 public function store(Request $request)
 {
     try {
-        // 1. Create the Main Sale Record
-        $pos_transactions = PosTransactions::create([
-            'total_amount' => $request->total_amount,
-        ]);
-
-        // 2. Loop through the cart and save each item individually
-        foreach ($request->items as $item) {
-            $pos_transactions->items()->create([
-                'product_id'   => $item['product_id'] ?? null,
-                'product_name' => $item['name'],
-                'price'        => $item['price'],
-                'quantity'     => $item['qty'],
+        DB::transaction(function () use ($request) {
+            $pos_transactions = PosTransactions::create([
+                'total_amount' => $request->total_amount,
+                'payment_method' => $request->input('payment_method'),
+                'cash_received' => $request->input('cash_received'),
             ]);
-        }
+
+            foreach ($request->items as $item) {
+                $productId = isset($item['product_id']) ? (int) $item['product_id'] : null;
+                $productName = $item['name'] ?? $item['product_name'] ?? 'Item';
+
+                $pos_transactions->items()->create([
+                    'product_id' => $productId,
+                    'catalog_product_id' => ProductService::resolveCatalogId($productId, $productName),
+                    'product_name' => $productName,
+                    'price' => $item['price'],
+                    'quantity' => $item['qty'],
+                ]);
+            }
+        });
 
         return response()->json(['message' => 'Sale recorded!'], 201);
 
@@ -76,20 +83,20 @@ public function analytics()
     // Get total customers (users with orders)
     $totalCustomers = \App\Models\User::whereHas('orders')->count();
 
-    // Get total products (from products table)
-    $totalProducts = \App\Models\Product::count() + \App\Models\PremadeProduct::count();
+    // Get total products from the two active catalog sources
+    $totalProducts = \App\Models\CustomProduct::count() + \App\Models\PremadeProduct::count();
 
     // Get total views (placeholder - would need a views tracking system)
     $totalViews = 0; // Placeholder
 
     // Get sales overview by product type
     $salesByType = PosTransactions::join('pos_items', 'pos_transactions.id', '=', 'pos_items.pos_id')
-        ->join('products', 'pos_items.product_id', '=', 'products.id')
+        ->leftJoin('products', 'pos_items.catalog_product_id', '=', 'products.id')
         ->select(
-            'products.type',
+            DB::raw("COALESCE(products.type, products.category, pos_items.product_name) as product_group"),
             DB::raw('SUM(pos_items.price * pos_items.quantity) as total_sales')
         )
-        ->groupBy('products.type')
+        ->groupBy('product_group')
         ->get()
         ->map(function ($item) {
             $typeNames = [
@@ -99,7 +106,7 @@ public function analytics()
                 'peony' => 'Peonies',
             ];
             return [
-                'name' => $typeNames[$item->type] ?? $item->type,
+                'name' => $typeNames[$item->product_group] ?? $item->product_group,
                 'value' => (int) $item->total_sales
             ];
         });

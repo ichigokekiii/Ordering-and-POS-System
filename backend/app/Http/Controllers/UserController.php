@@ -66,8 +66,9 @@ class UserController extends Controller
 
         $otpCode = rand(100000, 999999);
 
-        Otp::create([
+        Otp::updateOrCreate([
             'user_id' => $user->id,
+        ], [
             'code' => $otpCode,
             'expires_at' => Carbon::now()->addMinutes(5),
         ]);
@@ -325,8 +326,9 @@ class UserController extends Controller
 
         $otpCode = rand(100000, 999999);
 
-        Otp::create([
+        Otp::updateOrCreate([
             'user_id' => $user->id,
+        ], [
             'code' => $otpCode,
             'expires_at' => Carbon::now()->addMinutes(5),
         ]);
@@ -350,8 +352,9 @@ class UserController extends Controller
 
         $otpCode = rand(100000, 999999);
 
-        Otp::create([
+        Otp::updateOrCreate([
             'user_id' => $user->id,
+        ], [
             'code' => $otpCode,
             'expires_at' => Carbon::now()->addMinutes(5),
         ]);

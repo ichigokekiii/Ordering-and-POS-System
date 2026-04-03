@@ -22,6 +22,8 @@ return new class extends Migration
             $table->boolean('isArchived')->default(false);
 
             $table->timestamps();
+
+            $table->index(['page', 'identifier']);
         });
     }
 

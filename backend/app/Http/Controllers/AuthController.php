@@ -214,8 +214,9 @@ class AuthController extends Controller
 
         $otpCode = rand(100000, 999999);
 
-        Otp::create([
+        Otp::updateOrCreate([
             'user_id' => $user->id,
+        ], [
             'code' => $otpCode,
             'expires_at' => now()->addMinutes(5),
         ]);
@@ -301,8 +302,9 @@ class AuthController extends Controller
 
         $otpCode = rand(100000, 999999);
 
-        Otp::create([
+        Otp::updateOrCreate([
             'user_id' => $user->id,
+        ], [
             'code' => $otpCode,
             'expires_at' => now()->addMinutes(5),
         ]);

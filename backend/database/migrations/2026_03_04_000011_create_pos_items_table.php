@@ -18,10 +18,8 @@ return new class extends Migration
                   ->constrained('pos_transactions')
                   ->cascadeOnDelete();
 
-            $table->foreignId('product_id')
-                  ->nullable()
-                  ->constrained('products')
-                  ->nullOnDelete();
+            $table->unsignedBigInteger('product_id')->nullable();
+            $table->foreignId('catalog_product_id')->nullable()->constrained('products')->nullOnDelete();
 
             $table->string('product_name');
 
@@ -30,6 +28,8 @@ return new class extends Migration
             $table->integer('quantity');
 
             $table->timestamps();
+
+            $table->index(['pos_id', 'catalog_product_id']);
         });
     }
 

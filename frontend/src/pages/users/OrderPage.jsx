@@ -10,6 +10,7 @@ function OrderPage() {
   // Shared order data
   const [orderData, setOrderData] = useState({
     bouquet: null,
+    mains: [],
     fillers: [],
     basePrice: 0,
   });

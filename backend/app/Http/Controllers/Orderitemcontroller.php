@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Mail\OrderReceipt;
+use App\Support\ProductService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
@@ -39,6 +40,12 @@ class OrderItemController extends Controller
         $rows = collect($request->items)->map(fn ($item) => [
             'order_id'          => $item['order_id'],
             'product_id'        => $item['product_id'],
+            'catalog_product_id'=> ProductService::resolveCatalogId(
+                $item['product_id'],
+                $item['product_name'] ?? null,
+                $item['custom_id'] ?? null,
+                $item['premade_id'] ?? null,
+            ),
             'product_name'      => $item['product_name'],
             'custom_id'         => $item['custom_id']  ?? null,
             'premade_id'        => $item['premade_id'] ?? null,

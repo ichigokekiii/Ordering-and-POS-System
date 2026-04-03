@@ -16,7 +16,7 @@ function ProductPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
-  const categories = ["All", "Roses", "Sunflowers", "Carnations", "Tulips", "Mixed"];
+  const categories = ["All", "Roses", "Lilies", "Tulips", "Carnation", "Mixed"];
 
   if (loading) {
     return (
@@ -29,12 +29,15 @@ function ProductPage() {
   // Filter logic
   const filteredProducts = premades.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    // Since we don't strictly have a category field on the frontend context right now, we can loosely mock category matching via description/name for visual proof, or just pass if "All".
-    const matchesCategory = activeCategory === "All" || 
-                            product.name.toLowerCase().includes(activeCategory.toLowerCase()) || 
-                            (product.description && product.description.toLowerCase().includes(activeCategory.toLowerCase()));
-    
-    return matchesSearch && matchesCategory;
+    const matchesCategory =
+      activeCategory === "All" ||
+      (product.category && product.category.toLowerCase() === activeCategory.toLowerCase());
+
+    // fallback if category field is missing
+    const finalMatchesCategory = matchesCategory ||
+      (product.type && product.type.toLowerCase() === activeCategory.toLowerCase());
+
+    return matchesSearch && finalMatchesCategory;
   });
 
   // Calculate Pagination
@@ -155,10 +158,19 @@ function ProductPage() {
                 </AnimatePresence>
              </div>
            ) : (
-             <div className="py-32 text-center text-gray-500 border-r border-b border-gray-200">
+             <div className="py-32 text-center text-gray-500">
                 <Search className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                <p className="text-lg font-playfair">No arrangements found matching your search.</p>
-                <button onClick={() => {setSearchTerm(""); setActiveCategory("All");}} className="mt-4 text-[#4f6fa5] font-semibold hover:underline">Clear Filters</button>
+                <p className="text-lg font-playfair">
+                  {filteredProducts.length === 0 && (searchTerm || activeCategory !== "All")
+                    ? "No products found matching your search."
+                    : "No products available."}
+                </p>
+                <button
+                  onClick={() => { setSearchTerm(""); setActiveCategory("All"); }}
+                  className="mt-4 text-[#4f6fa5] font-semibold hover:underline"
+                >
+                  Clear Filters
+                </button>
              </div>
            )}
         </motion.div>

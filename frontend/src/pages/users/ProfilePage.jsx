@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { useNavbar } from "../../contexts/NavbarContext";
+import { User, MapPin, Package, Shield, Plus, Camera, Trash2, Edit2, ChevronLeft } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function ProfilePage() {
   const { updateUser, logoutUser } = useNavbar();
@@ -10,9 +12,21 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState(null);
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editingProfile, setEditingProfile] = useState(false);
-  const [editingAddresses, setEditingAddresses] = useState(false);
+  
+  // Navigation State
+  const [activeTab, setActiveTab] = useState("profile"); // profile, addresses, orders, settings
 
+  // --- Profile State ---
+  const [editingProfile, setEditingProfile] = useState(false);
+  
+  // --- Address State ---
+  const [editingAddressIndex, setEditingAddressIndex] = useState(null); 
+  // null = viewing list, -1 = adding new, >=0 = editing existing
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [addressForm, setAddressForm] = useState({ house_number: "", street: "", barangay: "", city: "", zip_code: "" });
+
+  // --- Security State ---
+  // Re-integrated into Profile tab
   const [emailChangeMode, setEmailChangeMode] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [emailOtp, setEmailOtp] = useState("");
@@ -21,11 +35,8 @@ export default function ProfilePage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showChangePassword, setShowChangePassword] = useState(false);
   const [passwordOtp, setPasswordOtp] = useState("");
   const [passwordOtpSent, setPasswordOtpSent] = useState(false);
-
-  const [addressErrors, setAddressErrors] = useState([]);
 
   useEffect(() => {
     fetchProfile();
@@ -34,762 +45,471 @@ export default function ProfilePage() {
   const fetchProfile = async () => {
     try {
       const res = await api.get("/profile");
-
       setProfile(res.data);
       setAddresses(res.data.addresses || []);
-      setNewEmail("");
-      setEmailOtp("");
-      setEmailOtpSent(false);
-      setEmailChangeMode(false);
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      setPasswordOtp("");
-      setPasswordOtpSent(false);
-      setAddressErrors([]);
       setLoading(false);
     } catch (err) {
       console.error("Failed to load profile", err);
     }
   };
 
-  const handleProfileChange = (e) => {
-    setProfile({
-      ...profile,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const validatePersonalInfo = () => {
-    const firstName = profile?.first_name?.trim() || "";
-    const lastName = profile?.last_name?.trim() || "";
-    const phoneNumber = profile?.phone_number?.trim() || "";
-
-    const namePattern = /^[A-Za-z\s\-']{2,50}$/;
-
-    if (!firstName || !namePattern.test(firstName)) {
-      return "First name must be 2-50 letters and cannot contain special characters or gibberish.";
-    }
-
-    if (!lastName || !namePattern.test(lastName)) {
-      return "Last name must be 2-50 letters and cannot contain special characters or gibberish.";
-    }
-
-    if (!phoneNumber || !/^\d{7,11}$/.test(phoneNumber)) {
-      return "Contact number must be digits only and up to 11 characters.";
-    }
-
-    return null;
-  };
-
-  const handleAddressChange = (index, field, value) => {
-    const updated = [...addresses];
-    updated[index][field] = value;
-    setAddresses(updated);
-
-    // Validate this field
-    validateAddressField(index, field, value);
-  };
-
-  const validateAddressField = (index, field, value) => {
-    const errors = [...addressErrors];
-    if (!errors[index]) errors[index] = {};
-
-    const streetBarangayPattern = /^[A-Za-z0-9\s\-,\.#+]{1,100}$/;
-    const cityPattern = /^[A-Za-z\s\-']{1,100}$/;
-    const houseNumberPattern = /^\d{1,10}$/;
-
-    if (field === 'zip_code') {
-      if (!/^\d{4}$/.test(String(value).trim())) {
-        errors[index][field] = 'Zip code must be exactly 4 digits.';
-      } else {
-        delete errors[index][field];
-      }
-    } else if (field === 'house_number') {
-      if (!value.trim()) {
-        errors[index][field] = 'House number is required.';
-      } else if (!houseNumberPattern.test(value.trim())) {
-        errors[index][field] = 'House number must be numeric.';
-      } else {
-        delete errors[index][field];
-      }
-    } else if (field === 'city') {
-      if (!value.trim()) {
-        errors[index][field] = 'City is required.';
-      } else if (!cityPattern.test(value.trim())) {
-        errors[index][field] = 'City must contain letters only.';
-      } else {
-        delete errors[index][field];
-      }
-    } else if (field === 'street' || field === 'barangay') {
-      if (!value.trim()) {
-        errors[index][field] = `${field === 'street' ? 'Street' : 'Barangay'} is required.`;
-      } else if (value.length > 100) {
-        errors[index][field] = 'This field must be at most 100 characters.';
-      } else if (!streetBarangayPattern.test(value.trim())) {
-        errors[index][field] = 'Only letters, numbers and - , . # + are allowed.';
-      } else {
-        delete errors[index][field];
-      }
-    }
-
-    setAddressErrors(errors);
-  };
-
-  const validateAddresses = (addressesToValidate) => {
-    const streetBarangayPattern = /^[A-Za-z0-9\s\-,\.#+]{1,100}$/;
-    const cityPattern = /^[A-Za-z\s\-']{1,100}$/;
-    const houseNumberPattern = /^\d{1,10}$/;
-
-    for (let i = 0; i < addressesToValidate.length; i++) {
-      const addr = addressesToValidate[i];
-      if (!addr.house_number || !addr.street || !addr.barangay || !addr.city || !addr.zip_code) {
-        return `Address #${i + 1}: all fields are required.`;
-      }
-
-      if (!houseNumberPattern.test(addr.house_number.trim())) {
-        return `Address #${i + 1}: house number must be numeric.`;
-      }
-
-      if (!streetBarangayPattern.test(addr.street.trim())) {
-        return `Address #${i + 1}: street may contain only letters, numbers and - , . # +`;
-      }
-
-      if (!streetBarangayPattern.test(addr.barangay.trim())) {
-        return `Address #${i + 1}: barangay may contain only letters, numbers and - , . # +`;
-      }
-
-      if (!cityPattern.test(addr.city.trim())) {
-        return `Address #${i + 1}: city must contain letters only (spaces allowed).`;
-      }
-
-      if (!/^\d{4}$/.test(String(addr.zip_code).trim())) {
-        return `Address #${i + 1}: zip code must be exactly 4 digits.`;
-      }
-    }
-
-    return null;
-  };
-
-  const addAddress = () => {
-    if (addresses.length >= 3) return;
-
-    setAddresses([
-      ...addresses,
-      {
-        house_number: "",
-        street: "",
-        barangay: "",
-        city: "",
-        zip_code: "",
-      },
-    ]);
-
-    // Initialize errors for new address
-    setAddressErrors([...addressErrors, {}]);
-  };
-
-  const removeAddress = async (index) => {
-    const updated = addresses.filter((_, i) => i !== index);
-    setAddresses(updated);
-
-    // Remove errors for this address
-    const updatedErrors = addressErrors.filter((_, i) => i !== index);
-    setAddressErrors(updatedErrors);
-
-    if (updated.length === 0) {
-      setEditingAddresses(false);
-    }
-
-    try {
-      await api.put("/profile", {
-        addresses: updated
-      });
-
-      // refresh profile so UI and DB stay in sync
-      fetchProfile();
-    } catch (err) {
-      console.error("Failed to auto-save address removal", err);
-      alert("Failed to remove address. Please try again.");
-    }
-  };
+  // -------------------------------------------------------------
+  // PROFILE LOGIC
+  // -------------------------------------------------------------
+  const handleProfileChange = (e) => setProfile({ ...profile, [e.target.name]: e.target.value });
 
   const saveProfile = async () => {
-    const validationError = validatePersonalInfo();
-    if (validationError) {
-      alert(validationError);
-      return;
-    }
-
     try {
       const res = await api.put("/profile", {
         first_name: profile.first_name,
         last_name: profile.last_name,
         phone_number: profile.phone_number,
       });
-
-      // Update navbar context instantly
-      if (res.data && res.data.user) {
-        updateUser(res.data.user);
-      }
-
-      alert("Personal information updated!");
+      if (res.data && res.data.user) updateUser(res.data.user);
       setEditingProfile(false);
       fetchProfile();
     } catch (err) {
-      console.error("Profile update failed", err);
       alert(err.response?.data?.message || "Failed to update personal information.");
     }
   };
 
-  const saveAddresses = async () => {
-    // Check for any validation errors
-    for (let i = 0; i < addressErrors.length; i++) {
-      if (Object.keys(addressErrors[i]).length > 0) {
-        alert(`Please fix errors in Address #${i + 1} before saving.`);
-        return;
-      }
-    }
-
-    // Also check required fields and value rules
-    const validationMessage = validateAddresses(addresses);
-    if (validationMessage) {
-      alert(validationMessage);
-      return;
-    }
-
+  const deleteAccount = async () => {
+    if (!window.confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
     try {
-      await api.put("/profile", {
-        addresses: addresses
-      });
-
-      alert("Addresses updated!");
-      setEditingAddresses(false);
-      fetchProfile();
+      await api.delete("/profile");
+      alert("Account deleted.");
+      logoutUser();
+      window.location.href = "/login";
     } catch (err) {
-      console.error("Address update failed", err);
-      alert(err.response?.data?.message || "Failed to update addresses.");
+      alert(err.response?.data?.message || "Failed to delete account.");
     }
   };
 
-  const sendEmailOtp = async () => {
-    if (!newEmail || newEmail.trim() === "") {
-      alert("Enter a new email address.");
+  // -------------------------------------------------------------
+  // ADDRESSES LOGIC
+  // -------------------------------------------------------------
+  const handleAddressFormChange = (e) => setAddressForm({ ...addressForm, [e.target.name]: e.target.value });
+
+  const saveAddress = async () => {
+    if (!addressForm.house_number || !addressForm.street || !addressForm.barangay || !addressForm.city || !addressForm.zip_code) {
+      alert("All fields are required.");
       return;
     }
 
-    if (newEmail === profile.email) {
-      alert("New email must be different from current email.");
-      return;
+    let updatedAddresses = [...addresses];
+    if (editingAddressIndex === -1) {
+      updatedAddresses.push(addressForm);
+    } else {
+      updatedAddresses[editingAddressIndex] = addressForm;
     }
 
     try {
+      await api.put("/profile", { addresses: updatedAddresses });
+      setAddresses(updatedAddresses);
+      setEditingAddressIndex(null);
+      setShowAddressModal(false);
+      fetchProfile();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to save address.");
+    }
+  };
+
+  const removeAddress = async (index) => {
+    if (!window.confirm("Remove this address?")) return;
+
+    const updated = addresses.filter((_, i) => i !== index);
+    try {
+      await api.put("/profile", { addresses: updated });
+      setAddresses(updated);
+      fetchProfile();
+    } catch (err) {
+      alert("Failed to remove address.");
+    }
+  };
+
+  const openAddressEditor = (index) => {
+    if (index === -1) {
+      setAddressForm({ house_number: "", street: "", barangay: "", city: "", zip_code: "" });
+      setEditingAddressIndex(-1);
+    } else {
+      setAddressForm({ ...addresses[index] });
+      setEditingAddressIndex(index);
+    }
+    setShowAddressModal(true);
+  };
+
+  // -------------------------------------------------------------
+  // SECURITY LOGIC (Now in My Profile)
+  // -------------------------------------------------------------
+  const sendEmailOtp = async () => {
+    if (!newEmail || newEmail === profile.email) return alert("Enter a valid new email.");
+    try {
       await api.post("/profile/email-otp", { email: newEmail.trim() });
       setEmailOtpSent(true);
-      alert("OTP sent to new email. Please check your inbox.");
     } catch (err) {
-      console.error("Email OTP request failed", err);
       alert(err.response?.data?.message || "Failed to send OTP.");
     }
   };
 
   const verifyEmailOtp = async () => {
-    if (!emailOtp || emailOtp.trim().length === 0) {
-      alert("Enter OTP code.");
-      return;
-    }
-
     try {
-      const res = await api.post("/profile/email-verify", {
-        email: newEmail.trim(),
-        otp: emailOtp.trim(),
-      });
-
-      alert(res.data?.message || "Email updated successfully.");
-      setNewEmail("");
-      setEmailOtp("");
-      setEmailOtpSent(false);
+      const res = await api.post("/profile/email-verify", { email: newEmail.trim(), otp: emailOtp.trim() });
       setEmailChangeMode(false);
+      setEmailOtpSent(false);
       fetchProfile();
-      if (res.data?.email) {
-        updateUser({ ...profile, email: res.data.email });
-      }
+      if (res.data?.email) updateUser({ ...profile, email: res.data.email });
     } catch (err) {
-      console.error("Email verification failed", err);
       alert(err.response?.data?.message || "Failed to verify OTP.");
     }
   };
 
   const sendPasswordOtp = async () => {
-    if (!currentPassword) {
-      alert("Enter your current password first.");
-      return;
-    }
-
-    if (!newPassword || !confirmPassword) {
-      alert("Enter new password and confirmation.");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      alert("New password and retype password do not match.");
-      return;
-    }
-
-    if (newPassword === currentPassword) {
-      alert("New password cannot be the same as current password.");
-      return;
-    }
-
+    if (!currentPassword || !newPassword || newPassword !== confirmPassword) return alert("Verify password inputs.");
     try {
       await api.post("/profile/password-otp");
       setPasswordOtpSent(true);
-      alert("OTP sent to your email. Please check your inbox.");
     } catch (err) {
-      console.error("Password OTP request failed", err);
       alert(err.response?.data?.message || "Failed to send OTP.");
     }
   };
 
   const verifyPasswordOtp = async () => {
-    if (!passwordOtp || passwordOtp.trim().length === 0) {
-      alert("Enter OTP code.");
-      return;
-    }
-
-    if (!currentPassword) {
-      alert("Enter current password before verifying OTP.");
-      return;
-    }
-
     try {
-      const res = await api.post("/profile/password-verify", {
+      await api.post("/profile/password-verify", {
         otp: passwordOtp.trim(),
         current_password: currentPassword,
         new_password: newPassword,
         new_password_confirmation: confirmPassword,
       });
-
-      alert(res.data?.message || "Password changed successfully.");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      setPasswordOtp("");
+      alert("Password changed!");
       setPasswordOtpSent(false);
-      setShowChangePassword(false);
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setPasswordOtp("");
     } catch (err) {
-      console.error("Password verification failed", err);
-      alert(err.response?.data?.message || "Failed to change password.");
+      alert(err.response?.data?.message || "Failed to verify.");
     }
   };
 
-  const deleteAccount = async () => {
-    const confirmed = window.confirm("Are you sure you want to delete your account? This action cannot be undone.");
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center bg-[#fcfaf9] text-gray-900 font-sans"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-[#4f6fa5]"></div></div>;
+  }
 
-    if (!confirmed) return;
-
-    try {
-      await api.delete("/profile");
-      alert("Account deleted successfully.");
-      logoutUser();
-      window.location.href = "/login";
-    } catch (err) {
-      console.error("Account deletion failed", err);
-      alert(err.response?.data?.message || "Failed to delete account.");
+  // Helper to map tab names to clean titles
+  const getTabTitle = () => {
+    switch(activeTab) {
+      case "profile": return "My Profile";
+      case "addresses": return "Addresses";
+      case "orders": return "My Orders";
+      case "settings": return "Account Settings";
+      default: return "";
     }
-  };
-
-  if (loading) return <div className="mx-auto max-w-4xl px-8 pt-28">Loading profile...</div>;
+  }
 
   return (
-    <div className="mx-auto max-w-4xl px-8 pt-28 pb-32">
-      <h2 className="text-2xl font-semibold mb-6">My Account</h2>
-
-      <div className="space-y-8">
-        {/* PERSONAL INFORMATION */}
-        <div className="border rounded-lg p-6 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-lg">Personal Information</h3>
-
-            <button
-              type="button"
-              onClick={() => setEditingProfile(!editingProfile)}
-              className="text-sm text-[#4f6fa5] hover:underline"
-            >
-              {editingProfile ? "Cancel" : "Edit Details"}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm block mb-1">First Name</label>
-              <input
-                name="first_name"
-                value={profile?.first_name ?? ""}
-                onChange={handleProfileChange}
-                className={`w-full rounded border px-4 py-2 disabled:bg-gray-100 ${editingProfile ? "text-black" : "text-gray-500"}`}
-                disabled={!editingProfile}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm block mb-1">Last Name</label>
-              <input
-                name="last_name"
-                value={profile?.last_name ?? ""}
-                onChange={handleProfileChange}
-                className={`w-full rounded border px-4 py-2 disabled:bg-gray-100 ${editingProfile ? "text-black" : "text-gray-500"}`}
-                disabled={!editingProfile}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm block mb-1">Contact Number</label>
-              <input
-                name="phone_number"
-                value={profile?.phone_number ?? ""}
-                onChange={handleProfileChange}
-                className={`w-full rounded border px-4 py-2 disabled:bg-gray-100 ${editingProfile ? "text-black" : "text-gray-500"}`}
-                disabled={!editingProfile}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm block mb-1">Email Address</label>
-              <input
-                name="email"
-                value={profile?.email ?? ""}
-                className="w-full rounded border px-4 py-2 bg-gray-100 text-gray-500"
-                readOnly
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  setEmailChangeMode(!emailChangeMode);
-                  setEmailOtpSent(false);
-                }}
-                className="mt-2 text-sm text-[#4f6fa5] hover:underline"
-              >
-                {emailChangeMode ? "Cancel email change" : "Change Email"}
-              </button>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setShowChangePassword(!showChangePassword)}
-              className="rounded bg-[#4f6fa5] px-4 py-2 text-sm font-medium text-white hover:bg-[#3f5b89] transition"
-            >
-              {showChangePassword ? "Hide Change Password" : "Change Password"}
-            </button>
-            <button
-              type="button"
-              onClick={deleteAccount}
-              className="rounded border border-red-500 bg-red-100 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-200 transition"
-            >
-              Delete Account
-            </button>
-          </div>
-
-          {editingProfile && (
-            <div className="pt-4">
-              <button
-                onClick={saveProfile}
-                className="rounded bg-[#4f6fa5] px-6 py-2 text-white hover:bg-[#3f5b89] transition"
-              >
-                Save Personal Information
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* EMAIL CHANGE */}
-        {emailChangeMode && (
-          <div className="border rounded-lg p-6 space-y-4 bg-gradient-to-r from-blue-50 to-indigo-50">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-lg text-gray-800">Change Email Address</h3>
-              <button
-                onClick={() => {
-                  setEmailChangeMode(false);
-                  setEmailOtpSent(false);
-                  setNewEmail("");
-                  setEmailOtp("");
-                }}
-                className="text-gray-400 hover:text-gray-600 text-xl"
-              >
-                ×
-              </button>
-            </div>
-
-            {!emailOtpSent ? (
-              <div className="space-y-4">
-                <div className="bg-white p-4 rounded-lg border">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    New Email Address
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="Enter your new email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    className="w-full rounded border px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+    <div className="min-h-screen bg-[#fcfaf9] text-gray-900 font-sans pt-0 pb-0">
+      <div className="w-full">
+        
+        {/* Main Content Area */}
+        <div className="flex flex-col md:flex-row min-h-[calc(100vh-80px)]">
+          
+          {/* ================= CLEAN TEXT SIDEBAR ================= */}
+          <div className="md:w-[260px] flex-shrink-0">
+            <div className="bg-white border-r border-gray-100 shadow-sm p-6 h-full w-full">
+              <h1 className="text-2xl font-playfair font-bold text-gray-900 mb-6">My Account</h1>
+              <nav className="flex flex-col gap-2 mt-4">
                 <button
-                  onClick={sendEmailOtp}
-                  className="w-full rounded bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 transition font-medium"
+                  onClick={() => setActiveTab('profile')}
+                  className={`text-left px-4 py-2.5 text-sm font-medium transition-all duration-200 rounded-lg w-full ${
+                    activeTab === 'profile'
+                      ? 'bg-[#0f1b2d] text-white'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-[#0f1b2d]'
+                  }`}
                 >
-                  Send Verification Code
+                  My Profile
                 </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="bg-white p-4 rounded-lg border">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Verification Code
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter 6-digit code"
-                    value={emailOtp}
-                    onChange={(e) => setEmailOtp(e.target.value)}
-                    className="w-full rounded border px-4 py-3 text-center text-2xl tracking-widest focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    maxLength="6"
-                  />
-                  <p className="text-sm text-gray-500 mt-2">
-                    We've sent a verification code to {newEmail}
-                  </p>
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={verifyEmailOtp}
-                    className="flex-1 rounded bg-green-600 px-6 py-3 text-white hover:bg-green-700 transition font-medium"
-                  >
-                    Verify & Update Email
-                  </button>
-                  <button
-                    onClick={() => setEmailOtpSent(false)}
-                    className="px-6 py-3 text-gray-600 hover:text-gray-800 font-medium"
-                  >
-                    Back
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {showChangePassword && (
-          <div className="border rounded-lg p-6 space-y-4">
-            <h3 className="font-semibold text-lg">Change Password</h3>
-            <div className="grid grid-cols-1 gap-3">
-              <input
-                type="password"
-                placeholder="Current Password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full rounded border px-4 py-2"
-              />
-              <input
-                type="password"
-                placeholder="New Password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full rounded border px-4 py-2"
-              />
-              <input
-                type="password"
-                placeholder="Retype New Password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full rounded border px-4 py-2"
-              />
-              <button
-                onClick={sendPasswordOtp}
-                className="rounded bg-[#4f6fa5] px-4 py-2 text-white hover:bg-[#3f5b89] transition"
-              >
-                Send OTP to Email
-              </button>
-
-              {passwordOtpSent && (
-                <div className="space-y-2">
-                  <input
-                    placeholder="Enter OTP"
-                    value={passwordOtp}
-                    onChange={(e) => setPasswordOtp(e.target.value)}
-                    className="w-full rounded border px-4 py-2"
-                  />
-                  <button
-                    onClick={verifyPasswordOtp}
-                    className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700 transition"
-                  >
-                    Verify OTP and Update Password
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ADDRESSES */}
-        <div className="border rounded-lg p-6 space-y-6">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-lg">
-              Shipping Addresses ({addresses.length}/3)
-            </h3>
-
-            <div className="flex gap-4">
-              <button
-                type="button"
-                onClick={() => setEditingAddresses(!editingAddresses)}
-                className="text-sm text-[#4f6fa5] hover:underline"
-              >
-                {editingAddresses ? "Cancel" : "Edit Addresses"}
-              </button>
-
-              {editingAddresses && addresses.length < 3 && (
                 <button
-                  type="button"
-                  onClick={addAddress}
-                  className="rounded bg-[#4f6fa5] px-4 py-2 text-sm font-medium text-white hover:bg-[#3f5b89] transition shadow-sm"
+                  onClick={() => setActiveTab('addresses')}
+                  className={`text-left px-4 py-2.5 text-sm font-medium transition-all duration-200 rounded-lg w-full ${
+                    activeTab === 'addresses'
+                      ? 'bg-[#0f1b2d] text-white'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-[#0f1b2d]'
+                  }`}
                 >
-                  + Add Address
+                  Addresses
                 </button>
-              )}
+                <button
+                  onClick={() => setActiveTab('orders')}
+                  className={`text-left px-4 py-2.5 text-sm font-medium transition-all duration-200 rounded-lg w-full ${
+                    activeTab === 'orders'
+                      ? 'bg-[#0f1b2d] text-white'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-[#0f1b2d]'
+                  }`}
+                >
+                  My Orders
+                </button>
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className={`text-left px-4 py-2.5 text-sm font-medium transition-all duration-200 rounded-lg w-full ${
+                    activeTab === 'settings'
+                      ? 'bg-[#0f1b2d] text-white'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-[#0f1b2d]'
+                  }`}
+                >
+                  Account Settings
+                </button>
+              </nav>
             </div>
           </div>
 
-          {addresses.length === 0 && !editingAddresses && (
-            <div className="rounded border border-dashed p-6 text-center text-gray-500">
-              You don't have any saved addresses yet.
-              <div className="mt-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingAddresses(true);
-                    addAddress();
-                  }}
-                  className="rounded bg-[#4f6fa5] px-4 py-2 text-sm font-medium text-white hover:bg-[#3f5b89] transition"
-                >
-                  + Add Address
-                </button>
-              </div>
-            </div>
-          )}
-          {addresses.map((addr, index) => (
-            <div key={index} className="border rounded p-4 space-y-3">
-              <div className="flex justify-between items-center">
-                <p className="font-medium text-[#4f6fa5]">
-                  Address #{index + 1}
-                </p>
+          {/* ================= MAIN CARDS AREA ================= */}
+          <div className="flex-grow px-6 md:px-12 pt-24 pb-16">
+             <AnimatePresence mode="wait">
+               
+               {/* --- MY PROFILE VIEW --- */}
+               {activeTab === 'profile' && (
+                  <motion.div key="profile" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
+                    
+                    {/* Personal Information */}
+                    <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm">
+                      <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                         <h3 className="font-playfair font-bold text-gray-900">Personal Information</h3>
+                         {!editingProfile && <button onClick={() => setEditingProfile(true)} className="text-xs font-semibold text-gray-500 border border-gray-900 px-4 py-2 rounded-full bg-white text-gray-900 hover:bg-[#0f1b2d] hover:text-white transition-all duration-300 ease-out">Edit Info</button>}
+                      </div>
+                      
+                      <div className="p-6">
+                        <div className="flex items-center gap-4 mb-6">
+                          <div className="w-12 h-12 rounded-full bg-[#c0795c] flex items-center justify-center text-white text-lg font-bold shadow-inner">
+                            {profile.first_name?.[0]}
+                          </div>
+                          <button className="text-xs font-semibold text-gray-600 border border-gray-900 px-4 py-2 rounded-full bg-white text-gray-900 hover:bg-[#0f1b2d] hover:text-white transition-all duration-300 ease-out">Change Photo</button>
+                        </div>
+                        
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <div>
+                             <label className="block text-xs font-medium text-gray-500 mb-1.5">First Name</label>
+                             <input name="first_name" value={profile.first_name} onChange={handleProfileChange} disabled={!editingProfile} className={`w-full border ${editingProfile ? 'border-gray-300 focus:border-[#3b82f6]' : 'border-gray-200 bg-gray-50'} rounded-xl px-3 py-2 text-sm text-gray-800 outline-none transition-colors`} />
+                          </div>
+                          <div>
+                             <label className="block text-xs font-medium text-gray-500 mb-1.5">Last Name</label>
+                             <input name="last_name" value={profile.last_name} onChange={handleProfileChange} disabled={!editingProfile} className={`w-full border ${editingProfile ? 'border-gray-300 focus:border-[#3b82f6]' : 'border-gray-200 bg-gray-50'} rounded-xl px-3 py-2 text-sm text-gray-800 outline-none transition-colors`} />
+                          </div>
+                          <div>
+                             <label className="block text-xs font-medium text-gray-500 mb-1.5">Phone Number</label>
+                             <input name="phone_number" value={profile.phone_number} onChange={handleProfileChange} disabled={!editingProfile} className={`w-full border ${editingProfile ? 'border-gray-300 focus:border-[#3b82f6]' : 'border-gray-200 bg-gray-50'} rounded-xl px-3 py-2 text-sm text-gray-800 outline-none transition-colors`} />
+                          </div>
+                          <div>
+                             <label className="block text-xs font-medium text-gray-500 mb-1.5">Email Address</label>
+                             {!emailChangeMode ? (
+                               <div className="flex gap-2">
+                                 <input value={profile.email} disabled className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-sm text-gray-800 outline-none" />
+                                 <button onClick={() => setEmailChangeMode(true)} className="text-xs font-semibold text-gray-600 border border-gray-900 px-4 py-2 rounded-full bg-white text-gray-900 hover:bg-[#0f1b2d] hover:text-white transition-all duration-300 ease-out">Change</button>
+                               </div>
+                             ) : (
+                               <div className="space-y-2">
+                                 <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="New Email Address" className="w-full border border-gray-300 focus:border-[#3b82f6] rounded-xl px-3 py-2 text-sm text-gray-800 outline-none" />
+                                 {!emailOtpSent ? (
+                                   <div className="flex gap-2">
+                                       <button onClick={sendEmailOtp} className="bg-[#0f1b2d] text-white border border-[#0f1b2d] px-3 py-1.5 rounded-full font-medium text-xs hover:bg-white hover:text-[#0f1b2d] transition-all duration-300 ease-out">Verify</button>
+                                       <button onClick={() => setEmailChangeMode(false)} className="text-gray-500 font-medium text-xs border border-gray-900 px-4 py-2 rounded-full bg-white text-gray-900 hover:bg-[#0f1b2d] hover:text-white transition-all duration-300 ease-out">Cancel</button>
+                                   </div>
+                                 ) : (
+                                   <div className="flex gap-2 items-center">
+                                       <input type="text" value={emailOtp} onChange={e => setEmailOtp(e.target.value)} placeholder="000000" className="w-full flex-grow border border-gray-300 focus:border-[#3b82f6] rounded-xl px-3 py-1.5 text-center tracking-widest text-sm outline-none" maxLength="6" />
+                                       <button onClick={verifyEmailOtp} className="bg-[#0f1b2d] text-white border border-[#0f1b2d] px-3 py-1.5 rounded-full font-medium text-xs hover:bg-white hover:text-[#0f1b2d] transition-all duration-300 ease-out">Done</button>
+                                   </div>
+                                 )}
+                               </div>
+                             )}
+                          </div>
+                        </div>
 
-                {editingAddresses && (
-                  <button
-                    type="button"
-                    onClick={() => removeAddress(index)}
-                    className="rounded border border-red-200 px-3 py-1 text-sm font-medium text-red-500 hover:bg-red-50 transition"
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
+                        {editingProfile && (
+                          <div className="mt-6 flex gap-3">
+                             <button onClick={saveProfile} className="bg-[#0f1b2d] text-white border border-[#0f1b2d] px-6 py-2 rounded-full font-medium text-sm transition-all duration-300 ease-out hover:bg-white hover:text-[#0f1b2d]">Save</button>
+                             <button onClick={() => setEditingProfile(false)} className="px-6 py-2 rounded-full font-medium text-sm text-gray-900 border border-gray-900 bg-white hover:bg-[#0f1b2d] hover:text-white transition-all duration-300 ease-out">Cancel</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <input
-                    placeholder="House Number"
-                    value={addr.house_number}
-                    onChange={(e) =>
-                      handleAddressChange(index, "house_number", e.target.value)
-                    }
-                    onBlur={(e) => validateAddressField(index, "house_number", e.target.value)}
-                    className={`rounded border px-4 py-2 disabled:bg-gray-100 ${editingAddresses ? "text-black" : "text-gray-500"} ${addressErrors[index]?.house_number ? "border-red-500" : ""}`}
-                    disabled={!editingAddresses}
-                  />
-                  {addressErrors[index]?.house_number && (
-                    <p className="text-red-500 text-xs mt-1">{addressErrors[index].house_number}</p>
-                  )}
-                </div>
+                    {/* Change Password */}
+                    <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm">
+                      <div className="px-6 py-4 border-b border-gray-100">
+                         <h3 className="font-playfair font-bold text-gray-900">Change Password</h3>
+                      </div>
+                      <div className="p-6">
+                        <div className="grid md:grid-cols-3 gap-6 mb-6">
+                           <div>
+                             <label className="block text-xs font-medium text-gray-500 mb-1.5">Old Password</label>
+                             <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} placeholder="Enter password" className="w-full border border-gray-200 focus:border-[#3b82f6] rounded-xl px-3 py-2 text-sm text-gray-800 outline-none" />
+                           </div>
+                           <div>
+                             <label className="block text-xs font-medium text-gray-500 mb-1.5">New Password</label>
+                             <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Enter new password" className="w-full border border-gray-200 focus:border-[#3b82f6] rounded-xl px-3 py-2 text-sm text-gray-800 outline-none" />
+                           </div>
+                           <div>
+                             <label className="block text-xs font-medium text-gray-500 mb-1.5">Confirm Password</label>
+                             <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm password" className="w-full border border-gray-200 focus:border-[#3b82f6] rounded-xl px-3 py-2 text-sm text-gray-800 outline-none" />
+                           </div>
+                        </div>
+                        {!passwordOtpSent ? (
+                           <button onClick={sendPasswordOtp} className="bg-[#0f1b2d] text-white border border-[#0f1b2d] px-4 py-2 rounded-full font-medium text-xs hover:bg-white hover:text-[#0f1b2d] transition-all duration-300 ease-out">Send OTP</button>
+                        ) : (
+                           <div className="flex gap-3 items-center mt-2 max-w-sm">
+                              <input type="text" placeholder="OTP" value={passwordOtp} onChange={e => setPasswordOtp(e.target.value)} className="w-32 border border-gray-300 rounded-xl px-3 py-2 tracking-widest text-center focus:border-[#3b82f6] outline-none text-sm" maxLength="6" />
+                              <button onClick={verifyPasswordOtp} className="bg-[#0f1b2d] text-white border border-[#0f1b2d] px-4 py-2 rounded-full font-medium text-xs hover:bg-white hover:text-[#0f1b2d] transition-all duration-300 ease-out">Verify & Update</button>
+                           </div>
+                        )}
+                      </div>
+                    </div>
 
-                <div>
-                  <input
-                    placeholder="Street"
-                    value={addr.street}
-                    onChange={(e) =>
-                      handleAddressChange(index, "street", e.target.value)
-                    }
-                    onBlur={(e) => validateAddressField(index, "street", e.target.value)}
-                    className={`rounded border px-4 py-2 disabled:bg-gray-100 ${editingAddresses ? "text-black" : "text-gray-500"} ${addressErrors[index]?.street ? "border-red-500" : ""}`}
-                    disabled={!editingAddresses}
-                  />
-                  {addressErrors[index]?.street && (
-                    <p className="text-red-500 text-xs mt-1">{addressErrors[index].street}</p>
-                  )}
-                </div>
+                    {/* Devices / Danger Zone */}
+                    <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm">
+                      <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+                         <div>
+                           <h3 className="font-playfair font-bold text-gray-900">Account Control</h3>
+                           <p className="text-xs text-gray-500 mt-1">Manage your account lifecycle.</p>
+                         </div>
+                         <button onClick={deleteAccount} className="text-xs font-semibold text-red-600 border border-red-500 px-4 py-2 rounded-full bg-white hover:bg-red-600 hover:text-white transition-all duration-300 ease-out">Delete Account</button>
+                      </div>
+                    </div>
+                  </motion.div>
+               )}
 
-                <div>
-                  <input
-                    placeholder="Barangay"
-                    value={addr.barangay}
-                    onChange={(e) =>
-                      handleAddressChange(index, "barangay", e.target.value)
-                    }
-                    onBlur={(e) => validateAddressField(index, "barangay", e.target.value)}
-                    className={`rounded border px-4 py-2 disabled:bg-gray-100 ${editingAddresses ? "text-black" : "text-gray-500"} ${addressErrors[index]?.barangay ? "border-red-500" : ""}`}
-                    disabled={!editingAddresses}
-                  />
-                  {addressErrors[index]?.barangay && (
-                    <p className="text-red-500 text-xs mt-1">{addressErrors[index].barangay}</p>
-                  )}
-                </div>
+               {/* --- ACCOUNT SETTINGS VIEW --- */}
+               {activeTab === 'settings' && (
+                  <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
+                    <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm">
+                      <div className="px-6 py-4 border-b border-gray-100">
+                         <h3 className="font-playfair font-bold text-gray-900">Preferences</h3>
+                      </div>
+                      <div className="p-6">
+                        <div className="grid md:grid-cols-3 gap-6">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5">Theme</label>
+                            <select className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:border-[#3b82f6] outline-none">
+                              <option>Light Mode</option>
+                              <option>Dark Mode</option>
+                              <option>System Default</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5">Text Size</label>
+                            <select className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:border-[#3b82f6] outline-none">
+                              <option>Small</option>
+                              <option selected>Medium</option>
+                              <option>Large</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5">Animations</label>
+                            <select className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:border-[#3b82f6] outline-none">
+                              <option>Enabled</option>
+                              <option>Disabled</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+               )}
 
-                <div>
-                  <input
-                    placeholder="City"
-                    value={addr.city}
-                    onChange={(e) =>
-                      handleAddressChange(index, "city", e.target.value)
-                    }
-                    onBlur={(e) => validateAddressField(index, "city", e.target.value)}
-                    className={`rounded border px-4 py-2 disabled:bg-gray-100 ${editingAddresses ? "text-black" : "text-gray-500"} ${addressErrors[index]?.city ? "border-red-500" : ""}`}
-                    disabled={!editingAddresses}
-                  />
-                  {addressErrors[index]?.city && (
-                    <p className="text-red-500 text-xs mt-1">{addressErrors[index].city}</p>
-                  )}
-                </div>
+               {/* --- ADDRESSES VIEW --- */}
+               {activeTab === 'addresses' && (
+                  <motion.div key="addresses" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
+                    <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm">
+                      <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                         <h3 className="font-playfair font-bold text-gray-900">Saved Addresses</h3>
+                         {editingAddressIndex === null && addresses.length < 3 && (
+                           <button onClick={() => openAddressEditor(-1)} className="text-xs font-semibold text-gray-600 border border-gray-900 px-4 py-2 rounded-full bg-white text-gray-900 hover:bg-[#0f1b2d] hover:text-white transition-all duration-300 ease-out flex items-center gap-1">
+                             <Plus size={14} /> Add Address
+                           </button>
+                         )}
+                      </div>
+                      
+                      {editingAddressIndex === null ? (
+                        <div className="p-6 flex flex-col gap-4">
+                           {addresses.length === 0 ? (
+                             <div className="text-center py-8">
+                               <MapPin className="w-10 h-10 mx-auto text-gray-300 mb-3" />
+                               <p className="text-sm text-gray-500">No saved addresses yet.</p>
+                             </div>
+                           ) : (
+                             addresses.map((addr, idx) => (
+                               <div key={idx} className="group border border-gray-100 rounded-[2rem] p-6 flex flex-col md:flex-row gap-5 bg-white hover:border-gray-300 transition-all">
+                                  <div className="flex-grow flex flex-col justify-center">
+                                     <div className="flex items-center justify-between mb-1">
+                                        <h4 className="font-bold text-sm text-gray-900">{profile.first_name} {profile.last_name}</h4>
+                                        <div className="flex gap-2">
+                                           <button onClick={() => openAddressEditor(idx)} className="text-xs font-semibold text-blue-600 hover:underline">Edit</button>
+                                           <button onClick={() => removeAddress(idx)} className="text-xs font-semibold text-red-500 hover:underline">Remove</button>
+                                        </div>
+                                     </div>
+                                     <p className="text-xs text-gray-500 mb-2">{profile.phone_number}</p>
+                                     <p className="text-sm text-gray-700 leading-relaxed max-w-lg">
+                                       {addr.house_number} {addr.street}, {addr.barangay}, {addr.city}, Zip {addr.zip_code}
+                                     </p>
+                                  </div>
+                               </div>
+                             ))
+                           )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </motion.div>
+               )}
 
-                <div className="col-span-2">
-                  <input
-                    placeholder="Zip Code"
-                    value={addr.zip_code}
-                    onChange={(e) =>
-                      handleAddressChange(index, "zip_code", e.target.value)
-                    }
-                    onBlur={(e) => validateAddressField(index, "zip_code", e.target.value)}
-                    className={`rounded border px-4 py-2 disabled:bg-gray-100 ${editingAddresses ? "text-black" : "text-gray-500"} ${addressErrors[index]?.zip_code ? "border-red-500" : ""}`}
-                    disabled={!editingAddresses}
-                  />
-                  {addressErrors[index]?.zip_code && (
-                    <p className="text-red-500 text-xs mt-1">{addressErrors[index].zip_code}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-          {editingAddresses && (
-            <div className="pt-4">
-              <button
-                onClick={saveAddresses}
-                className="rounded bg-[#4f6fa5] px-6 py-2 text-white hover:bg-[#3f5b89] transition"
-              >
-                Save Addresses
-              </button>
-            </div>
-          )}
+               {/* --- ORDERS VIEW (MOCK) --- */}
+               {activeTab === 'orders' && (
+                  <motion.div key="orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
+                    <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm flex flex-col items-center justify-center p-16 text-center">
+                       <Package className="w-12 h-12 text-gray-300 mb-4" />
+                       <h3 className="font-playfair font-bold text-gray-900 mb-1">No Orders Found</h3>
+                       <p className="text-sm text-gray-500 max-w-sm">You haven't placed any orders yet. Visit our Showcase to get started.</p>
+                       <button className="mt-6 bg-[#0f1b2d] text-white border border-[#0f1b2d] px-6 py-2 rounded-full font-medium text-sm hover:bg-white hover:text-[#0f1b2d] transition-all duration-300 ease-out">Shop Now</button>
+                    </div>
+                  </motion.div>
+               )}
+               
+             </AnimatePresence>
+          </div>
         </div>
       </div>
+    {/* Address Modal */}
+    {showAddressModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="bg-white rounded-[2rem] w-full max-w-xl p-6 shadow-xl relative" onClick={(e) => e.stopPropagation()}>
+          <h3 className="font-playfair font-bold text-gray-900 mb-6">
+            {editingAddressIndex === -1 ? "Add Address" : "Edit Address"}
+          </h3>
+
+          <div className="grid md:grid-cols-2 gap-5 mb-6">
+            <input name="house_number" value={addressForm.house_number} onChange={handleAddressFormChange} placeholder="House / Unit No." className="w-full border-2 border-gray-900 rounded-xl px-3 py-2 text-sm focus:border-[#3b82f6] outline-none" />
+            <input name="street" value={addressForm.street} onChange={handleAddressFormChange} placeholder="Street" className="w-full border-2 border-gray-900 rounded-xl px-3 py-2 text-sm focus:border-[#3b82f6] outline-none" />
+            <input name="barangay" value={addressForm.barangay} onChange={handleAddressFormChange} placeholder="Barangay" className="w-full border-2 border-gray-900 rounded-xl px-3 py-2 text-sm focus:border-[#3b82f6] outline-none" />
+            <input name="city" value={addressForm.city} onChange={handleAddressFormChange} placeholder="City" className="w-full border-2 border-gray-900 rounded-xl px-3 py-2 text-sm focus:border-[#3b82f6] outline-none" />
+            <input name="zip_code" value={addressForm.zip_code} onChange={handleAddressFormChange} placeholder="Zip Code" className="w-full border-2 border-gray-900 rounded-xl px-3 py-2 text-sm md:col-span-2 focus:border-[#3b82f6] outline-none" />
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => {
+                setEditingAddressIndex(null);
+                setShowAddressModal(false);
+              }}
+              className="px-5 py-2 rounded-full text-sm text-gray-900 border border-gray-900 bg-white hover:bg-[#0f1b2d] hover:text-white transition-all duration-300 ease-out"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={saveAddress}
+              className="bg-[#0f1b2d] text-white border border-[#0f1b2d] px-6 py-2 rounded-full text-sm font-medium hover:bg-white hover:text-[#0f1b2d] transition-all duration-300 ease-out"
+            >
+              Save Address
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 }

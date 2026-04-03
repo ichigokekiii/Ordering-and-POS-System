@@ -10,7 +10,7 @@ function OrderCustomAdditional({ data, onBack, onFinish }) {
   const { products } = useProducts();
   const { addToCart } = useCart();
 
-  const { bouquet, fillers = [], basePrice = 0 } = data || {};
+  const { bouquet, mains = [], fillers = [], basePrice = 0 } = data || {};
 
   const [quantities, setQuantities] = useState({});
   const [added, setAdded] = useState(false);
@@ -56,12 +56,14 @@ function OrderCustomAdditional({ data, onBack, onFinish }) {
 
     const allItems = [
       { ...bouquet, quantity: 1 },
+      ...mains.map((m) => ({ ...m, free: true })),
       ...fillers.map((f) => ({ ...f, free: true })),
       ...selectedAdditionals,
     ];
 
     const descriptionParts = [
       bouquet.name,
+      ...mains.map((m) => `${m.name} ×${m.quantity}`),
       ...fillers.map((f) => `${f.name} ×${f.quantity}`),
       ...selectedAdditionals.map((a) => `${a.name} ×${a.quantity}`),
     ];
@@ -159,8 +161,11 @@ function OrderCustomAdditional({ data, onBack, onFinish }) {
         <div className="mb-8 rounded-xl border bg-white px-5 py-4 shadow-sm">
           <p className="text-sm font-medium text-gray-600">Your selection so far:</p>
           <p className="mt-1 text-sm text-gray-500">
-            {bouquet.name} +{" "}
-            {fillers.map((f) => `${f.name} ×${f.quantity}`).join(", ")}
+            {[
+              bouquet.name,
+              ...mains.map((m) => `${m.name} ×${m.quantity}`),
+              ...fillers.map((f) => `${f.name} ×${f.quantity}`),
+            ].join(" + ")}
           </p>
           <p className="mt-1 text-sm font-bold text-gray-800">
             Base price: ₱{Number(basePrice).toLocaleString()}

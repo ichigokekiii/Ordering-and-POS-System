@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable no-unused-vars */
 import { Link, useNavigate } from "react-router-dom";
 import { User } from "lucide-react";
@@ -27,6 +28,31 @@ function Navbar() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  
+  // Theme state
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem("theme") === "dark") {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+    } else {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (isDarkMode) {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+      setIsDarkMode(false);
+    } else {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+      setIsDarkMode(true);
+    }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -115,13 +141,12 @@ function Navbar() {
                   My Account
                 </Link>
 
-                <Link
-                  to="/settings"
-                  className="block px-4 py-2 text-sm hover:bg-[#4f6fa5]/10 hover:text-[#4f6fa5]"
-                  onClick={() => setMenuOpen(false)}
+                <button
+                  onClick={toggleTheme}
+                  className="block w-full px-4 py-2 text-left text-sm hover:bg-[#4f6fa5]/10 hover:text-[#4f6fa5]"
                 >
-                  Settings
-                </Link>
+                  {isDarkMode ? "Light Theme" : "Dark Theme"}
+                </button>
 
                 <button
                   onClick={handleLogout}

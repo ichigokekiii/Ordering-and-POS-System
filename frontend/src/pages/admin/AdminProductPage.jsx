@@ -136,6 +136,8 @@ function AdminProductPage({ user }) {
   const [category, setCategory] = useState("");
   const [type, setType] = useState("");
   const [isAvailable, setIsAvailable] = useState(1);
+  const [requiredMainCount, setRequiredMainCount] = useState("1");
+  const [requiredFillerCount, setRequiredFillerCount] = useState("2");
 
   const [errors, setErrors] = useState({ name: "", description: "", price: "", image: "" });
 
@@ -183,10 +185,30 @@ function AdminProductPage({ user }) {
     try {
       if (activeTab === "products") {
         if (isEditing) {
-          await updateProduct(currentId, { name, image, price, description, category, type, isAvailable });
+          await updateProduct(currentId, {
+            name,
+            image,
+            price,
+            description,
+            category,
+            type,
+            isAvailable,
+            required_main_count: requiredMainCount,
+            required_filler_count: requiredFillerCount,
+          });
           setMessage("Product updated successfully!");
         } else {
-          await addProduct({ name, image, price, description, category, type, isAvailable });
+          await addProduct({
+            name,
+            image,
+            price,
+            description,
+            category,
+            type,
+            isAvailable,
+            required_main_count: requiredMainCount,
+            required_filler_count: requiredFillerCount,
+          });
           setMessage("Product added successfully!");
         }
       } else {
@@ -236,6 +258,8 @@ function AdminProductPage({ user }) {
     setCategory(product.category);
     setType(product.type || "");
     setIsAvailable(product.isAvailable);
+    setRequiredMainCount(String(product.required_main_count ?? 1));
+    setRequiredFillerCount(String(product.required_filler_count ?? 2));
     setErrors({ name: "", description: "", price: "" });
     setShowModal(true);
   };
@@ -248,6 +272,8 @@ function AdminProductPage({ user }) {
     setCategory("");
     setType("");
     setIsAvailable(1);
+    setRequiredMainCount("1");
+    setRequiredFillerCount("2");
     setCurrentId(null);
     setIsEditing(false);
     setErrors({ name: "", description: "", price: "", image: "" });
@@ -442,7 +468,12 @@ function AdminProductPage({ user }) {
                           name="category"
                           value="Bouquets"
                           checked={category === "Bouquets"}
-                          onChange={(e) => { setCategory(e.target.value); setType(""); }}
+                          onChange={(e) => {
+                            setCategory(e.target.value);
+                            setType("");
+                            setRequiredMainCount("1");
+                            setRequiredFillerCount("2");
+                          }}
                           className="h-4 w-4 text-blue-600"
                         />
                         <span className="text-sm font-medium">Bouquets</span>
@@ -453,7 +484,11 @@ function AdminProductPage({ user }) {
                           name="category"
                           value="Additional"
                           checked={category === "Additional"}
-                          onChange={(e) => setCategory(e.target.value)}
+                          onChange={(e) => {
+                            setCategory(e.target.value);
+                            setRequiredMainCount("1");
+                            setRequiredFillerCount("2");
+                          }}
                           className="h-4 w-4 text-blue-600"
                         />
                         <span className="text-sm font-medium">Additional</span>
@@ -488,6 +523,42 @@ function AdminProductPage({ user }) {
                           />
                           <span className="text-sm font-medium">Fillers</span>
                         </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {category === "Bouquets" && (
+                    <div className="rounded border p-4 space-y-4">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Bouquet Builder Requirements
+                      </label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="mb-1 block text-sm text-gray-600">
+                            Required Main Flowers
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            className="w-full rounded border px-4 py-2"
+                            value={requiredMainCount}
+                            onChange={(e) => setRequiredMainCount(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-sm text-gray-600">
+                            Required Fillers
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            className="w-full rounded border px-4 py-2"
+                            value={requiredFillerCount}
+                            onChange={(e) => setRequiredFillerCount(e.target.value)}
+                            required
+                          />
+                        </div>
                       </div>
                     </div>
                   )}

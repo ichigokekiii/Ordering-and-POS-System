@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('premade_products', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('product_id')->nullable()->constrained('products')->nullOnDelete()->unique();
 
             $table->string('name');
             $table->text('description')->nullable();

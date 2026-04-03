@@ -44,6 +44,7 @@ Route::post('/schedules/{id}/book', [ScheduleController::class, 'book']);
 
 //cms controller
 Route::apiResource('contents', ContentController::class);
+Route::delete('/contents/archived/{id}', [ContentController::class, 'destroyArchived']);
 
 //pos api route
 Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);

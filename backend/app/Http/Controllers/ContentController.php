@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Content;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class ContentController extends Controller
 {
@@ -26,11 +27,16 @@ class ContentController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'identifier' => 'required|string|max:255',
             'page' => 'required|string|max:255',
             'type' => 'required|in:text,image',
             'content_text' => 'nullable|string',
             'content_image' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+            'identifier' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('contents')->where(fn ($query) => $query->where('page', $request->page)),
+            ],
         ]);
 
         try {
@@ -69,6 +75,20 @@ class ContentController extends Controller
     {
         try {
             $content = Content::findOrFail($id);
+
+            if ($request->filled('identifier') || $request->filled('page')) {
+                $request->validate([
+                    'identifier' => [
+                        'nullable',
+                        'string',
+                        'max:255',
+                        Rule::unique('contents')
+                            ->ignore($content->id)
+                            ->where(fn ($query) => $query->where('page', $request->input('page', $content->page))),
+                    ],
+                    'page' => 'nullable|string|max:255',
+                ]);
+            }
 
             if ($request->filled('identifier')) {
                 $content->identifier = $request->identifier;

@@ -126,7 +126,7 @@ function VerifyOtpPage() {
   if (!email) {
     localStorage.removeItem("otp_email");
     return (
-      <div className="min-h-screen bg-gray-50 flex items-start justify-center pt-10 pb-4">
+      <div className="min-h-screen bg-[#fcfaf9] flex items-start justify-center pt-10 pb-4">
         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full text-center">
           <h2 className="mb-4 text-xl font-semibold text-gray-800">Session expired</h2>
           <p className="mb-6 text-sm text-gray-600">Please register or log in again.</p>
@@ -139,7 +139,7 @@ function VerifyOtpPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-start justify-center pt-10 pb-4">
+    <div className="min-h-screen bg-[#fcfaf9] flex items-start justify-center pt-10 pb-4">
       <div className={`w-full max-w-4xl min-h-[520px] md:min-h-[600px] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden ${from === 'register' ? 'md:flex-row-reverse' : 'md:flex-row'}`}>
         
         {/* IMAGE PANEL - Matches the Slider Aesthetic */}

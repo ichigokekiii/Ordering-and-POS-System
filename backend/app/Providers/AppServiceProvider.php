@@ -199,7 +199,7 @@ class AppServiceProvider extends ServiceProvider
     {
         return match ($model->getTable()) {
             'orders', 'order_items', 'payments' => 'Orders',
-            'custom_products', 'premade_products', 'products' => 'Products',
+            'products', 'custom_products', 'premade_products' => 'Products',
             'contents' => 'Content',
             'pos_transactions', 'pos_items' => 'POS',
             'users', 'addresses', 'otps' => 'Users',

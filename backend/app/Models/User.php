@@ -24,7 +24,6 @@ class User extends Authenticatable
         'is_locked',
         'priority',
         'is_verified',
-        // 'address', // REMOVED: This is now handled by the addresses() relationship
     ];
 
     protected $hidden = [

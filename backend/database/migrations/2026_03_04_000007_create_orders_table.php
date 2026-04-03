@@ -30,6 +30,9 @@ return new class extends Migration
             $table->string('delivery_method');
 
             $table->timestamps();
+
+            $table->index('order_status');
+            $table->index(['user_id', 'created_at']);
         });
     }
 

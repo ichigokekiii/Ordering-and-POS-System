@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
 
             $table->decimal('total_amount', 10, 2);
+            $table->string('payment_method')->nullable();
+            $table->decimal('cash_received', 10, 2)->nullable();
 
             $table->timestamps();
         });

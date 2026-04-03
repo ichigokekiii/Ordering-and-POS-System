@@ -68,7 +68,7 @@ function AboutPage() {
     <div className="bg-[#fcfaf9] text-gray-900 font-sans min-h-screen overflow-x-hidden pt-20 pb-0">
       
       {/* 1. HUMBLE BEGINNINGS (Hero & Stats) */}
-      <section className="max-w-[1400px] mx-auto px-6 md:px-12 mb-32">
+      <section className="max-w-[1400px] mx-auto px-6  md:px-12 mb-32">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           
           {/* Left: Text */}
@@ -80,13 +80,14 @@ function AboutPage() {
             className="order-2 lg:order-1"
           >
             <p className="text-[#4f6fa5] font-semibold tracking-widest uppercase text-sm mb-4">Our Story</p>
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-playfair font-bold text-gray-900 leading-[1.1] mb-6">
-              Explore our <br className="hidden lg:block"/>
-              <span className="font-dancing text-[#4f6fa5] font-normal text-6xl md:text-8xl block mt-2 lg:ml-4 transform -rotate-2">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-playfair font-bold text-gray-900 leading-[1.05] tracking-tight mb-8">
+              Explore our
+              <br />
+              <span className="block font-dancing text-[#4f6fa5] font-normal text-6xl md:text-8xl lg:text-9xl leading-[0.9] mt-3 lg:ml-2 transform -rotate-2">
                 humble beginnings
               </span>
             </h1>
-            <p className="text-gray-600 text-lg leading-relaxed mb-10 max-w-lg">
+            <p className="text-gray-600 text-lg leading-relaxed mb-8 max-w-md">
               {getContentValue("about_mission_text", "We strive to set new standards in floristry, efficiency, and sustainability by using advanced sourcing techniques. Whether it's a grand celebration or a simple gesture, we are dedicated to perfection in every petal.")}
             </p>
             <Link
@@ -103,7 +104,7 @@ function AboutPage() {
             whileInView={{ opacity: 1, x: 0 }} 
             viewport={{ once: true }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="order-1 lg:order-2 grid grid-cols-3 gap-4 h-[520px] lg:h-[640px] relative"
+            className="order-1 lg:order-2 grid grid-cols-3 gap-2 h-[520px] lg:h-[640px] relative"
           >
              {/* Tall Main Image */}
              <div className="col-span-2 row-span-3 rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 bg-gray-100 border border-gray-100">
@@ -207,7 +208,7 @@ function AboutPage() {
       <section className="relative pt-32 pb-24 mb-0 bg-white border-y border-gray-100">
         <div className="max-w-4xl mx-auto px-6 md:px-12">
           <div className="text-center mb-20">
-            <h2 className="text-sm font-semibold text-[#4f6fa5] uppercase tracking-widest mb-4">FAQ's</h2>
+            <h2 className="text-sm font-semibold text-[#4f6fa5] uppercase tracking-widest mb-4">FAQs</h2>
             <h3 className="text-4xl md:text-5xl lg:text-6xl font-playfair font-bold text-gray-900 leading-tight">
               Frequently Asked <br className="hidden md:block"/>Questions
             </h3>

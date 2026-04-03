@@ -84,7 +84,7 @@ function Navbar() {
           </li>
 
           <li className="hover:text-[#4f6fa5]">
-            <Link to="/products">Products</Link>
+            <Link to="/products">Showcase</Link>
           </li>
 
           <li className="hover:text-[#4f6fa5]">

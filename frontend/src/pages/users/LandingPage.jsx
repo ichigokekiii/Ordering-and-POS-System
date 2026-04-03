@@ -106,7 +106,7 @@ function LandingPage() {
           <p className="text-[#4f6fa5] font-semibold tracking-widest uppercase text-sm mb-4">Floral Discovery</p>
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-playfair font-bold leading-[1.15] text-gray-900 tracking-tight">
             Discover the perfect <br/>
-            <span className="font-dancing text-[#4f6fa5] font-normal leading-[0.85] block mt-1 ml-2 lg:ml-4 transform -rotate-1 text-6xl md:text-8xl lg:text-9xl">
+            <span className="font-dancing text-[#4f6fa5] font-normal leading-[0.85] block mt-1 ml-2 lg:ml-4 transform -rotate-2 text-6xl md:text-8xl lg:text-9xl">
               Flowers
             </span>
             <span className="inline-block mt-2">just for you</span>

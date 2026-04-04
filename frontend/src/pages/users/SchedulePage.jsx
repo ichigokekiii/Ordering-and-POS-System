@@ -124,7 +124,7 @@ function SchedulePage() {
       
        {/* 1. HERO HEADER */}
       <section className="bg-white border-b border-gray-100 pt-20 pb-16">
-        <div className="max-w-[1400px] mx-auto px-6 md:px-12 flex flex-col md:flex-row items-center justify-between">
+        <div className="max-w-[1400px] mx-auto px-6 md:px-12">
           <motion.div 
              initial={{ opacity: 0, y: 20 }}
              animate={{ opacity: 1, y: 0 }}
@@ -143,12 +143,6 @@ function SchedulePage() {
               Check out our latest pop-up schedules and live events. Find an experience near you and reserve your spot!
             </p>
           </motion.div>
-
-          <div className="hidden md:flex mt-10 md:mt-0 w-[300px] h-[300px] items-center justify-center">
-            <div className="w-full h-full bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 text-sm">
-              Image Placeholder
-            </div>
-          </div>
         </div>
       </section>
 
@@ -396,14 +390,14 @@ function SchedulePage() {
                           onClick={handleBookClick}
                           className="w-full bg-gray-900 text-white rounded-full py-4 text-xs font-bold tracking-widest uppercase hover:bg-[#4f6fa5] hover:shadow-lg transition-all hover:-translate-y-1"
                         >
-                          Book Free Reservation
+                          Get Event Updates
                         </button>
 
                         <button
                           onClick={handleOrderNow}
                           className="w-full border border-gray-200 text-gray-900 rounded-full py-4 text-xs font-bold tracking-widest uppercase hover:border-gray-900 hover:bg-gray-50 transition-all hover:-translate-y-1"
                         >
-                          Pre-Order Products
+                          Order Flowers for This Event
                         </button>
                       </div>
                     </motion.div>

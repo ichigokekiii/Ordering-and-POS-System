@@ -53,7 +53,7 @@ function ProductPage() {
       
       {/* 1. HERO HEADER */}
       <section className="bg-white border-b border-gray-100 pt-20 pb-16">
-        <div className="max-w-[1400px] mx-auto px-6 md:px-12 flex flex-col md:flex-row items-center justify-between">
+        <div className="max-w-[1400px] mx-auto px-6 md:px-12">
           <motion.div 
              initial={{ opacity: 0, y: 20 }}
              animate={{ opacity: 1, y: 0 }}
@@ -72,12 +72,6 @@ function ProductPage() {
               Discover our carefully curated selection of fresh, sustainably sourced floral arrangements designed for you!
             </p>
           </motion.div>
-
-          <div className="hidden md:flex mt-10 md:mt-0 w-[300px] h-[300px] items-center justify-center">
-            <div className="w-full h-full bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 text-sm">
-              Image Placeholder
-            </div>
-          </div>
         </div>
       </section>
 

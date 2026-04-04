@@ -1,103 +1,184 @@
-import { useState } from "react";
-import OrderPremadePage from "./OrderPremade";
-import OrderCustom from "./OrderCustom";
-import OrderCustomAdditional from "./OrderCustomAdditional";
+import { useEffect, useMemo } from "react";
+import { useNavigate, useOutletContext } from "react-router-dom";
+import { Search } from "lucide-react";
+import { useProducts } from "../../contexts/ProductContext";
 
 function OrderPage() {
-  const [step, setStep] = useState(1);
-  const [orderType, setOrderType] = useState(null);
+  const navigate = useNavigate();
+  const { premades, products } = useProducts();
+  const { searchTerm = "" } = useOutletContext() || {};
 
-  // Shared order data
-  const [orderData, setOrderData] = useState({
-    bouquet: null,
-    mains: [],
-    fillers: [],
-    basePrice: 0,
-  });
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+
+  const matchProduct = (product) =>
+    product.isAvailable &&
+    (product.name || "").toLowerCase().includes(normalizedSearch);
+
+  const premadeMatches = useMemo(
+    () => (normalizedSearch ? premades.filter(matchProduct) : []),
+    [normalizedSearch, premades]
+  );
+
+  const customMatches = useMemo(
+    () => (
+      normalizedSearch
+        ? products.filter(
+            (product) =>
+              matchProduct(product) &&
+              (product.category === "Bouquets" || product.category === "Additional")
+          )
+        : []
+    ),
+    [normalizedSearch, products]
+  );
+
+  const exactPremadeMatch = premadeMatches.some(
+    (product) => (product.name || "").toLowerCase() === normalizedSearch
+  );
+  const exactCustomMatch = customMatches.some(
+    (product) => (product.name || "").toLowerCase() === normalizedSearch
+  );
+
+  const targetRoute = useMemo(() => {
+    if (!normalizedSearch) {
+      return null;
+    }
+
+    if (exactPremadeMatch && !exactCustomMatch) {
+      return "/orderpremade";
+    }
+
+    if (exactCustomMatch && !exactPremadeMatch) {
+      return "/ordercustom";
+    }
+
+    if (premadeMatches.length > 0 && customMatches.length === 0) {
+      return "/orderpremade";
+    }
+
+    if (customMatches.length > 0 && premadeMatches.length === 0) {
+      return "/ordercustom";
+    }
+
+    return null;
+  }, [
+    customMatches.length,
+    exactCustomMatch,
+    exactPremadeMatch,
+    normalizedSearch,
+    premadeMatches.length,
+  ]);
+
+  useEffect(() => {
+    if (targetRoute) {
+      navigate(targetRoute);
+    }
+  }, [navigate, targetRoute]);
+
+  const searchMessage = (() => {
+    if (!normalizedSearch) {
+      return "Search for a bouquet or flower to jump into the right order flow.";
+    }
+
+    if (targetRoute === "/orderpremade") {
+      return `Found ${premadeMatches.length} premade match${premadeMatches.length === 1 ? "" : "es"}. Redirecting you to premade.`;
+    }
+
+    if (targetRoute === "/ordercustom") {
+      return `Found ${customMatches.length} custom match${customMatches.length === 1 ? "" : "es"}. Redirecting you to custom builder.`;
+    }
+
+    if (premadeMatches.length === 0 && customMatches.length === 0) {
+      return `No results found for "${searchTerm}". Try a broader flower or bouquet name.`;
+    }
+
+    return `Your search matches both premade and custom items. Refine it a little more and I’ll route you automatically.`;
+  })();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="w-full">
+      <div className="mx-auto flex min-h-[80vh] max-w-[1200px] flex-col items-center justify-center px-6 py-12">
+        <div className="mb-12 text-center">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#4f6fa5]">
+            Begin Your Journey
+          </p>
+          <h1 className="text-4xl font-playfair font-bold text-gray-900 md:text-6xl">
+            What would you like
+            <br />
+            <span className="mt-2 block -rotate-1 transform font-dancing text-5xl font-normal text-[#4f6fa5] md:text-7xl">
+              to order?
+            </span>
+          </h1>
+        </div>
 
-      {/* STEP 1 — Choose Type */}
-      {step === 1 && (
-        <div className="flex min-h-screen items-center justify-center px-8 py-12">
-          <div className="flex flex-col gap-8 md:flex-row md:gap-12">
-
-            {/* Premades */}
-            <button
-              onClick={() => {
-                setOrderType("premade");
-                setStep(2);
-              }}
-              className="group relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-2xl hover:-translate-y-1"
-            >
-              <div className="h-80 w-80 overflow-hidden">
-                <img
-                  src="https://images.unsplash.com/photo-1490750967868-88aa4486c946"
-                  className="h-full w-full object-cover group-hover:scale-105 transition"
-                />
-              </div>
-              <div className="p-6 text-center">
-                <h2 className="text-2xl font-semibold">Premades</h2>
-                <p className="text-sm text-gray-500">
-                  Choose from ready-made bouquets
-                </p>
-              </div>
-            </button>
-
-            {/* Custom */}
-            <button
-              onClick={() => {
-                setOrderType("custom");
-                setStep(2);
-              }}
-              className="group relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-2xl hover:-translate-y-1"
-            >
-              <div className="h-80 w-80 overflow-hidden">
-                <img
-                  src="https://images.unsplash.com/photo-1563241527-3004b7be0ffd"
-                  className="h-full w-full object-cover group-hover:scale-105 transition"
-                />
-              </div>
-              <div className="p-6 text-center">
-                <h2 className="text-2xl font-semibold">Custom Made</h2>
-                <p className="text-sm text-gray-500">
-                  Build your own bouquet
-                </p>
-              </div>
-            </button>
-
+        <div className="mb-10 flex w-full max-w-2xl items-start gap-3 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+          <Search className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4f6fa5]" />
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+              Smart Search
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-gray-600">
+              {searchMessage}
+            </p>
           </div>
         </div>
-      )}
 
-      {/* STEP 2 — Premade */}
-      {step === 2 && orderType === "premade" && (
-        <OrderPremadePage
-          onBack={() => setStep(1)}
-        />
-      )}
+        <div className="flex w-full max-w-4xl flex-col justify-center gap-6 md:flex-row md:gap-8">
+          <button
+            type="button"
+            onClick={() => navigate("/orderpremade")}
+            className="group relative flex h-[400px] flex-1 flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all duration-500 hover:shadow-xl md:max-w-md"
+          >
+            <div className="h-2/3 w-full overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1490750967868-88aa4486c946"
+                alt="Premade Bouquets"
+                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+            </div>
+            <div className="flex h-1/3 w-full flex-col items-center justify-center bg-white p-6">
+              <h2 className="mb-2 text-2xl font-playfair font-bold text-gray-900">
+                Premade Collection
+              </h2>
+              <p className="text-xs font-medium uppercase tracking-widest text-gray-500">
+                Curated ready-made blooms
+              </p>
+              <div className="mt-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                <span className="border-b border-[#4f6fa5] pb-0.5 text-xs font-bold text-[#4f6fa5]">
+                  Explore →
+                </span>
+              </div>
+            </div>
+          </button>
 
-      {/* STEP 2 — Custom */}
-      {step === 2 && orderType === "custom" && (
-        <OrderCustom
-          onBack={() => setStep(1)}
-          onNext={(data) => {
-            setOrderData(data);
-            setStep(3);
-          }}
-        />
-      )}
-
-      {/* STEP 3 — Additional */}
-      {step === 3 && (
-        <OrderCustomAdditional
-          data={orderData}
-          onBack={() => setStep(2)}
-          onFinish={() => setStep(1)}
-        />
-      )}
-
+          <button
+            type="button"
+            onClick={() => navigate("/ordercustom")}
+            className="group relative flex h-[400px] flex-1 flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all duration-500 hover:shadow-xl md:max-w-md"
+          >
+            <div className="h-2/3 w-full overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1563241527-3004b7be0ffd"
+                alt="Custom Creations"
+                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+            </div>
+            <div className="flex h-1/3 w-full flex-col items-center justify-center bg-white p-6">
+              <h2 className="mb-2 text-2xl font-playfair font-bold text-gray-900">
+                Custom Creations
+              </h2>
+              <p className="text-xs font-medium uppercase tracking-widest text-gray-500">
+                Design your own arrangement
+              </p>
+              <div className="mt-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                <span className="border-b border-[#4f6fa5] pb-0.5 text-xs font-bold text-[#4f6fa5]">
+                  Build Now →
+                </span>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

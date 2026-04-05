@@ -73,7 +73,7 @@ const AdminAnalyticsPage = () => {
     <div className="min-h-screen bg-[#F0F7FF] p-8 font-sans text-[#2D3748]">
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-[#5A78A6]">Analytics</h1>
+        <h1 className="text-2xl font-bold bg-blue-600">Analytics</h1>
         <div className="flex items-center space-x-4">
           <Search className="text-gray-400 w-5 h-5 cursor-pointer" />
           <Bell className="text-gray-400 w-5 h-5 cursor-pointer" />

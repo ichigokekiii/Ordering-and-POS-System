@@ -16,7 +16,6 @@ function LandingPage() {
   const [schedules, setSchedules] = useState([]);
   const [heroIndex, setHeroIndex] = useState(0);
 
-
   const getContentValue = (identifier, fallback = "") => {
     const item = contents.find(
       (c) =>
@@ -55,7 +54,6 @@ function LandingPage() {
       .then(res => setSchedules(res.data))
       .catch(() => console.error("Failed to load schedules"));
   }, []);
-
 
   // Generate hero items based on CMS contents.
   const bannerItems = contents
@@ -97,21 +95,78 @@ function LandingPage() {
       {/* 1. HERO COMPONENT (Expanding Bento Cards) */}
       <section className="mx-auto max-w-[1400px] px-4 sm:px-8 mb-32 -mt-4">
         {/* Top Text Block */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="max-w-4xl mb-12"
-        >
-          <p className="text-[#4f6fa5] font-semibold tracking-widest uppercase text-sm mb-4">Floral Discovery</p>
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-playfair font-bold leading-[1.15] text-gray-900 tracking-tight">
-            Discover the perfect <br/>
-            <span className="font-dancing text-[#4f6fa5] font-normal leading-[0.85] block mt-1 ml-2 lg:ml-4 transform -rotate-2 text-6xl md:text-8xl lg:text-9xl">
-              Flowers
-            </span>
-            <span className="inline-block mt-2">just for you</span>
-          </h1>
-        </motion.div>
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-8 lg:gap-10 items-start mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="max-w-4xl"
+          >
+            <p className="text-[#4f6fa5] font-semibold tracking-widest uppercase text-sm mb-4">
+              Floral Discovery
+            </p>
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-playfair font-bold leading-[1.15] text-gray-900 tracking-tight">
+              Discover the perfect <br />
+              <span className="font-dancing text-[#4f6fa5] font-normal leading-[0.85] block mt-1 ml-2 lg:ml-4 transform -rotate-2 text-6xl md:text-8xl lg:text-9xl">
+                Flowers
+              </span>
+              <span className="inline-block mt-2">just for you</span>
+            </h1>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.12, ease: "easeOut" }}
+            className="hidden lg:flex min-h-[360px] items-center justify-end"
+          >
+            <div className="max-w-[320px] pr-2">
+              <p className="text-base md:text-lg leading-relaxed text-gray-600 font-light">
+                Thoughtfully curated floral arrangements designed to bring softness, beauty, and meaning to every occasion.
+              </p>
+
+              {/* MODIFIED PREMIUM "COLOR WIPE" CTA BUTTON WITH SLIDING TEXT */}
+              <div className="mt-8">
+                <Link
+                  to="/products"
+                  className="group relative flex h-14 w-[200px] items-center rounded-full bg-gray-900 p-1 shadow-lg transition-all duration-300 hover:shadow-xl"
+                >
+                  {/* Base layer: White Text (Visible when button is dark) */}
+                  {/* Positioned exactly matching the expanding inner layer */}
+                  <div className="pointer-events-none absolute left-1 top-1 flex h-12 w-[192px] items-center justify-center pl-6 transition-transform duration-[600ms] ease-[cubic-bezier(0.5,1,0.89,1)] group-hover:-translate-x-4">
+                    <span className="text-sm font-semibold tracking-wide text-white">Shop Now</span>
+                  </div>
+
+                  {/* Expanding layer: White Background sliding from left to right */}
+                  {/* Starts as a circle (w-12 h-12) on the left, expands to full width */}
+                  <div className="relative z-10 flex h-12 w-12 items-center justify-end overflow-hidden rounded-full bg-white transition-all duration-[600ms] ease-[cubic-bezier(0.5,1,0.89,1)] group-hover:w-full">
+                    
+                    {/* Top layer: Black Text (Revealed as the white div expands over it) */}
+                    {/* Absolute to the expanding div, so it stays pinned while the mask grows */}
+                    <div className="pointer-events-none absolute left-0 top-0 flex h-12 w-[192px] items-center justify-center pl-6 transition-transform duration-[600ms] ease-[cubic-bezier(0.5,1,0.89,1)] group-hover:-translate-x-4">
+                      <span className="text-sm font-semibold tracking-wide text-gray-900">Shop Now</span>
+                    </div>
+
+                    {/* Arrow Icon - Pushed to the right edge of the expanding div */}
+                    <div className="relative z-20 flex h-12 w-12 shrink-0 items-center justify-center text-gray-900">
+                      <svg 
+                        className="h-5 w-5 transition-transform duration-[600ms] ease-out group-hover:translate-x-1" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor" 
+                        strokeWidth={2}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </div>
+
+                  </div>
+                </Link>
+              </div>
+
+            </div>
+          </motion.div>
+        </div>
 
         {/* Expanding Cards (Accordion) Layout */}
         <div className="flex flex-col md:flex-row h-[500px] md:h-[600px] gap-2 lg:gap-4">

@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  Search,
-  Bell,
-  Settings,
-  User,
   TrendingUp,
   Users,
   Package,
@@ -71,20 +67,8 @@ const AdminAnalyticsPage = () => {
 
   return (
     <div className="min-h-screen bg-[#F0F7FF] p-8 font-sans text-[#2D3748]">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold bg-blue-600">Analytics</h1>
-        <div className="flex items-center space-x-4">
-          <Search className="text-gray-400 w-5 h-5 cursor-pointer" />
-          <Bell className="text-gray-400 w-5 h-5 cursor-pointer" />
-          <Settings className="text-gray-400 w-5 h-5 cursor-pointer" />
-          <div className="flex items-center space-x-2 ml-4 border-l pl-4">
-            <span className="text-sm font-semibold text-gray-600">
-              User Admin
-            </span>
-            <User className="bg-white rounded-full p-1 border border-gray-200 w-9 h-9" />
-          </div>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold">Analytics</h1>
       </div>
 
       {/* Top Cards Row */}

@@ -1,541 +1,337 @@
-/* eslint-disable react-hooks/rules-of-hooks */
-/* eslint-disable no-unused-vars */
-import { useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
+import LandingPage from "../users/LandingPage";
+import AboutPage from "../users/AboutPage";
 import { useContents } from "../../contexts/ContentContext";
+import { CMS_PAGES } from "../../cms/cmsRegistry";
+import { ChevronDown, Monitor, LayoutTemplate, Layers } from "lucide-react";
 
-const CONTENT_FIELDS = {
-  home: [
-    // Banner 1
-    { key: "hero_title_1", label: "Banner 1 Title" },
-    { key: "hero_subtitle_1", label: "Banner 1 Subtitle" },
-    { key: "hero_image_1", label: "Banner 1 Image" },
+// ISOLATED PREVIEWS
+function PreviewScene({ activePage, cmsPreview }) {
+  if (activePage === "home") {
+    return (
+      <div className="bg-white min-h-screen">
+        <LandingPage cmsPreview={cmsPreview} />
+      </div>
+    );
+  }
 
-    // Banner 2
-    { key: "hero_title_2", label: "Banner 2 Title" },
-    { key: "hero_subtitle_2", label: "Banner 2 Subtitle" },
-    { key: "hero_image_2", label: "Banner 2 Image" },
+  if (activePage === "about") {
+    return (
+      <div className="bg-white min-h-screen">
+        <AboutPage cmsPreview={cmsPreview} />
+      </div>
+    );
+  }
 
-    // Banner 3
-    { key: "hero_title_3", label: "Banner 3 Title" },
-    { key: "hero_subtitle_3", label: "Banner 3 Subtitle" },
-    { key: "hero_image_3", label: "Banner 3 Image" },
+  if (activePage === "navbar") {
+    return (
+      <div className="min-h-[500px] bg-slate-50/50 p-8 flex flex-col">
+        <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-8 text-center">Navbar Preview Area</p>
+        <div className="shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
+            <Navbar cmsPreview={cmsPreview} />
+        </div>
+      </div>
+    );
+  }
+  
+  if (activePage === "footer") {
+     return (
+       <div className="min-h-[500px] bg-slate-50/50 p-8 flex flex-col justify-end">
+         <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-8 text-center">Footer Preview Area</p>
+         <div className="shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
+             <Footer cmsPreview={cmsPreview} />
+         </div>
+       </div>
+     );
+  }
 
-    // Banner 4
-    { key: "hero_title_4", label: "Banner 4 Title" },
-    { key: "hero_subtitle_4", label: "Banner 4 Subtitle" },
-    { key: "hero_image_4", label: "Banner 4 Image" },
+  return (
+    <div className="flex h-full min-h-[400px] items-center justify-center bg-gray-50 text-gray-400">
+       <p>Preview not configured for {activePage}</p>
+    </div>
+  )
+}
 
-    // Banner 5
-    { key: "hero_title_5", label: "Banner 5 Title" },
-    { key: "hero_subtitle_5", label: "Banner 5 Subtitle" },
-    { key: "hero_image_5", label: "Banner 5 Image" },
-
-    // Intro Section
-    { key: "home_intro_title", label: "Intro Title" },
-    { key: "home_intro_description", label: "Intro Description" },
-
-    // Featured Section
-    { key: "home_featured_title", label: "Featured Section Title" },
-    { key: "home_featured_description", label: "Featured Description" },
-
-    // Promo Section
-    { key: "home_promo_title", label: "Promo Title" },
-    { key: "home_promo_description", label: "Promo Description" },
-    { key: "home_promo_button_text", label: "Promo Button Text" },
-    { key: "home_promo_image", label: "Promo Image" },
-  ],
-  about: [
-    // Hero Slides (3)
-    { key: "about_hero_title_1", label: "Hero 1 Title" },
-    { key: "about_hero_subtitle_1", label: "Hero 1 Subtitle" },
-    { key: "about_hero_image_1", label: "Hero 1 Image" },
-    { key: "about_hero_desc_1", label: "Hero 1 Description" },
-
-    { key: "about_hero_title_2", label: "Hero 2 Title" },
-    { key: "about_hero_subtitle_2", label: "Hero 2 Subtitle" },
-    { key: "about_hero_image_2", label: "Hero 2 Image" },
-    { key: "about_hero_desc_2", label: "Hero 2 Description" },
-
-    { key: "about_hero_title_3", label: "Hero 3 Title" },
-    { key: "about_hero_subtitle_3", label: "Hero 3 Subtitle" },
-    { key: "about_hero_image_3", label: "Hero 3 Image" },
-    { key: "about_hero_desc_3", label: "Hero 3 Description" },
-
-    // Mission Section
-    { key: "about_mission_text", label: "Mission Text" },
-    { key: "about_founders", label: "Founders Name" },
-
-    // Services Section
-    { key: "about_service_1", label: "Service 1 Title" },
-    { key: "about_service_image_1", label: "Service 1 Image" },
-
-    { key: "about_service_2", label: "Service 2 Title" },
-    { key: "about_service_image_2", label: "Service 2 Image" },
-
-    { key: "about_service_3", label: "Service 3 Title" },
-    { key: "about_service_image_3", label: "Service 3 Image" },
-
-    // Story Section
-    { key: "about_story_text", label: "Story Text" },
-  ],
-  navbar: [
-    { key: "navbar_brand", label: "Brand Name" },
-    { key: "navbar_bg_color", label: "Navbar Background Color" },
-    { key: "navbar_bg_image", label: "Navbar Background Image" },
-    { key: "navbar_text_color", label: "Navbar Text Color" },
-  ],
-  footer: [
-    { key: "footer_brand", label: "Footer Brand Name" },
-
-    { key: "footer_bg_color", label: "Footer Background Color" },
-    { key: "footer_bg_image", label: "Footer Background Image" },
-
-    { key: "footer_text_color", label: "Footer Text Color" },
-    { key: "footer_subtext_color", label: "Footer Subtext Color" },
-
-    { key: "footer_email", label: "Footer Email" },
-    { key: "footer_phone", label: "Footer Phone" },
-  ],
-};
+const createEmptyFormState = () => ({
+  page: "",
+  identifier: "",
+  type: "text",
+  input: "text",
+  content_text: "",
+});
 
 function AdminContentPage() {
-  const [showModal, setShowModal] = useState(false);
-  const [selectedPage, setSelectedPage] = useState("");
-  const [editingContent, setEditingContent] = useState(null);
-  const [formDataState, setFormDataState] = useState({
-    identifier: "",
-    page: "",
-    type: "",
-    content_text: "",
-  });
-
   const contentContext = useContents() || {};
   const contents = contentContext.contents || [];
   const addContent = contentContext.addContent;
   const updateContent = contentContext.updateContent;
   const toggleArchiveContent = contentContext.toggleArchiveContent;
   const deleteContent = contentContext.deleteContent;
+  const deleteArchivedContent = contentContext.deleteArchivedContent;
+
   const currentUser = JSON.parse(localStorage.getItem("user"));
   const isAdmin = currentUser?.role === "admin";
 
-  const safeContents = contents || [];
+  const [activePage, setActivePage] = useState("home");
+  const [editorField, setEditorField] = useState(null);
+  const [editingContent, setEditingContent] = useState(null);
+  const [formDataState, setFormDataState] = useState(createEmptyFormState());
+  
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
-  const groupedActive = {
-    home: safeContents.filter((c) => c.page === "home" && !c.isArchived),
-    about: safeContents.filter((c) => c.page === "about" && !c.isArchived),
-    navbar: safeContents.filter((c) => c.page === "navbar" && !c.isArchived),
-    footer: safeContents.filter((c) => c.page === "footer" && !c.isArchived),
+  const pageContents = useMemo(
+    () => contents.filter((item) => item.page === activePage),
+    [contents, activePage]
+  );
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const cmsPreview = {
+    enabled: true,
+    activePage,
+    onEditField: (field) => {
+      const existingItem = pageContents.find(
+        (item) => item.identifier === field.identifier
+      );
+
+      setEditorField(field);
+      setEditingContent(existingItem || null);
+      setFormDataState({
+        page: field.page,
+        identifier: field.identifier,
+        type: field.type,
+        input: field.input,
+        content_text: existingItem?.content_text || "",
+      });
+    },
   };
 
-  const archivedContent = safeContents.filter((c) => c.isArchived);
+  const closeEditor = () => {
+    setEditorField(null);
+    setEditingContent(null);
+    setFormDataState(createEmptyFormState());
+  };
 
-  const [activeTab, setActiveTab] = useState("home");
+  const activePageLabel = CMS_PAGES.find(p => p.id === activePage)?.label || activePage;
 
   return (
-    <div className="px-10 py-10">
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Content</h2>
-
-        <button
-          onClick={() => setShowModal(true)}
-          className="rounded bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
-        >
-          + Add Content
-        </button>
-      </div>
-
-      <div>
-        {/* Tabs */}
-        <div className="flex gap-4 border-b mb-6">
-          {Object.keys(groupedActive).map((section) => (
-            <button
-              key={section}
-              onClick={() => setActiveTab(section)}
-              className={`px-4 py-2 text-sm font-medium capitalize border-b-2 transition ${
-                activeTab === section
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {section}
-            </button>
-          ))}
+    <div className="flex h-full flex-col px-8 py-8 overflow-hidden bg-white rounded-lg  ">
+      
+      {/* Header & Scalable Navigation */}
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between shrink-0">
+        <div>
+          <h2 className="text-3xl font-playfair font-bold text-gray-900">Content Manager</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Select a view below and hover over elements in the preview to edit.
+          </p>
         </div>
 
-        {/* Active Tab Content */}
-        <div className="min-h-[300px]">
-          <h3 className="mb-4 text-xl font-semibold text-gray-700 capitalize">
-            {activeTab} Content
-          </h3>
+        {/* Dropdown Navigation */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex w-64 items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-900 hover:border-[#4f6fa5] hover:bg-white transition-all focus:outline-none focus:ring-2 focus:ring-[#eaf2ff]"
+          >
+            <div className="flex items-center gap-2">
+              <Layers className="h-4 w-4 text-[#4f6fa5]" />
+              {activePageLabel}
+            </div>
+            <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`} />
+          </button>
 
-          <div className="grid gap-6 md:grid-cols-3 items-start">
-            {groupedActive[activeTab].length === 0 ? (
-              <div className="flex h-40 items-center justify-center rounded-lg bg-gray-50 col-span-full">
-                <p className="text-gray-400 text-sm">No content yet</p>
+          {isDropdownOpen && (
+            <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-gray-100 bg-white p-2 shadow-xl">
+              <div className="mb-2 px-3 pb-2 pt-1 text-xs font-bold uppercase tracking-widest text-gray-400 border-b border-gray-50">
+                Pages & Components
               </div>
-            ) : (
-              groupedActive[activeTab].map((item) => {
-                const fieldLabel =
-                  CONTENT_FIELDS[activeTab]?.find((f) => f.key === item.identifier)
-                    ?.label || item.identifier;
-
-                return (
-                  <div key={item.id} className="rounded-xl border bg-white p-4 flex flex-col h-[260px] transition-all duration-200 ease-in-out hover:scale-[1.02]">
-                    <div className="mb-2">
-                      <span className="flex items-center text-xs font-bold text-green-600">
-                        ✓ Active
-                      </span>
-                    </div>
-
-                    {item.type === "image" && item.content_image && (
-                      <div className="mb-3 h-28 w-full overflow-hidden rounded-lg bg-gray-100">
-                        <img
-                          src={`http://localhost:8000${item.content_image}`}
-                          alt={item.identifier}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                    )}
-
-                    <h3 className="font-semibold text-gray-900">{fieldLabel}</h3>
-
-                    <p className="text-xs uppercase text-gray-400 tracking-wide">
-                      {item.identifier}
-                    </p>
-
-                    {item.type === "text" && (
-                      <p className="mt-2 text-sm text-gray-600 line-clamp-2">
-                        {item.content_text}
-                      </p>
-                    )}
-
-                    <div className="mt-auto pt-4 flex gap-2">
-                      <button
-                        onClick={() => {
-                          setEditingContent(item);
-                          setSelectedPage(item.page);
-                          setFormDataState({
-                            identifier: item.identifier,
-                            page: item.page,
-                            type: item.type,
-                            content_text: item.content_text || "",
-                          });
-                          setShowModal(true);
-                        }}
-                        className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        onClick={() => toggleArchiveContent && toggleArchiveContent(item)}
-                        className="rounded border px-3 py-1 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Archive
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Archived Content */}
-        <div className="mt-10">
-          <h3 className="mb-4 text-xl font-semibold text-gray-700">
-            Archived
-          </h3>
-
-          <div className="grid gap-6 md:grid-cols-3 items-start">
-            {archivedContent.filter((item) => item.page === activeTab).length === 0 ? (
-              <div className="flex h-32 items-center justify-center rounded-lg bg-gray-50 col-span-full">
-                <p className="text-gray-400 text-sm">No archived content</p>
-              </div>
-            ) : (
-              archivedContent
-                .filter((item) => item.page === activeTab)
-                .map((item) => (
-                  <div key={item.id} className="rounded-xl border bg-white p-4 flex flex-col h-[260px] opacity-80 transition-all duration-200 ease-in-out hover:scale-[1.02]">
-                    <div className="mb-2">
-                      <span className="text-xs font-bold text-gray-500">
-                        Archived
-                      </span>
-                    </div>
-
-                    {item.type === "image" && item.content_image && (
-                      <div className="mb-3 h-28 w-full overflow-hidden rounded-lg bg-gray-100">
-                        <img
-                          src={`http://localhost:8000${item.content_image}`}
-                          alt={item.identifier}
-                          className="h-full w-full object-cover grayscale opacity-60"
-                        />
-                      </div>
-                    )}
-
-                    <h3 className="font-semibold text-gray-900">{item.identifier}</h3>
-
-                    <p className="text-xs font-semibold uppercase text-blue-500">
-                      {item.page}
-                    </p>
-
-                    {item.type === "text" && (
-                      <p className="mt-2 text-sm text-gray-700 opacity-60">
-                        {item.content_text}
-                      </p>
-                    )}
-
-                    <div className="mt-auto pt-4 flex gap-2">
-                      <button
-                        onClick={() => {
-                          setEditingContent(item);
-                          setSelectedPage(item.page);
-                          setFormDataState({
-                            identifier: item.identifier,
-                            page: item.page,
-                            type: item.type,
-                            content_text: item.content_text || "",
-                          });
-                          setShowModal(true);
-                        }}
-                        className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        onClick={() => toggleArchiveContent && toggleArchiveContent(item)}
-                        className="rounded border px-3 py-1 text-sm text-green-700 hover:bg-green-50"
-                      >
-                        Restore
-                      </button>
-
-                      {isAdmin && (
-                        <button
-                          onClick={() => {
-                            if (!window.confirm("Are you sure you want to permanently delete this content?")) return;
-                            deleteContent(item.id);
-                          }}
-                          className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))
-            )}
-          </div>
+              {CMS_PAGES.map((page) => (
+                <button
+                  key={page.id}
+                  onClick={() => {
+                    setActivePage(page.id);
+                    setIsDropdownOpen(false);
+                  }}
+                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    activePage === page.id
+                      ? "bg-[#eaf2ff] text-[#4f6fa5]"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  }`}
+                >
+                  {page.id === 'navbar' || page.id === 'footer' ? (
+                     <LayoutTemplate className="h-4 w-4 opacity-70" />
+                  ) : (
+                     <Monitor className="h-4 w-4 opacity-70" />
+                  )}
+                  {page.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Modal (same style as schedules) */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6">
-            <h3 className="mb-2 text-lg font-semibold">{editingContent ? "Edit Content" : "Add Content"}</h3>
+      {/* Main Workspace - Full Width Preview Canvas */}
+      <div className="flex-1 flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm min-h-0">
+        {/* Fake Browser Header */}
+        <div className="flex h-10 shrink-0 items-center gap-2 border-b border-gray-100 bg-gray-50/80 px-4">
+          <div className="flex gap-1.5">
+             <div className="h-2.5 w-2.5 rounded-full bg-gray-300"></div>
+             <div className="h-2.5 w-2.5 rounded-full bg-gray-300"></div>
+             <div className="h-2.5 w-2.5 rounded-full bg-gray-300"></div>
+          </div>
+          <div className="ml-4 flex h-6 flex-1 items-center justify-center rounded bg-white text-[10px] font-bold uppercase tracking-widest text-gray-400 shadow-sm">
+            Live Preview • {activePageLabel}
+          </div>
+          <div className="w-16"></div>
+        </div>
+
+        {/* Live Preview Content */}
+        <div className="flex-1 overflow-auto bg-[#fcfaf9]">
+          <PreviewScene activePage={activePage} cmsPreview={cmsPreview} />
+        </div>
+      </div>
+
+      {/* Glassmorphic Edit Modal (Now includes Archive/Delete) */}
+      {editorField && (
+         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 transition-all">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl border border-white/20">
+            <div className="mb-6 flex justify-between items-start">
+              <div>
+                <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5]">
+                  {editorField.page}
+                </span>
+                <h3 className="mt-4 text-2xl font-playfair font-bold text-gray-900">
+                  {editingContent ? "Edit" : "Add"} {editorField.label}
+                </h3>
+                <p className="mt-1 text-sm text-gray-500 font-mono text-xs">{editorField.identifier}</p>
+              </div>
+              
+              {/* Status Indicator */}
+              {editingContent && (
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${
+                  editingContent.isArchived ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"
+                }`}>
+                  {editingContent.isArchived ? "Archived" : "Active"}
+                </span>
+              )}
+            </div>
+
             <form
-              className="space-y-3"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-
-                // manually append required fields (important for Laravel validation)
+              className="space-y-6"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                const formData = new FormData(event.target);
                 formData.append("identifier", formDataState.identifier);
                 formData.append("page", formDataState.page);
                 formData.append("type", formDataState.type);
-
-                // only append text if exists
                 if (formDataState.type === "text") {
                   formData.set("content_text", formDataState.content_text || "");
                 }
-
-                // TEMPORARY: debug log for payload
-                console.log("Submitting content:", {
-                  identifier: formDataState.identifier,
-                  page: formDataState.page,
-                  type: formDataState.type,
-                });
-
-                // Validate banner image count (min 2)
-                if (formDataState.page === "home" && formDataState.identifier.includes("hero_image")) {
-                  const existingBannerImages = contents.filter(
-                    (c) =>
-                      c.page === "home" &&
-                      c.identifier.includes("hero_image") &&
-                      !c.isArchived
-                  );
-
-                  if (existingBannerImages.length >= 5 && !editingContent) {
-                    alert("Maximum of 5 banner images allowed.");
-                    return;
-                  }
+                if (formDataState.type === "image" && !editingContent && !formData.get("content_image")) {
+                  window.alert("Please upload an image before saving.");
+                  return;
                 }
-
                 try {
-                  if (editingContent) {
-                    await updateContent(editingContent.id, formData);
-                  } else {
-                    await addContent(formData);
-                  }
-                  setShowModal(false);
-                  setEditingContent(null);
-                  setFormDataState({
-                    identifier: "",
-                    page: "",
-                    type: "",
-                    content_text: "",
-                  });
-                  e.target.reset();
-                } catch (err) {
-                  console.error("Failed to add content", err);
-                }
+                  if (editingContent) { await updateContent(editingContent.id, formData); } 
+                  else { await addContent(formData); }
+                  closeEditor();
+                } catch (error) { console.error("Failed to save", error); }
               }}
             >
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Select Section
-              </label>
-              <select
-                name="page"
-                className="w-full rounded border px-4 py-2"
-                required
-                onChange={(e) => {
-                  setSelectedPage(e.target.value);
-                  setFormDataState({
-                    ...formDataState,
-                    page: e.target.value,
-                    identifier: "",
-                    type: "",
-                    content_text: "",
-                  });
-                }}
-                value={formDataState.page}
-              >
-                <option value="">Select Section</option>
-                <option value="home">Home</option>
-                <option value="about">About</option>
-                <option value="navbar">Navbar</option>
-                <option value="footer">Footer</option>
-              </select>
-
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Content Field
-              </label>
-
-              {selectedPage === "home" && (
-                <p className="text-xs text-gray-400 -mt-1 mb-1">
-                  Manage homepage sections: Banners, Intro, Featured, and Promo (images auto-detected)
-                </p>
+              {/* Inputs */}
+              {formDataState.type === "text" && formDataState.input === "color" && (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Color Value</label>
+                  <div className="flex items-center gap-3">
+                    <input type="color" value={formDataState.content_text || "#ffffff"} onChange={(e) => setFormDataState((prev) => ({ ...prev, content_text: e.target.value }))} className="h-12 w-16 cursor-pointer rounded-xl border border-gray-200" />
+                    <input type="text" value={formDataState.content_text} onChange={(e) => setFormDataState((prev) => ({ ...prev, content_text: e.target.value }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all" placeholder="#ffffff" />
+                  </div>
+                </div>
               )}
 
-              {selectedPage && (
-                <>
-                  <select
-                    name="identifier"
-                    value={formDataState.identifier}
-                    onChange={(e) => {
-                      const selectedKey = e.target.value;
-
-                      // infer type automatically
-                      const isImage = selectedKey.includes("image") || selectedKey.includes("logo");
-
-                      setFormDataState({
-                        ...formDataState,
-                        identifier: selectedKey,
-                        type: isImage ? "image" : "text",
-                        content_text: "",
-                      });
-                    }}
-                    className="w-full rounded border px-4 py-2"
-                    required
-                  >
-                    <option value="">Select Content Field</option>
-                    {CONTENT_FIELDS[selectedPage]?.map((field) => (
-                      <option key={field.key} value={field.key}>
-                        {field.label}
-                      </option>
-                    ))}
-                  </select>
-                </>
+              {formDataState.type === "text" && formDataState.input === "textarea" && (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Text Content</label>
+                  <textarea name="content_text" value={formDataState.content_text} onChange={(e) => setFormDataState((prev) => ({ ...prev, content_text: e.target.value }))} className="min-h-32 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all" placeholder="Enter content..." />
+                </div>
               )}
 
-              {formDataState.identifier && formDataState.type === "text" && (
-                <>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    {formDataState.identifier.includes("color") ? "Pick Color" : "Text Content"}
-                  </label>
+              {formDataState.type === "text" && formDataState.input === "text" && (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Text Content</label>
+                  <input type="text" name="content_text" value={formDataState.content_text} onChange={(e) => setFormDataState((prev) => ({ ...prev, content_text: e.target.value }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all" placeholder="Enter content..." />
+                </div>
+              )}
 
-                  {formDataState.identifier.includes("color") ? (
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        value={formDataState.content_text || "#ffffff"}
-                        onChange={(e) =>
-                          setFormDataState({ ...formDataState, content_text: e.target.value })
-                        }
-                        className="h-10 w-16 cursor-pointer border rounded"
-                      />
-                      <input
-                        type="text"
-                        value={formDataState.content_text}
-                        onChange={(e) =>
-                          setFormDataState({ ...formDataState, content_text: e.target.value })
-                        }
-                        placeholder="#ffffff"
-                        className="w-full rounded border px-4 py-2"
-                      />
+              {formDataState.type === "image" && (
+                <div className="space-y-3">
+                  {editingContent?.content_image && (
+                    <div className="overflow-hidden rounded-2xl border border-gray-100 shadow-sm">
+                      <img src={`http://localhost:8000${editingContent.content_image}`} alt="Preview" className="h-48 w-full object-cover" />
                     </div>
-                  ) : (
-                    <textarea
-                      name="content_text"
-                      value={formDataState.content_text}
-                      onChange={(e) =>
-                        setFormDataState({ ...formDataState, content_text: e.target.value })
-                      }
-                      className="w-full rounded border px-4 py-2"
-                      placeholder="Enter text content..."
-                    />
                   )}
-                </>
+                  <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Upload New Image</label>
+                  <input type="file" name="content_image" className="w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-gray-700 hover:file:bg-gray-200 transition-all" accept="image/*" />
+                </div>
               )}
 
-              {formDataState.identifier && formDataState.type === "image" && (
-                <>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Upload Image
-                  </label>
-                  <input
-                    type="file"
-                    name="content_image"
-                    className="w-full text-sm"
-                  />
-                </>
-              )}
+              {/* Modal Actions */}
+              <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                
+                {/* Left Side: Archive & Delete Actions (Moved from Sidebar) */}
+                <div className="flex gap-2">
+                  {editingContent && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toggleArchiveContent(editingContent);
+                        closeEditor();
+                      }}
+                      className={`rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wide transition-colors ${
+                        editingContent.isArchived ? "bg-green-50 text-green-700 hover:bg-green-100" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      {editingContent.isArchived ? "Restore" : "Archive"}
+                    </button>
+                  )}
+                  
+                  {editingContent && isAdmin && (
+                     <button
+                       type="button"
+                       onClick={() => {
+                         if (window.confirm("Delete permanently?")) {
+                           deleteArchivedContent ? deleteArchivedContent(editingContent.id) : deleteContent(editingContent.id);
+                           closeEditor();
+                         }
+                       }}
+                       className="rounded-lg bg-red-50 px-4 py-2 text-xs font-bold uppercase tracking-wide text-red-600 hover:bg-red-100 transition-colors"
+                     >
+                       Delete
+                     </button>
+                  )}
+                </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setEditingContent(null);
-                    setFormDataState({
-                      identifier: "",
-                      page: "",
-                      type: "",
-                      content_text: "",
-                    });
-                  }}
-                  className="rounded border px-4 py-2"
-                >
-                  Cancel
-                </button>
+                {/* Right Side: Save & Cancel */}
+                <div className="flex gap-3">
+                  <button type="button" onClick={closeEditor} className="rounded-full px-6 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
+                    Cancel
+                  </button>
+                  <button type="submit" className="rounded-full bg-gray-900 px-8 py-2.5 text-sm font-semibold text-white hover:bg-[#4f6fa5] hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                    Save Changes
+                  </button>
+                </div>
 
-                <button
-                  type="submit"
-                  className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-                >
-                  Save
-                </button>
               </div>
             </form>
           </div>

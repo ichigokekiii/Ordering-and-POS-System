@@ -13,7 +13,7 @@ import {
 import { AuthContext } from "./contexts/AuthContext";
 
 import Navbar from "./components/Navbar";
-import AdminSidebar from "./components/AdminSidebar";
+import AdminLayout from "./components/AdminLayout";
 import Footer from "./components/Footer";
 import OrderLayout from "./components/OrderLayout";
 
@@ -85,6 +85,17 @@ function App() {
   // Helper variable to clean up the long condition
   const hasAdminAccess = user && (user.role === "admin" || user.role === "owner" || user.role === "staff");
 
+  const renderAdminPage = (page, allowAccess = hasAdminAccess) => {
+    if (!user) return <Navigate to="/login" replace />;
+    if (!allowAccess) return <Navigate to="/" />;
+
+    return (
+      <AdminLayout user={user} onLogout={handleLogout}>
+        {page}
+      </AdminLayout>
+    );
+  };
+
   return (
     <>
       {/* User Navbar */}
@@ -116,138 +127,45 @@ function App() {
         <>
           <Route
             path="/admin"
-            element={
-              !user ? <Navigate to="/login" replace /> :
-              hasAdminAccess ? (
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminOverviewPage user={user} />
-                  </div>
-                </div>
-              ) : (
-                <Navigate to="/" />
-              )
-            }
+            element={renderAdminPage(<AdminOverviewPage user={user} />)}
           />
 
           <Route
             path="/admin/analytics"
-            element={
-              !user ? <Navigate to="/login" replace /> :
-              hasAdminAccess ? (
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminAnalyticsPage user={user} />
-                  </div>
-                </div>
-              ) : (
-                <Navigate to="/" />
-              )
-            }
+            element={renderAdminPage(<AdminAnalyticsPage user={user} />)}
           />
 
           <Route
             path="/admin/products"
-            element={
-              !user ? <Navigate to="/login" replace /> :
-              hasAdminAccess ? (
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminProductPage user={user} />
-                  </div>
-                </div>
-              ) : (
-                <Navigate to="/" />
-              )
-            }
+            element={renderAdminPage(<AdminProductPage user={user} />)}
           />
 
     <Route
       path="/admin/content"
-      element={
-        !user ? <Navigate to="/login" replace /> :
-        (user.role === "admin" || user.role === "owner") ? (
-          <div className="flex min-h-screen">
-            <AdminSidebar onLogout={handleLogout} />
-            <div className="flex-1 p-6 bg-gray-50">
-              <AdminContentPage />
-            </div>
-          </div>
-        ) : (
-          <Navigate to="/" />
-        )
-      }
+      element={renderAdminPage(
+        <AdminContentPage />,
+        user && (user.role === "admin" || user.role === "owner")
+      )}
     />
 
           <Route
             path="/admin/orders"
-            element={
-              !user ? <Navigate to="/login" replace /> :
-              hasAdminAccess ? (
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminOrdersPage user={user} />
-                  </div>
-                </div>
-              ) : (
-                <Navigate to="/" />
-              )
-            }
+            element={renderAdminPage(<AdminOrdersPage user={user} />)}
           />
 
           <Route
             path="/admin/schedule"
-            element={
-              !user ? <Navigate to="/login" replace /> :
-              hasAdminAccess ? (
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminSchedulePage user={user} />
-                  </div>
-                </div>
-              ) : (
-                <Navigate to="/" />
-              )
-            }
+            element={renderAdminPage(<AdminSchedulePage user={user} />)}
           />
 
           <Route
             path="/admin/users"
-            element={
-              !user ? <Navigate to="/login" replace /> :
-              hasAdminAccess ? (
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminUsersPage user={user} />
-                  </div>
-                </div>
-              ) : (
-                <Navigate to="/" />
-              )
-            }
+            element={renderAdminPage(<AdminUsersPage user={user} />)}
           />
 
           <Route
             path="/admin/logs"
-            element={
-              !user ? <Navigate to="/login" replace /> :
-              hasAdminAccess ? (
-                <div className="flex min-h-screen">
-                  <AdminSidebar onLogout={handleLogout} />
-                  <div className="flex-1 p-6 bg-gray-50">
-                    <AdminLogsPage />
-                  </div>
-                </div>
-              ) : (
-                <Navigate to="/" />
-              )
-            }
+            element={renderAdminPage(<AdminLogsPage />)}
           />
         </>
 

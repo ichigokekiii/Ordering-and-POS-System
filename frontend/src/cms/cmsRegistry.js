@@ -1,4 +1,5 @@
 export const CMS_FIELDS = [
+  { page: "home", identifier: "home_hero_label", label: "Hero Top Label", type: "text", input: "text", previewEnabled: true },
   { page: "home", identifier: "home_hero_title_intro", label: "Hero Title Intro", type: "text", input: "text", previewEnabled: true },
   { page: "home", identifier: "home_hero_title_accent", label: "Hero Title Accent", type: "text", input: "text", previewEnabled: true },
   { page: "home", identifier: "home_hero_title_outro", label: "Hero Title Outro", type: "text", input: "text", previewEnabled: true },

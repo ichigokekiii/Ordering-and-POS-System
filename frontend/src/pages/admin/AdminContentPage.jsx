@@ -5,7 +5,7 @@ import LandingPage from "../users/LandingPage";
 import AboutPage from "../users/AboutPage";
 import { useContents } from "../../contexts/ContentContext";
 import { CMS_PAGES } from "../../cms/cmsRegistry";
-import { ChevronDown, Monitor, LayoutTemplate, Layers } from "lucide-react";
+import { ChevronDown, Monitor, LayoutTemplate, Layers, ArchiveRestore, Trash2, Archive } from "lucide-react";
 
 // ISOLATED PREVIEWS
 function PreviewScene({ activePage, cmsPreview }) {
@@ -86,6 +86,8 @@ function AdminContentPage() {
     () => contents.filter((item) => item.page === activePage),
     [contents, activePage]
   );
+  
+  const archivedItems = pageContents.filter((item) => item.isArchived);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -126,10 +128,11 @@ function AdminContentPage() {
   const activePageLabel = CMS_PAGES.find(p => p.id === activePage)?.label || activePage;
 
   return (
-    <div className="flex h-full flex-col px-8 py-8 overflow-hidden bg-white rounded-lg  ">
+    // Removed h-full and overflow-hidden so the page can scroll natively
+    <div className="min-h-screen flex flex-col px-8 py-8 bg-white rounded-lg">
       
-      {/* Header & Scalable Navigation */}
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between shrink-0">
+      {/* Restored Header Layout */}
+      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-3xl font-playfair font-bold text-gray-900">Content Manager</h2>
           <p className="mt-1 text-sm text-gray-500">
@@ -181,19 +184,25 @@ function AdminContentPage() {
         </div>
       </div>
 
-      {/* Main Workspace - Full Width Preview Canvas */}
-      <div className="flex-1 flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm min-h-0">
-        {/* Fake Browser Header */}
-        <div className="flex h-10 shrink-0 items-center gap-2 border-b border-gray-100 bg-gray-50/80 px-4">
-          <div className="flex gap-1.5">
-             <div className="h-2.5 w-2.5 rounded-full bg-gray-300"></div>
-             <div className="h-2.5 w-2.5 rounded-full bg-gray-300"></div>
-             <div className="h-2.5 w-2.5 rounded-full bg-gray-300"></div>
+      {/* Fixed-Height Preview Canvas */}
+      <div className="flex flex-col h-[700px] shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm mb-12">
+        
+        {/* Mac Browser Header */}
+        <div className="flex h-12 shrink-0 items-center border-b border-gray-100 bg-[#f5f5f5] px-4">
+          <div className="flex gap-1.5 w-20">
+             <div className="h-3 w-3 rounded-full bg-[#ff5f56] border border-[#e0443e]"></div>
+             <div className="h-3 w-3 rounded-full bg-[#ffbd2e] border border-[#dea123]"></div>
+             <div className="h-3 w-3 rounded-full bg-[#27c93f] border border-[#1aab29]"></div>
           </div>
-          <div className="ml-4 flex h-6 flex-1 items-center justify-center rounded bg-white text-[10px] font-bold uppercase tracking-widest text-gray-400 shadow-sm">
-            Live Preview • {activePageLabel}
+          
+          <div className="flex h-7 flex-1 max-w-md mx-auto items-center justify-center rounded-md bg-white text-xs font-medium text-gray-600 shadow-sm border border-gray-200/80 gap-1.5">
+            <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+            <span>
+              petalexpress.com<span className="text-gray-400">{activePage === 'home' ? '' : `/${activePage}`}</span>
+            </span>
           </div>
-          <div className="w-16"></div>
+          
+          <div className="w-20"></div>
         </div>
 
         {/* Live Preview Content */}
@@ -202,7 +211,75 @@ function AdminContentPage() {
         </div>
       </div>
 
-      {/* Glassmorphic Edit Modal (Now includes Archive/Delete) */}
+      {/* Scrollable Archived Section */}
+      <div className="pt-8 border-t border-gray-100">
+        <div className="mb-6 flex items-end justify-between">
+           <div>
+              <h3 className="text-2xl font-playfair font-bold text-gray-900">Archived Elements</h3>
+              <p className="mt-1 text-sm text-gray-500">Content removed from the {activePageLabel} preview.</p>
+           </div>
+           {archivedItems.length > 0 && (
+             <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700 uppercase tracking-widest">
+               {archivedItems.length} Archived
+             </span>
+           )}
+        </div>
+
+        {archivedItems.length === 0 ? (
+           <div className="flex flex-col items-center justify-center py-16 text-gray-400 border-2 border-dashed border-gray-100 rounded-2xl">
+              <Archive size={48} className="mb-4 opacity-20" />
+              <p className="font-medium text-gray-500">No archived content found</p>
+           </div>
+        ) : (
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {archivedItems.map(item => {
+                 return (
+                    <div key={item.id} className="flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                       {/* Media / Text Preview Area */}
+                       <div className="h-32 bg-gray-100 flex items-center justify-center border-b border-gray-100 relative overflow-hidden p-4">
+                          {item.type === "image" && item.content_image ? (
+                             <img src={`http://localhost:8000${item.content_image}`} className="w-full h-full object-cover rounded-lg" />
+                          ) : (
+                             <p className="text-sm text-gray-600 line-clamp-4 italic text-center">"{item.content_text || "Empty text field"}"</p>
+                          )}
+                       </div>
+
+                       {/* Card Details & Actions */}
+                       <div className="p-4 flex flex-col flex-1">
+                          <h3 className="font-semibold text-gray-900 truncate">{item.identifier}</h3>
+                          <p className="text-xs font-mono text-gray-400 mt-1 mb-4 truncate">{item.type} field</p>
+                          
+                          <div className="mt-auto flex items-center justify-between pt-2 border-t border-gray-50">
+                             <button 
+                               onClick={() => toggleArchiveContent(item)} 
+                               className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600 hover:text-emerald-800 transition-colors"
+                             >
+                                <ArchiveRestore size={16} /> Restore
+                             </button>
+                             
+                             {isAdmin && (
+                                <button 
+                                  onClick={() => {
+                                     if (window.confirm("Are you sure you want to permanently delete this content? This cannot be undone.")) {
+                                        deleteArchivedContent ? deleteArchivedContent(item.id) : deleteContent(item.id);
+                                     }
+                                  }}
+                                  className="p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 rounded transition-colors"
+                                  title="Delete Permanently"
+                                >
+                                   <Trash2 size={16} />
+                                </button>
+                             )}
+                          </div>
+                       </div>
+                    </div>
+                 );
+              })}
+           </div>
+        )}
+      </div>
+
+      {/* Glassmorphic Edit Modal */}
       {editorField && (
          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 transition-all">
           <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl border border-white/20">
@@ -217,7 +294,6 @@ function AdminContentPage() {
                 <p className="mt-1 text-sm text-gray-500 font-mono text-xs">{editorField.identifier}</p>
               </div>
               
-              {/* Status Indicator */}
               {editingContent && (
                 <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${
                   editingContent.isArchived ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"
@@ -249,7 +325,6 @@ function AdminContentPage() {
                 } catch (error) { console.error("Failed to save", error); }
               }}
             >
-              {/* Inputs */}
               {formDataState.type === "text" && formDataState.input === "color" && (
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Color Value</label>
@@ -288,8 +363,6 @@ function AdminContentPage() {
 
               {/* Modal Actions */}
               <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                
-                {/* Left Side: Archive & Delete Actions (Moved from Sidebar) */}
                 <div className="flex gap-2">
                   {editingContent && (
                     <button
@@ -322,7 +395,6 @@ function AdminContentPage() {
                   )}
                 </div>
 
-                {/* Right Side: Save & Cancel */}
                 <div className="flex gap-3">
                   <button type="button" onClick={closeEditor} className="rounded-full px-6 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
                     Cancel
@@ -331,7 +403,6 @@ function AdminContentPage() {
                     Save Changes
                   </button>
                 </div>
-
               </div>
             </form>
           </div>

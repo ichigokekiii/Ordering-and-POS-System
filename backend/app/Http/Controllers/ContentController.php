@@ -98,11 +98,15 @@ class ContentController extends Controller
                 $content->page = $request->page;
             }
 
-            if ($request->filled('content_text')) {
+            if ($request->has('content_text')) {
                 $content->content_text = $request->content_text;
             }
 
             if ($request->hasFile('content_image')) {
+                if ($content->content_image) {
+                    Storage::disk('public')->delete(str_replace('/storage/', '', $content->content_image));
+                }
+
                 $path = $request->file('content_image')->store('contents', 'public');
                 $content->content_image = Storage::url($path);
             }
@@ -131,6 +135,11 @@ class ContentController extends Controller
     {
         try {
             $content = Content::findOrFail($id);
+
+            if ($content->content_image) {
+                Storage::disk('public')->delete(str_replace('/storage/', '', $content->content_image));
+            }
+
             $content->delete();
 
             return response()->json([
@@ -155,6 +164,10 @@ class ContentController extends Controller
                 return response()->json([
                     'message' => 'Only archived content can be deleted'
                 ], 403);
+            }
+
+            if ($content->content_image) {
+                Storage::disk('public')->delete(str_replace('/storage/', '', $content->content_image));
             }
 
             $content->delete();

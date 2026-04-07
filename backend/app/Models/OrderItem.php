@@ -11,7 +11,6 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'product_id',
-        'catalog_product_id',
         'product_name',
         'custom_id',
         'premade_id',
@@ -23,10 +22,5 @@ class OrderItem extends Model
     public function order()
     {
         return $this->belongsTo(Order::class, 'order_id', 'order_id');
-    }
-
-    public function product()
-    {
-        return $this->belongsTo(Products::class, 'catalog_product_id');
     }
 }

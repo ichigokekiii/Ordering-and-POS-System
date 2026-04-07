@@ -18,7 +18,7 @@ class OrderController extends Controller
             $orders = Order::with([
                 'user',
                 'payment',
-                'orderItems.product'
+                'orderItems'
             ])->orderBy('created_at', 'desc')->get();
 
             return response()->json($orders);
@@ -130,7 +130,7 @@ class OrderController extends Controller
             $order->load([
                 'user',
                 'payment',
-                'orderItems.product'
+                'orderItems'
             ]);
 
             return response()->json($order);

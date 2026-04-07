@@ -4,6 +4,7 @@ import { useContents } from "../contexts/ContentContext";
 import CmsEditableRegion from "./admin/CmsEditableRegion";
 import {
   getCmsField,
+  getCmsAssetUrl,
   getContentValue as getCmsContentValue,
 } from "../cms/cmsRegistry";
 
@@ -25,7 +26,7 @@ function Footer({ cmsPreview }) {
       style={{
         backgroundColor: getContentValue("footer_bg_color", "#ffffff"),
         backgroundImage: getContentValue("footer_bg_image", "")
-          ? `url(http://localhost:8000${getContentValue("footer_bg_image")})`
+          ? `url(${getCmsAssetUrl(getContentValue("footer_bg_image"))})`
           : "none",
         backgroundSize: "cover",
         backgroundPosition: "center",

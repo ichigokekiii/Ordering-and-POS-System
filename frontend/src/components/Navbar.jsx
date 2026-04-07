@@ -1,5 +1,4 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-/* eslint-disable no-unused-vars */
 import { Link, useNavigate } from "react-router-dom";
 import { User } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
@@ -8,6 +7,7 @@ import { useContents } from "../contexts/ContentContext";
 import CmsEditableRegion from "./admin/CmsEditableRegion";
 import {
   getCmsField,
+  getCmsAssetUrl,
   getContentValue as getCmsContentValue,
 } from "../cms/cmsRegistry";
 
@@ -84,7 +84,7 @@ function Navbar({ cmsPreview }) {
       style={{
         backgroundColor: getContentValue("navbar_bg_color", "#ffffffee"),
         backgroundImage: getContentValue("navbar_bg_image", "")
-          ? `url(http://localhost:8000${getContentValue("navbar_bg_image")})`
+          ? `url(${getCmsAssetUrl(getContentValue("navbar_bg_image"))})`
           : "none",
         backgroundSize: "cover",
         backgroundPosition: "center",

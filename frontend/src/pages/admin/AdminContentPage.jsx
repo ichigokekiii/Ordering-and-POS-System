@@ -4,7 +4,7 @@ import Footer from "../../components/Footer";
 import LandingPage from "../users/LandingPage";
 import AboutPage from "../users/AboutPage";
 import { useContents } from "../../contexts/ContentContext";
-import { CMS_PAGES } from "../../cms/cmsRegistry";
+import { CMS_PAGES, getCmsAssetUrl } from "../../cms/cmsRegistry";
 import { ChevronDown, Monitor, LayoutTemplate, Layers, ArchiveRestore, Trash2, Archive } from "lucide-react";
 
 // ISOLATED PREVIEWS
@@ -64,7 +64,6 @@ const createEmptyFormState = () => ({
 
 function AdminContentPage() {
   const contentContext = useContents() || {};
-  const contents = contentContext.contents || [];
   const addContent = contentContext.addContent;
   const updateContent = contentContext.updateContent;
   const toggleArchiveContent = contentContext.toggleArchiveContent;
@@ -83,8 +82,8 @@ function AdminContentPage() {
   const dropdownRef = useRef(null);
 
   const pageContents = useMemo(
-    () => contents.filter((item) => item.page === activePage),
-    [contents, activePage]
+    () => (contentContext.contents || []).filter((item) => item.page === activePage),
+    [contentContext.contents, activePage]
   );
   
   const archivedItems = pageContents.filter((item) => item.isArchived);
@@ -123,6 +122,17 @@ function AdminContentPage() {
     setEditorField(null);
     setEditingContent(null);
     setFormDataState(createEmptyFormState());
+  };
+
+  const handlePermanentDelete = async (item) => {
+    if (!item) return;
+
+    if (item.isArchived) {
+      await deleteArchivedContent(item.id);
+      return;
+    }
+
+    await deleteContent(item.id);
   };
 
   const activePageLabel = CMS_PAGES.find(p => p.id === activePage)?.label || activePage;
@@ -238,7 +248,7 @@ function AdminContentPage() {
                        {/* Media / Text Preview Area */}
                        <div className="h-32 bg-gray-100 flex items-center justify-center border-b border-gray-100 relative overflow-hidden p-4">
                           {item.type === "image" && item.content_image ? (
-                             <img src={`http://localhost:8000${item.content_image}`} className="w-full h-full object-cover rounded-lg" />
+                             <img src={getCmsAssetUrl(item.content_image)} className="w-full h-full object-cover rounded-lg" />
                           ) : (
                              <p className="text-sm text-gray-600 line-clamp-4 italic text-center">"{item.content_text || "Empty text field"}"</p>
                           )}
@@ -261,7 +271,7 @@ function AdminContentPage() {
                                 <button 
                                   onClick={() => {
                                      if (window.confirm("Are you sure you want to permanently delete this content? This cannot be undone.")) {
-                                        deleteArchivedContent ? deleteArchivedContent(item.id) : deleteContent(item.id);
+                                        handlePermanentDelete(item);
                                      }
                                   }}
                                   className="p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 rounded transition-colors"
@@ -353,7 +363,7 @@ function AdminContentPage() {
                 <div className="space-y-3">
                   {editingContent?.content_image && (
                     <div className="overflow-hidden rounded-2xl border border-gray-100 shadow-sm">
-                      <img src={`http://localhost:8000${editingContent.content_image}`} alt="Preview" className="h-48 w-full object-cover" />
+                      <img src={getCmsAssetUrl(editingContent.content_image)} alt="Preview" className="h-48 w-full object-cover" />
                     </div>
                   )}
                   <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Upload New Image</label>
@@ -384,7 +394,7 @@ function AdminContentPage() {
                        type="button"
                        onClick={() => {
                          if (window.confirm("Delete permanently?")) {
-                           deleteArchivedContent ? deleteArchivedContent(editingContent.id) : deleteContent(editingContent.id);
+                           handlePermanentDelete(editingContent);
                            closeEditor();
                          }
                        }}

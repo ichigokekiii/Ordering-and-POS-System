@@ -1,7 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { APP_THEME_STORAGE_KEY } from "../constants/theme";
 
-const THEME_STORAGE_KEY = "theme";
+const THEME_STORAGE_KEY = APP_THEME_STORAGE_KEY;
 const THEME_VALUES = new Set(["light", "dark", "system"]);
 const ThemeContext = createContext(null);
 

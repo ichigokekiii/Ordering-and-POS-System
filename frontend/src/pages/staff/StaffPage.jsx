@@ -1,5 +1,4 @@
 /* eslint-disable no-unused-vars */
-/* eslint-disable react-hooks/rules-of-hooks */
 import React, { useState, useEffect, useRef } from "react";
 import { useProducts } from "../../contexts/ProductContext";
 import api from "../../services/api";
@@ -7,9 +6,13 @@ import ProductGrid from "../../components/staff/ProductGrid";
 import Sidebar from "../../components/staff/Sidebar";
 import CartSection from "../../components/staff/CartSection";
 import PaymentModals from "../../components/staff/PaymentModals";
+import {
+  resolveAppDarkModePreference,
+  STAFF_POS_DARK_MODE_STORAGE_KEY,
+  STAFF_POS_THEME_EVENT,
+} from "../../constants/theme";
 
 const STAFF_POS_CART_STORAGE_KEY = "staff-pos-cart";
-const STAFF_POS_DARK_MODE_STORAGE_KEY = "staff-pos-dark-mode";
 
 function StaffPage({ children, customCategories }) {
   const { products, loading } = useProducts();
@@ -31,10 +34,16 @@ function StaffPage({ children, customCategories }) {
     if (typeof window === "undefined") return false;
 
     try {
-      return window.sessionStorage.getItem(STAFF_POS_DARK_MODE_STORAGE_KEY) === "true";
+      const storedDarkMode = window.sessionStorage.getItem(STAFF_POS_DARK_MODE_STORAGE_KEY);
+
+      if (storedDarkMode === null) {
+        return resolveAppDarkModePreference();
+      }
+
+      return storedDarkMode === "true";
     } catch (error) {
       console.error("Failed to restore POS dark mode", error);
-      return false;
+      return resolveAppDarkModePreference();
     }
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -468,13 +477,18 @@ function StaffPage({ children, customCategories }) {
   }, [isDarkMode]);
 
   useEffect(() => {
-    if (displayCategories) {
-      const firstTab = Object.keys(displayCategories)[0];
-      if (firstTab && firstTab !== activeTab) {
-        setActiveTab(firstTab);
+    const handleExternalThemeChange = (event) => {
+      if (typeof event.detail?.isDarkMode === "boolean") {
+        setIsDarkMode(event.detail.isDarkMode);
+        return;
       }
-    }
-  }, [displayCategories]);
+
+      setIsDarkMode(resolveAppDarkModePreference());
+    };
+
+    window.addEventListener(STAFF_POS_THEME_EVENT, handleExternalThemeChange);
+    return () => window.removeEventListener(STAFF_POS_THEME_EVENT, handleExternalThemeChange);
+  }, []);
 
   useEffect(() => {
     return () => {

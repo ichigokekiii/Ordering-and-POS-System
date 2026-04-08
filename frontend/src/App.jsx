@@ -1,7 +1,4 @@
-/* eslint-disable no-unused-vars */
-/* eslint-disable react-hooks/rules-of-hooks */
-/* eslint-disable react-hooks/exhaustive-deps */
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useRef } from "react";
 import {
   Routes,
   Route,
@@ -16,6 +13,7 @@ import Navbar from "./components/Navbar";
 import AdminLayout from "./components/AdminLayout";
 import Footer from "./components/Footer";
 import OrderLayout from "./components/OrderLayout";
+import AdminQuickActions from "./components/AdminQuickActions";
 
 // USER PAGES
 import LandingPage from "./pages/users/LandingPage";
@@ -52,24 +50,26 @@ import StaffPremadePage from "./pages/staff/StaffPremadePage";
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
+  const didHandleInitialRoleRedirect = useRef(false);
 
   const { user, handleLogin, handleLogout, loading } = useContext(AuthContext);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || didHandleInitialRoleRedirect.current) return;
 
-    // If admin or owner refreshes on "/", redirect to /admin
-    if (
-      (user.role === "admin" || user.role === "owner") &&
-      location.pathname === "/"
-    ) {
+    if ((user.role === "admin" || user.role === "owner") && location.pathname === "/") {
       navigate("/admin");
+      didHandleInitialRoleRedirect.current = true;
+      return;
     }
 
-    // If staff refreshes on "/", redirect to /staff
     if (user.role === "staff" && location.pathname === "/") {
       navigate("/staff");
+      didHandleInitialRoleRedirect.current = true;
+      return;
     }
+
+    didHandleInitialRoleRedirect.current = true;
   }, [user, location.pathname, navigate]);
 
   // Prevent routes from evaluating before auth state is restored
@@ -84,6 +84,7 @@ function App() {
 
   // Helper variable to clean up the long condition
   const hasAdminAccess = user && (user.role === "admin" || user.role === "owner" || user.role === "staff");
+  const canAccessPos = user && (user.role === "admin" || user.role === "owner" || user.role === "staff");
 
   const renderAdminPage = (page, allowAccess = hasAdminAccess) => {
     if (!user) return <Navigate to="/login" replace />;
@@ -172,7 +173,7 @@ function App() {
         <Route
           path="/staff"
           element={
-            !user ? <Navigate to="/login" replace /> : user.role === "staff" ? (
+            !user ? <Navigate to="/login" replace /> : canAccessPos ? (
               <Navigate to="/staff/ordercustom" replace />
             ) : (
               <Navigate to="/" />
@@ -182,7 +183,7 @@ function App() {
         <Route
           path="/staff/ordercustom"
           element={
-            !user ? <Navigate to="/login" replace /> : user.role === "staff" ? (
+            !user ? <Navigate to="/login" replace /> : canAccessPos ? (
               <StaffCustomPage />
             ) : (
               <Navigate to="/" />
@@ -192,7 +193,7 @@ function App() {
         <Route
           path="/staff/orderpremade"
           element={
-            !user ? <Navigate to="/login" replace /> : user.role === "staff" ? (
+            !user ? <Navigate to="/login" replace /> : canAccessPos ? (
               <StaffPremadePage />
             ) : (
               <Navigate to="/" />
@@ -204,6 +205,7 @@ function App() {
 
       {/* User Footer */}
       {!isAdminRoute && <Footer />}
+      <AdminQuickActions user={user} />
     </>
   );
 }

@@ -271,7 +271,7 @@ function AdminContentPage() {
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex w-64 items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-900 hover:border-[#4f6fa5] hover:bg-white transition-all focus:outline-none focus:ring-2 focus:ring-[#eaf2ff]"
+            className="flex w-64 items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-900 hover:border-gray-900 hover:bg-white transition-all focus:outline-none focus:ring-2 focus:ring-[#eaf2ff]"
           >
             <div className="flex items-center gap-2">
               <Layers className="h-4 w-4 text-[#4f6fa5]" />
@@ -465,7 +465,7 @@ function AdminContentPage() {
                 <h3 className="mt-4 text-2xl font-playfair font-bold text-gray-900">
                   {editingContent ? "Edit" : "Add"} {editorField.label}
                 </h3>
-                <p className="mt-1 text-sm text-gray-500 font-mono text-xs">{editorField.identifier}</p>
+                <p className="mt-1 text-sm text-gray-500 font-mono">{editorField.identifier}</p>
               </div>
               
               {editingContent && (

@@ -17,6 +17,7 @@ use App\Http\Controllers\PosTransactionsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContentController;
 use App\Http\Controllers\LogController;
+use App\Http\Controllers\AnalyticsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -60,6 +61,9 @@ Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
+// Analytics routes
+Route::get('/analytics', [AnalyticsController::class, 'index']);
 
 
 /*
@@ -108,6 +112,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/users/{id}', [UserController::class, 'show']);
     Route::get('/logs', [LogController::class, 'index']);
     Route::get('/logs/export', [LogController::class, 'export']);
+    Route::get('/analytics', [AnalyticsController::class, 'index']);
+    Route::post('/analytics/email', [AnalyticsController::class, 'sendReportEmail']);
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);

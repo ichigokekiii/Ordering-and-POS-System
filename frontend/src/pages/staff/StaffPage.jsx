@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/rules-of-hooks */
 import React, { useState, useEffect, useRef } from "react";
 import { useProducts } from "../../contexts/ProductContext";

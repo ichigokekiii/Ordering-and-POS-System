@@ -80,7 +80,10 @@ function Navbar({ cmsPreview }) {
 
   return (
     <nav
-      className="sticky top-0 z-50 w-full border-b border-gray-200 backdrop-blur-md"
+      // FIXED: Use relative positioning and lower z-index when inside the CMS preview!
+      className={`${
+        cmsPreview?.enabled ? "relative z-30" : "sticky top-0 z-50"
+      } w-full border-b border-gray-200 backdrop-blur-md`}
       style={{
         backgroundColor: getContentValue("navbar_bg_color", "#ffffffee"),
         backgroundImage: getContentValue("navbar_bg_image", "")

@@ -1,6 +1,9 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
+import AuthPage from "../users/AuthPage";
+import VerifyOtpPage from "../users/VerifyOtpPage";
+import ForgotPasswordPage from "../users/ForgotPasswordPage";
 import LandingPage from "../users/LandingPage";
 import AboutPage from "../users/AboutPage";
 import { useContents } from "../../contexts/ContentContext";
@@ -21,6 +24,35 @@ function PreviewScene({ activePage, cmsPreview }) {
     return (
       <div className="bg-white min-h-screen">
         <AboutPage cmsPreview={cmsPreview} />
+      </div>
+    );
+  }
+
+  if (activePage === "auth") {
+    return (
+      <div className="bg-gray-100 min-h-screen flex flex-col gap-12 py-12">
+         {/* Login / Register Toggle */}
+         <div>
+           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4 text-center">Login / Register View</p>
+           {/* You can click "Sign Up" inside the preview to reveal the register fields */}
+           <AuthPage cmsPreview={cmsPreview} />
+         </div>
+         
+         <div className="border-t-4 border-dashed border-gray-300 w-full my-4"></div>
+         
+         {/* Forgot Password */}
+         <div>
+           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4 text-center">Forgot Password View</p>
+           <ForgotPasswordPage cmsPreview={cmsPreview} />
+         </div>
+
+         <div className="border-t-4 border-dashed border-gray-300 w-full my-4"></div>
+
+         {/* Verify OTP */}
+         <div>
+           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4 text-center">Verify OTP View</p>
+           <VerifyOtpPage cmsPreview={cmsPreview} />
+         </div>
       </div>
     );
   }
@@ -81,6 +113,11 @@ function AdminContentPage() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
+  // TOAST & CONFIRM MODAL STATES
+  const [toast, setToast] = useState(null);
+  const toastTimeoutRef = useRef(null);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: "", item: null });
+
   const pageContents = useMemo(
     () => (contentContext.contents || []).filter((item) => item.page === activePage),
     [contentContext.contents, activePage]
@@ -98,12 +135,24 @@ function AdminContentPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      window.clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
+
+  const showToast = (type, message) => {
+    setToast({ type, message });
+    window.clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = window.setTimeout(() => setToast(null), 3000);
+  };
+
   const cmsPreview = {
     enabled: true,
     activePage,
     onEditField: (field) => {
       const existingItem = pageContents.find(
-        (item) => item.identifier === field.identifier
+        (item) => item.identifier === field.identifier && !item.isArchived
       );
 
       setEditorField(field);
@@ -116,6 +165,27 @@ function AdminContentPage() {
         content_text: existingItem?.content_text || "",
       });
     },
+  };
+
+  // --- FIXED: Use the item's actual input type so it doesn't force textareas ---
+  const openArchivedEditor = (item) => {
+    const defaultInputType = item.type === "image" ? "image" : "textarea";
+    
+    setEditorField({
+      page: item.page,
+      identifier: item.identifier,
+      type: item.type,
+      label: item.identifier,
+      input: item.input || defaultInputType,
+    });
+    setEditingContent(item);
+    setFormDataState({
+      page: item.page,
+      identifier: item.identifier,
+      type: item.type,
+      input: item.input || defaultInputType,
+      content_text: item.content_text || "",
+    });
   };
 
   const closeEditor = () => {
@@ -135,13 +205,60 @@ function AdminContentPage() {
     await deleteContent(item.id);
   };
 
+  const executeConfirmAction = async () => {
+    const { type, item } = confirmModal;
+    if (!item) return;
+
+    try {
+      if (type === "delete") {
+        if (!item.isArchived) {
+           showToast("error", "You must archive this content before deleting it.");
+           setConfirmModal({ isOpen: false, type: "", item: null });
+           return;
+        }
+        await handlePermanentDelete(item);
+        showToast("success", "Content permanently deleted.");
+      } else if (type === "archive") {
+        await toggleArchiveContent(item);
+        showToast("success", "Content archived successfully.");
+      } else if (type === "restore") {
+        await toggleArchiveContent(item);
+        showToast("success", "Content restored successfully.");
+      }
+
+      if (editingContent && editingContent.id === item.id) {
+        closeEditor();
+      }
+    } catch (error) {
+      console.error(`Failed to ${type} content`, error);
+      showToast("error", `Failed to ${type} content.`);
+    } finally {
+      setConfirmModal({ isOpen: false, type: "", item: null });
+    }
+  };
+
   const activePageLabel = CMS_PAGES.find(p => p.id === activePage)?.label || activePage;
 
   return (
-    // Removed h-full and overflow-hidden so the page can scroll natively
-    <div className="min-h-screen flex flex-col px-8 py-8 bg-white rounded-lg">
+    <div className="min-h-screen flex flex-col px-8 py-8 bg-white rounded-lg relative">
       
-      {/* Restored Header Layout */}
+      {/* TOAST NOTIFICATION */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-[300] pointer-events-none transition-all duration-300 transform">
+          <div
+            className={`flex items-center gap-2 px-5 py-3 rounded-lg shadow-xl text-sm font-medium backdrop-blur-sm border max-w-[280px] ${
+              toast.type === "success"
+                ? "bg-emerald-500/95 text-white border-emerald-400"
+                : toast.type === "info"
+                ? "bg-blue-500/95 text-white border-blue-400"
+                : "bg-red-500/95 text-white border-red-400"
+            }`}
+          >
+            <span className="truncate drop-shadow-sm">{toast.message}</span>
+          </div>
+        </div>
+      )}
+
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-3xl font-playfair font-bold text-gray-900">Content Manager</h2>
@@ -196,8 +313,6 @@ function AdminContentPage() {
 
       {/* Fixed-Height Preview Canvas */}
       <div className="flex flex-col h-[700px] shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm mb-12">
-        
-        {/* Mac Browser Header */}
         <div className="flex h-12 shrink-0 items-center border-b border-gray-100 bg-[#f5f5f5] px-4">
           <div className="flex gap-1.5 w-20">
              <div className="h-3 w-3 rounded-full bg-[#ff5f56] border border-[#e0443e]"></div>
@@ -215,7 +330,6 @@ function AdminContentPage() {
           <div className="w-20"></div>
         </div>
 
-        {/* Live Preview Content */}
         <div className="flex-1 overflow-auto bg-[#fcfaf9]">
           <PreviewScene activePage={activePage} cmsPreview={cmsPreview} />
         </div>
@@ -244,24 +358,29 @@ function AdminContentPage() {
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {archivedItems.map(item => {
                  return (
-                    <div key={item.id} className="flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                       {/* Media / Text Preview Area */}
+                    <div 
+                      key={item.id} 
+                      onClick={() => openArchivedEditor(item)}
+                      className="flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:border-[#4f6fa5] transition-all overflow-hidden cursor-pointer group"
+                    >
                        <div className="h-32 bg-gray-100 flex items-center justify-center border-b border-gray-100 relative overflow-hidden p-4">
                           {item.type === "image" && item.content_image ? (
-                             <img src={getCmsAssetUrl(item.content_image)} className="w-full h-full object-cover rounded-lg" />
+                             <img src={getCmsAssetUrl(item.content_image)} alt={item.identifier} className="w-full h-full object-cover rounded-lg" />
                           ) : (
                              <p className="text-sm text-gray-600 line-clamp-4 italic text-center">"{item.content_text || "Empty text field"}"</p>
                           )}
                        </div>
 
-                       {/* Card Details & Actions */}
                        <div className="p-4 flex flex-col flex-1">
-                          <h3 className="font-semibold text-gray-900 truncate">{item.identifier}</h3>
+                          <h3 className="font-semibold text-gray-900 truncate group-hover:text-[#4f6fa5] transition-colors">{item.identifier}</h3>
                           <p className="text-xs font-mono text-gray-400 mt-1 mb-4 truncate">{item.type} field</p>
                           
                           <div className="mt-auto flex items-center justify-between pt-2 border-t border-gray-50">
                              <button 
-                               onClick={() => toggleArchiveContent(item)} 
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 setConfirmModal({ isOpen: true, type: "restore", item });
+                               }} 
                                className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600 hover:text-emerald-800 transition-colors"
                              >
                                 <ArchiveRestore size={16} /> Restore
@@ -269,10 +388,9 @@ function AdminContentPage() {
                              
                              {isAdmin && (
                                 <button 
-                                  onClick={() => {
-                                     if (window.confirm("Are you sure you want to permanently delete this content? This cannot be undone.")) {
-                                        handlePermanentDelete(item);
-                                     }
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setConfirmModal({ isOpen: true, type: "delete", item });
                                   }}
                                   className="p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 rounded transition-colors"
                                   title="Delete Permanently"
@@ -289,8 +407,54 @@ function AdminContentPage() {
         )}
       </div>
 
-      {/* Glassmorphic Edit Modal */}
-      {editorField && (
+      {/* CONFIRMATION MODAL */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 transition-all">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center">
+            
+            <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${
+              confirmModal.type === 'delete' ? 'bg-red-100 text-red-500' :
+              confirmModal.type === 'archive' ? 'bg-amber-100 text-amber-500' :
+              'bg-emerald-100 text-emerald-500'
+            }`}>
+              {confirmModal.type === 'delete' ? <Trash2 size={28} /> : 
+               confirmModal.type === 'archive' ? <Archive size={28} /> :
+               <ArchiveRestore size={28} />}
+            </div>
+
+            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
+              {confirmModal.type === "delete" ? "Delete Permanently?" : 
+               confirmModal.type === "archive" ? "Archive Content?" : 
+               "Restore Content?"}
+            </h3>
+            <p className="text-sm text-gray-500 mb-8 px-2">
+              {confirmModal.type === "delete" ? "This action cannot be undone. Are you sure you want to delete this forever?" :
+               confirmModal.type === "archive" ? "This will hide the content from the live website. You can restore it later." :
+               "This will restore the content back to the live website."}
+            </p>
+            
+            <div className="flex justify-center gap-3">
+              <button onClick={() => setConfirmModal({ isOpen: false, type: "", item: null })} className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
+                Cancel
+              </button>
+              <button 
+                onClick={executeConfirmAction} 
+                className={`rounded-lg px-5 py-2 text-sm font-semibold text-white transition-all duration-300 shadow-sm hover:shadow-md ${
+                  confirmModal.type === "delete" ? "bg-red-500 hover:bg-red-600" :
+                  confirmModal.type === "archive" ? "bg-amber-500 hover:bg-amber-600" :
+                  "bg-emerald-500 hover:bg-emerald-600"
+              }`}>
+                {confirmModal.type === "delete" ? "Yes, Delete" : 
+                 confirmModal.type === "archive" ? "Yes, Archive" : 
+                 "Yes, Restore"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WYSIWYG EDITOR MODAL */}
+      {!confirmModal.isOpen && editorField && (
          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 transition-all">
           <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl border border-white/20">
             <div className="mb-6 flex justify-between items-start">
@@ -306,7 +470,7 @@ function AdminContentPage() {
               
               {editingContent && (
                 <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${
-                  editingContent.isArchived ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"
+                  editingContent.isArchived ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
                 }`}>
                   {editingContent.isArchived ? "Archived" : "Active"}
                 </span>
@@ -318,21 +482,35 @@ function AdminContentPage() {
               onSubmit={async (event) => {
                 event.preventDefault();
                 const formData = new FormData(event.target);
+                
                 formData.append("identifier", formDataState.identifier);
                 formData.append("page", formDataState.page);
                 formData.append("type", formDataState.type);
+                
                 if (formDataState.type === "text") {
                   formData.set("content_text", formDataState.content_text || "");
                 }
-                if (formDataState.type === "image" && !editingContent && !formData.get("content_image")) {
-                  window.alert("Please upload an image before saving.");
+                
+                // --- FIXED: Checked the file size, because an empty input still returns a File object ---
+                const imageFile = formData.get("content_image");
+                if (formDataState.type === "image" && !editingContent && (!imageFile || imageFile.size === 0)) {
+                  showToast("error", "Please upload an image before saving.");
                   return;
                 }
+
                 try {
-                  if (editingContent) { await updateContent(editingContent.id, formData); } 
-                  else { await addContent(formData); }
+                  if (editingContent) { 
+                    await updateContent(editingContent.id, formData); 
+                    showToast("success", "Content updated successfully.");
+                  } else { 
+                    await addContent(formData); 
+                    showToast("success", "Content created successfully.");
+                  }
                   closeEditor();
-                } catch (error) { console.error("Failed to save", error); }
+                } catch (error) { 
+                  console.error("Failed to save", error); 
+                  showToast("error", "Failed to save changes.");
+                }
               }}
             >
               {formDataState.type === "text" && formDataState.input === "color" && (
@@ -371,45 +549,36 @@ function AdminContentPage() {
                 </div>
               )}
 
-              {/* Modal Actions */}
               <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                 <div className="flex gap-2">
                   {editingContent && (
                     <button
                       type="button"
-                      onClick={() => {
-                        toggleArchiveContent(editingContent);
-                        closeEditor();
-                      }}
+                      onClick={() => setConfirmModal({ isOpen: true, type: editingContent.isArchived ? "restore" : "archive", item: editingContent })}
                       className={`rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wide transition-colors ${
-                        editingContent.isArchived ? "bg-green-50 text-green-700 hover:bg-green-100" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        editingContent.isArchived ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "bg-amber-50 text-amber-700 hover:bg-amber-100"
                       }`}
                     >
                       {editingContent.isArchived ? "Restore" : "Archive"}
                     </button>
                   )}
                   
-                  {editingContent && isAdmin && (
+                  {editingContent && isAdmin && editingContent.isArchived && (
                      <button
                        type="button"
-                       onClick={() => {
-                         if (window.confirm("Delete permanently?")) {
-                           handlePermanentDelete(editingContent);
-                           closeEditor();
-                         }
-                       }}
-                       className="rounded-lg bg-red-50 px-4 py-2 text-xs font-bold uppercase tracking-wide text-red-600 hover:bg-red-100 transition-colors"
+                       onClick={() => setConfirmModal({ isOpen: true, type: "delete", item: editingContent })}
+                       className="flex items-center gap-1 rounded-lg bg-red-50 px-4 py-2 text-xs font-bold uppercase tracking-wide text-red-600 hover:bg-red-100 transition-colors"
                      >
-                       Delete
+                       <Trash2 size={14} /> Delete
                      </button>
                   )}
                 </div>
 
                 <div className="flex gap-3">
-                  <button type="button" onClick={closeEditor} className="rounded-full px-6 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
+                  <button type="button" onClick={closeEditor} className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
                     Cancel
                   </button>
-                  <button type="submit" className="rounded-full bg-gray-900 px-8 py-2.5 text-sm font-semibold text-white hover:bg-[#4f6fa5] hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                  <button type="submit" className="rounded-lg bg-gray-900 px-5 py-2 text-sm font-semibold text-white hover:bg-[#4f6fa5] hover:shadow-md transition-all duration-300">
                     Save Changes
                   </button>
                 </div>

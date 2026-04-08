@@ -1,7 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable react-refresh/only-export-components */
 
-
 import { createContext, useContext, useEffect, useState } from "react";
 import api from "../services/api";
 
@@ -25,9 +24,8 @@ export const ContentProvider = ({ children }) => {
   // Add new content
   const addContent = async (formData) => {
     try {
-      const res = await api.post("/contents", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      // FIX: Removed manual Content-Type headers so Axios generates the boundary string
+      const res = await api.post("/contents", formData);
 
       setContents((prev) => [res.data.content, ...prev]);
       return res.data;
@@ -40,9 +38,8 @@ export const ContentProvider = ({ children }) => {
   // Update content
   const updateContent = async (id, data) => {
     try {
-      const res = await api.post(`/contents/${id}?_method=PUT`, data, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      // FIX: Removed manual Content-Type headers so Axios generates the boundary string
+      const res = await api.post(`/contents/${id}?_method=PUT`, data);
 
       setContents((prev) =>
         prev.map((item) =>

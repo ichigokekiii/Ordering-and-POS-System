@@ -6,12 +6,22 @@ import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import api from "../../services/api";
 
-function AuthPage({ onLogin, initialView = "login" }) {
+// CMS IMPORTS
+import { useContents } from "../../contexts/ContentContext";
+import CmsEditableRegion from "../../components/admin/CmsEditableRegion";
+import { getCmsField, getCmsAssetUrl, getContentValue as getCmsContentValue } from "../../cms/cmsRegistry";
+
+function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
   const navigate = useNavigate();
   const location = useLocation();
 
   const startingMode = location.state?.mode || initialView;
   const [isSignIn, setIsSignIn] = useState(startingMode === "login");
+
+  // --- CMS HELPERS ---
+  const contentContext = useContents();
+  const contents = contentContext?.contents || [];
+  const getContentValue = (identifier, fallback = "") => getCmsContentValue(contents, "auth", identifier, fallback);
 
   // =====================
   // LOGIN STATE
@@ -69,6 +79,7 @@ function AuthPage({ onLogin, initialView = "login" }) {
   // =====================
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
+    if (cmsPreview?.enabled) return; // Prevent API calls in CMS preview
     if (countdown > 0 || isLocked) return;
 
     setLoginError("");
@@ -119,6 +130,7 @@ function AuthPage({ onLogin, initialView = "login" }) {
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
+    if (cmsPreview?.enabled) return; // Prevent API calls in CMS preview
     setRegError("");
 
     if (regPassword !== regConfirmPassword) {
@@ -157,11 +169,8 @@ function AuthPage({ onLogin, initialView = "login" }) {
     <div className="min-h-screen bg-[#fcfaf9] flex items-start justify-center pt-10 pb-4">
       <div className="relative overflow-hidden w-full max-w-4xl min-h-[520px] md:min-h-[600px] bg-white rounded-3xl shadow-2xl flex flex-col md:flex-row">
         
-        {/* ======================================= */}
-        {/* REGISTER FORM (STATICALLY LEFT 50%)      */}
-        {/* ======================================= */}
+        {/* REGISTER FORM */}
         <div className="w-full md:w-1/2 flex flex-col justify-center px-8 sm:px-12 py-10 order-2 md:order-none z-0 mt-20 md:mt-0 relative">
-          {/* Prevent clicks if overlay is over me */}
           <div className={`md:hidden ${!isSignIn ? 'block' : 'hidden'}`}></div>
           <div className="w-full pt-4 pb-8 md:pt-0" style={{ pointerEvents: !isSignIn ? 'auto' : 'none' }}>
             <h2 className="text-3xl font-bold mb-6 text-gray-800">Create Account</h2>
@@ -232,14 +241,11 @@ function AuthPage({ onLogin, initialView = "login" }) {
           </div>
         </div>
 
-        {/* ======================================= */}
-        {/* LOGIN FORM (STATICALLY RIGHT 50%)        */}
-        {/* ======================================= */}
+        {/* LOGIN FORM */}
         <div className="absolute top-0 right-0 w-full md:w-1/2 h-full flex flex-col justify-center px-8 sm:px-12 bg-white z-0 mt-20 md:mt-0" style={{ opacity: (!isSignIn && window.innerWidth < 768) ? 0 : 1, pointerEvents: isSignIn ? 'auto' : 'none' }}>
           <div className="w-full pt-10 pb-8 text-center md:pt-0">
             <h2 className="text-3xl font-bold mb-6 text-gray-800">Login to Account</h2>
 
-            {/* Banners */}
             {isLocked && (
               <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 text-left">
                 🔒 <strong>Account Locked.</strong> Your account has been locked due to too many failed login attempts.
@@ -280,7 +286,7 @@ function AuthPage({ onLogin, initialView = "login" }) {
               />
 
               <div className="text-right">
-                <Link to="/forgot-password" className="text-sm text-[#4f6fa5] font-medium hover:underline">
+                <Link to="/forgot-password" onClick={(event) => cmsPreview?.enabled && event.preventDefault()} className="text-sm text-[#4f6fa5] font-medium hover:underline">
                   Forgot Password?
                 </Link>
               </div>
@@ -300,13 +306,9 @@ function AuthPage({ onLogin, initialView = "login" }) {
           </div>
         </div>
 
-        {/* ======================================= */}
-        {/* OVERLAY CONTAINER (SLIDES LEFT/RIGHT)    */}
-        {/* ======================================= */}
+        {/* OVERLAY CONTAINER (SLIDES LEFT/RIGHT) */}
         <motion.div
           className="absolute top-0 w-1/2 h-full z-20 hidden md:flex items-center justify-center overflow-hidden"
-          // When login (isSignIn=true), slide left over the Register Form.
-          // When register (isSignIn=false), slide right over the Login Form.
           animate={{ x: isSignIn ? "0%" : "100%" }}
           transition={{ duration: 0.6, ease: "easeInOut" }}
         >
@@ -315,22 +317,28 @@ function AuthPage({ onLogin, initialView = "login" }) {
             className="absolute inset-0 w-full h-full"
             animate={{ opacity: isSignIn ? 1 : 0 }}
             transition={{ duration: 0.4 }}
+            style={{ pointerEvents: isSignIn ? 'auto' : 'none', zIndex: isSignIn ? 10 : 0 }}
           >
-            {/* TODO: Replace with CMS-managed image */}
-            <img 
-              src="https://images.unsplash.com/photo-1490750967868-88cb4aca2033"
-              alt="Decorative flowers"
-              className="absolute inset-0 w-full h-full object-cover brightness-110 contrast-110"
-            />
-            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-12 text-center backdrop-blur-[3px]">
-              <h2 className="text-4xl font-bold mb-4 font-sans tracking-tight">New Here?</h2>
-              <p className="mb-8 text-blue-50 leading-relaxed max-w-sm text-lg">
-                Enter your personal details and start your journey with us.
-              </p>
+            <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("auth", "auth_login_image")} className="absolute inset-0 w-full h-full">
+              <img 
+                src={getCmsAssetUrl(getContentValue("auth_login_image", "https://images.unsplash.com/photo-1490750967868-88cb4aca2033"))}
+                alt="Decorative flowers"
+                className="absolute inset-0 w-full h-full object-cover brightness-110 contrast-110"
+              />
+            </CmsEditableRegion>
+            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-12 text-center backdrop-blur-[3px] pointer-events-none">
+              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("auth", "auth_login_title")} className="inline-block w-fit pointer-events-auto mb-4">
+                <h2 className="text-4xl font-bold font-sans tracking-tight">{getContentValue("auth_login_title", "New Here?")}</h2>
+              </CmsEditableRegion>
+              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("auth", "auth_login_subtitle")} className="inline-block w-fit pointer-events-auto mb-8">
+                <p className="text-blue-50 leading-relaxed max-w-sm text-lg">
+                  {getContentValue("auth_login_subtitle", "Enter your personal details and start your journey with us.")}
+                </p>
+              </CmsEditableRegion>
               <button 
                 onClick={() => setIsSignIn(false)} 
                 type="button"
-                className="border-2 border-white/80 rounded-full px-12 py-3 font-semibold uppercase tracking-widest hover:bg-white hover:text-black transition-all shadow-lg hover:scale-105 active:scale-95"
+                className="relative z-10 border-2 border-white/80 rounded-full px-12 py-3 font-semibold uppercase tracking-widest hover:bg-white hover:text-black transition-all shadow-lg hover:scale-105 active:scale-95 pointer-events-auto cursor-pointer"
               >
                 Sign Up
               </button>
@@ -342,23 +350,28 @@ function AuthPage({ onLogin, initialView = "login" }) {
             className="absolute inset-0 w-full h-full"
             animate={{ opacity: isSignIn ? 0 : 1 }}
             transition={{ duration: 0.4 }}
-            style={{ pointerEvents: isSignIn ? 'none' : 'auto' }}
+            style={{ pointerEvents: !isSignIn ? 'auto' : 'none', zIndex: !isSignIn ? 10 : 0 }}
           >
-            {/* TODO: Replace with CMS-managed image */}
-            <img 
-              src="https://images.unsplash.com/photo-1460500063983-994d4c2b9f53"
-              alt="Decorative vase flowers"
-              className="absolute inset-0 w-full h-full object-cover brightness-110 contrast-110"
-            />
-            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-12 text-center backdrop-blur-[3px]">
-              <h2 className="text-4xl font-bold mb-4 font-sans tracking-tight">Welcome Back!</h2>
-              <p className="mb-8 text-blue-50 leading-relaxed max-w-sm text-lg">
-                To keep connected with us please login with your registered personal info.
-              </p>
+            <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("auth", "auth_register_image")} className="absolute inset-0 w-full h-full">
+              <img 
+                src={getCmsAssetUrl(getContentValue("auth_register_image", "https://images.unsplash.com/photo-1460500063983-994d4c2b9f53"))}
+                alt="Decorative vase flowers"
+                className="absolute inset-0 w-full h-full object-cover brightness-110 contrast-110"
+              />
+            </CmsEditableRegion>
+            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-12 text-center backdrop-blur-[3px] pointer-events-none">
+              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("auth", "auth_register_title")} className="inline-block w-fit pointer-events-auto mb-4">
+                <h2 className="text-4xl font-bold font-sans tracking-tight">{getContentValue("auth_register_title", "Welcome Back!")}</h2>
+              </CmsEditableRegion>
+              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("auth", "auth_register_subtitle")} className="inline-block w-fit pointer-events-auto mb-8">
+                <p className="text-blue-50 leading-relaxed max-w-sm text-lg">
+                  {getContentValue("auth_register_subtitle", "To keep connected with us please login with your registered personal info.")}
+                </p>
+              </CmsEditableRegion>
               <button 
                 type="button"
                 onClick={() => setIsSignIn(true)} 
-                className="border-2 border-white/80 rounded-full px-12 py-3 font-semibold uppercase tracking-widest hover:bg-white hover:text-black transition-all shadow-lg hover:scale-105 active:scale-95"
+                className="relative z-10 border-2 border-white/80 rounded-full px-12 py-3 font-semibold uppercase tracking-widest hover:bg-white hover:text-black transition-all shadow-lg hover:scale-105 active:scale-95 pointer-events-auto cursor-pointer"
               >
                 Sign In
               </button>

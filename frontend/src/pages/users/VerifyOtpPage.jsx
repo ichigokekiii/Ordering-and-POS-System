@@ -4,7 +4,12 @@ import { useAuth } from "../../contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import api from "../../services/api";
 
-function VerifyOtpPage() {
+// CMS IMPORTS
+import { useContents } from "../../contexts/ContentContext";
+import CmsEditableRegion from "../../components/admin/CmsEditableRegion";
+import { getCmsField, getCmsAssetUrl, getContentValue as getCmsContentValue } from "../../cms/cmsRegistry";
+
+function VerifyOtpPage({ cmsPreview }) {
   const [otpArray, setOtpArray] = useState(["", "", "", "", "", ""]);
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
@@ -19,7 +24,13 @@ function VerifyOtpPage() {
   const navigate = useNavigate();
   const { handleLogin } = useAuth();
 
-  const email = location.state?.email || localStorage.getItem("otp_email");
+  // CMS HELPERS
+  const contentContext = useContents();
+  const contents = contentContext?.contents || [];
+  const getContentValue = (identifier, fallback = "") => getCmsContentValue(contents, "auth", identifier, fallback);
+
+  // When in preview, act as if there is an email so the form renders
+  const email = location.state?.email || localStorage.getItem("otp_email") || (cmsPreview?.enabled ? "user@example.com" : null);
   const purpose = location.state?.purpose;
   const from = location.state?.from || "login";
 
@@ -61,6 +72,7 @@ function VerifyOtpPage() {
 
   const handleVerify = async (e) => {
     e.preventDefault();
+    if (cmsPreview?.enabled) return;
     setError("");
     setLoading(true);
 
@@ -107,7 +119,7 @@ function VerifyOtpPage() {
   };
 
   const handleResend = async () => {
-    if (countdown > 0) return;
+    if (countdown > 0 || cmsPreview?.enabled) return;
     setResendLoading(true);
     setError("");
     try {
@@ -123,7 +135,7 @@ function VerifyOtpPage() {
     }
   };
 
-  if (!email) {
+  if (!email && !cmsPreview?.enabled) {
     localStorage.removeItem("otp_email");
     return (
       <div className="min-h-screen bg-[#fcfaf9] flex items-start justify-center pt-10 pb-4">
@@ -142,28 +154,29 @@ function VerifyOtpPage() {
     <div className="min-h-screen bg-[#fcfaf9] flex items-start justify-center pt-10 pb-4">
       <div className={`w-full max-w-4xl min-h-[520px] md:min-h-[600px] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden ${from === 'register' ? 'md:flex-row-reverse' : 'md:flex-row'}`}>
         
-        {/* IMAGE PANEL - Matches the Slider Aesthetic */}
+        {/* IMAGE PANEL */}
         <div className="hidden md:flex w-1/2 relative overflow-hidden bg-gray-200">
-           <img 
-             src={from === "login" 
-               ? "https://images.unsplash.com/photo-1490750967868-88cb4aca2033?w=800&q=80" 
-               : "https://images.unsplash.com/photo-1460500063983-994d4c2b9f53?w=800&q=80"}
-             alt="Authentication decoration"
-             className="absolute inset-0 w-full h-full object-cover"
-           />
-           <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center text-white p-10 text-center backdrop-blur-[2px]">
-              <h2 className="text-3xl font-bold mb-4 font-sans tracking-tight">Verification Required</h2>
-              <p className="text-blue-50 leading-relaxed text-lg">
-                Please confirm your identity to get secure access to your account and continue your journey.
-              </p>
+           <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("auth", "auth_verify_image")} className="absolute inset-0 w-full h-full">
+             <img 
+               src={getCmsAssetUrl(getContentValue("auth_verify_image", from === "login" ? "https://images.unsplash.com/photo-1490750967868-88cb4aca2033" : "https://images.unsplash.com/photo-1460500063983-994d4c2b9f53"))}
+               alt="Authentication decoration"
+               className="absolute inset-0 w-full h-full object-cover brightness-110 contrast-110"
+             />
+           </CmsEditableRegion>
+           <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-10 text-center backdrop-blur-[3px] pointer-events-none">
+              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("auth", "auth_verify_title")} className="inline-block w-fit pointer-events-auto mb-4">
+                <h2 className="text-3xl font-bold font-sans tracking-tight">{getContentValue("auth_verify_title", "Verification Required")}</h2>
+              </CmsEditableRegion>
+              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("auth", "auth_verify_subtitle")} className="inline-block w-fit pointer-events-auto mb-8">
+                <p className="text-blue-50 leading-relaxed text-lg">
+                  {getContentValue("auth_verify_subtitle", "Please confirm your identity to get secure access to your account and continue your journey.")}
+                </p>
+              </CmsEditableRegion>
            </div>
         </div>
 
-        {/* RIGHT (or LEFT) PANEL - Form */}
+        {/* RIGHT PANEL - Form */}
         <div className="w-full md:w-1/2 flex flex-col justify-center px-8 sm:px-12 py-10 relative z-10 bg-white">
-          
-
-          
           <h2 className="text-3xl font-bold mb-4 text-gray-800 tracking-tight">Enter OTP Code</h2>
           <p className="text-sm text-gray-500 mb-8 leading-relaxed">
             Please enter the OTP code sent to your registered email address <br/>
@@ -228,7 +241,7 @@ function VerifyOtpPage() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity">
+        <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity">
           <div className="w-full max-w-xs transform rounded-2xl bg-white p-6 text-center shadow-2xl drop-shadow-2xl">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
               <svg className="h-7 w-7 text-green-600" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>

@@ -35,7 +35,7 @@ class ContentController extends Controller
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('contents')->where(fn ($query) => $query->where('page', $request->page)),
+                Rule::unique('contents')->where(fn ($query) => $query->where('page', $request->page)->where('isArchived', false)),
             ],
         ]);
 
@@ -84,7 +84,7 @@ class ContentController extends Controller
                         'max:255',
                         Rule::unique('contents')
                             ->ignore($content->id)
-                            ->where(fn ($query) => $query->where('page', $request->input('page', $content->page))),
+                            ->where(fn ($query) => $query->where('page', $request->input('page', $content->page))->where('isArchived', false)),
                     ],
                     'page' => 'nullable|string|max:255',
                 ]);

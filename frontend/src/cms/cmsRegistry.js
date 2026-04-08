@@ -1,4 +1,5 @@
 export const CMS_FIELDS = [
+  // --- HOME PAGE ---
   { page: "home", identifier: "home_hero_label", label: "Hero Top Label", type: "text", input: "text", previewEnabled: true },
   { page: "home", identifier: "home_hero_title_intro", label: "Hero Title Intro", type: "text", input: "text", previewEnabled: true },
   { page: "home", identifier: "home_hero_title_accent", label: "Hero Title Accent", type: "text", input: "text", previewEnabled: true },
@@ -42,33 +43,60 @@ export const CMS_FIELDS = [
   { page: "home", identifier: "home_category_title_3", label: "Category Title 3", type: "text", input: "text", previewEnabled: true },
   { page: "home", identifier: "home_category_title_4", label: "Category Title 4", type: "text", input: "text", previewEnabled: true },
 
-  { page: "about", identifier: "about_hero_title_1", label: "Hero 1 Title", type: "text", input: "text", previewEnabled: false },
-  { page: "about", identifier: "about_hero_subtitle_1", label: "Hero 1 Subtitle", type: "text", input: "text", previewEnabled: false },
-  { page: "about", identifier: "about_hero_image_1", label: "Hero 1 Image", type: "image", input: "image", previewEnabled: true },
-  { page: "about", identifier: "about_hero_desc_1", label: "Hero 1 Description", type: "text", input: "textarea", previewEnabled: false },
-  { page: "about", identifier: "about_hero_title_2", label: "Hero 2 Title", type: "text", input: "text", previewEnabled: false },
-  { page: "about", identifier: "about_hero_subtitle_2", label: "Hero 2 Subtitle", type: "text", input: "text", previewEnabled: false },
-  { page: "about", identifier: "about_hero_image_2", label: "Hero 2 Image", type: "image", input: "image", previewEnabled: false },
-  { page: "about", identifier: "about_hero_desc_2", label: "Hero 2 Description", type: "text", input: "textarea", previewEnabled: false },
-  { page: "about", identifier: "about_hero_title_3", label: "Hero 3 Title", type: "text", input: "text", previewEnabled: false },
-  { page: "about", identifier: "about_hero_subtitle_3", label: "Hero 3 Subtitle", type: "text", input: "text", previewEnabled: false },
-  { page: "about", identifier: "about_hero_image_3", label: "Hero 3 Image", type: "image", input: "image", previewEnabled: false },
-  { page: "about", identifier: "about_hero_desc_3", label: "Hero 3 Description", type: "text", input: "textarea", previewEnabled: false },
+  // --- ABOUT PAGE ---
+  { page: "about", identifier: "about_hero_label", label: "Hero Top Label", type: "text", input: "text", previewEnabled: true },
+  { page: "about", identifier: "about_hero_title_intro", label: "Hero Title Intro", type: "text", input: "text", previewEnabled: true },
+  { page: "about", identifier: "about_hero_title_accent", label: "Hero Title Accent", type: "text", input: "text", previewEnabled: true },
+  { page: "about", identifier: "about_hero_button_text", label: "Hero Button Text", type: "text", input: "text", previewEnabled: true },
   { page: "about", identifier: "about_mission_text", label: "Mission Text", type: "text", input: "textarea", previewEnabled: true },
-  { page: "about", identifier: "about_founders", label: "Founders Name", type: "text", input: "text", previewEnabled: false },
-  { page: "about", identifier: "about_service_1", label: "Service 1 Title", type: "text", input: "text", previewEnabled: true },
-  { page: "about", identifier: "about_service_image_1", label: "Service 1 Image", type: "image", input: "image", previewEnabled: true },
-  { page: "about", identifier: "about_service_2", label: "Service 2 Title", type: "text", input: "text", previewEnabled: true },
-  { page: "about", identifier: "about_service_image_2", label: "Service 2 Image", type: "image", input: "image", previewEnabled: true },
-  { page: "about", identifier: "about_service_3", label: "Service 3 Title", type: "text", input: "text", previewEnabled: true },
-  { page: "about", identifier: "about_service_image_3", label: "Service 3 Image", type: "image", input: "image", previewEnabled: true },
-  { page: "about", identifier: "about_story_text", label: "Story Text", type: "text", input: "textarea", previewEnabled: false },
+  { page: "about", identifier: "about_hero_image_1", label: "Hero Image", type: "image", input: "image", previewEnabled: true },
+  
+  { page: "about", identifier: "about_team_label", label: "Team Section Label", type: "text", input: "text", previewEnabled: true },
+  { page: "about", identifier: "about_team_title", label: "Team Section Title", type: "text", input: "text", previewEnabled: true },
+  { page: "about", identifier: "about_team_desc", label: "Team Section Desc", type: "text", input: "textarea", previewEnabled: true },
+  
+  // Team Slots (1-5)
+  ...Array.from({ length: 5 }).flatMap((_, i) => [
+    { page: "about", identifier: `about_team_name_${i+1}`, label: `Team ${i+1} Name`, type: "text", input: "text", previewEnabled: true },
+    { page: "about", identifier: `about_team_role_${i+1}`, label: `Team ${i+1} Role`, type: "text", input: "text", previewEnabled: true },
+    { page: "about", identifier: `about_team_image_${i+1}`, label: `Team ${i+1} Image`, type: "image", input: "image", previewEnabled: true },
+  ]),
 
-  { page: "navbar", identifier: "navbar_brand", label: "Brand Name", type: "text", input: "text", previewEnabled: true },
-  { page: "navbar", identifier: "navbar_bg_color", label: "Navbar Background Color", type: "text", input: "color", previewEnabled: true },
-  { page: "navbar", identifier: "navbar_bg_image", label: "Navbar Background Image", type: "image", input: "image", previewEnabled: true },
-  { page: "navbar", identifier: "navbar_text_color", label: "Navbar Text Color", type: "text", input: "color", previewEnabled: true },
+  // Service Slots (1-5)
+  { page: "about", identifier: "about_services_title", label: "Services Section Title", type: "text", input: "text", previewEnabled: true },
+  ...Array.from({ length: 5 }).flatMap((_, i) => [
+    { page: "about", identifier: `about_service_title_${i+1}`, label: `Service ${i+1} Title`, type: "text", input: "text", previewEnabled: true },
+    { page: "about", identifier: `about_service_desc_${i+1}`, label: `Service ${i+1} Desc`, type: "text", input: "textarea", previewEnabled: true },
+    { page: "about", identifier: `about_service_image_${i+1}`, label: `Service ${i+1} Image`, type: "image", input: "image", previewEnabled: true },
+  ]),
 
+  // FAQ Slots (1-12)
+  { page: "about", identifier: "about_faq_label", label: "FAQ Label", type: "text", input: "text", previewEnabled: true },
+  { page: "about", identifier: "about_faq_title", label: "FAQ Title", type: "text", input: "textarea", previewEnabled: true },
+  ...Array.from({ length: 12 }).flatMap((_, i) => [
+    { page: "about", identifier: `about_faq_q_${i+1}`, label: `FAQ ${i+1} Question`, type: "text", input: "text", previewEnabled: true },
+    { page: "about", identifier: `about_faq_a_${i+1}`, label: `FAQ ${i+1} Answer`, type: "text", input: "textarea", previewEnabled: true },
+  ]),
+
+
+  // --- AUTH PAGES ---
+  { page: "auth", identifier: "auth_login_image", label: "Login Background", type: "image", input: "image", previewEnabled: true },
+  { page: "auth", identifier: "auth_login_title", label: "Login Title", type: "text", input: "text", previewEnabled: true },
+  { page: "auth", identifier: "auth_login_subtitle", label: "Login Subtitle", type: "text", input: "textarea", previewEnabled: true },
+  
+  { page: "auth", identifier: "auth_register_image", label: "Register Background", type: "image", input: "image", previewEnabled: true },
+  { page: "auth", identifier: "auth_register_title", label: "Register Title", type: "text", input: "text", previewEnabled: true },
+  { page: "auth", identifier: "auth_register_subtitle", label: "Register Subtitle", type: "text", input: "textarea", previewEnabled: true },
+  
+  { page: "auth", identifier: "auth_verify_image", label: "Verify OTP Background", type: "image", input: "image", previewEnabled: true },
+  { page: "auth", identifier: "auth_verify_title", label: "Verify OTP Title", type: "text", input: "text", previewEnabled: true },
+  { page: "auth", identifier: "auth_verify_subtitle", label: "Verify OTP Subtitle", type: "text", input: "textarea", previewEnabled: true },
+  
+  { page: "auth", identifier: "auth_forgot_image", label: "Forgot Password Background", type: "image", input: "image", previewEnabled: true },
+  { page: "auth", identifier: "auth_forgot_title", label: "Forgot Password Title", type: "text", input: "text", previewEnabled: true },
+  { page: "auth", identifier: "auth_forgot_subtitle", label: "Forgot Password Subtitle", type: "text", input: "textarea", previewEnabled: true },
+
+  // --- FOOTER ---
   { page: "footer", identifier: "footer_brand", label: "Footer Brand Name", type: "text", input: "text", previewEnabled: true },
   { page: "footer", identifier: "footer_bg_color", label: "Footer Background Color", type: "text", input: "color", previewEnabled: true },
   { page: "footer", identifier: "footer_bg_image", label: "Footer Background Image", type: "image", input: "image", previewEnabled: true },
@@ -84,46 +112,26 @@ export const CMS_FIELDS = [
 export const CMS_PAGES = [
   { id: "home", label: "Home" },
   { id: "about", label: "About" },
+  { id: "auth", label: "Login/Register" },
   { id: "navbar", label: "Navbar" },
   { id: "footer", label: "Footer" },
 ];
 
-export const getFieldsForPage = (page) =>
-  CMS_FIELDS.filter((field) => field.page === page);
+export const getFieldsForPage = (page) => CMS_FIELDS.filter((field) => field.page === page);
 
-export const getCmsField = (page, identifier) =>
-  CMS_FIELDS.find(
-    (field) => field.page === page && field.identifier === identifier
-  );
+export const getCmsField = (page, identifier) => CMS_FIELDS.find((field) => field.page === page && field.identifier === identifier);
 
-export const getContentItem = (contents, page, identifier) =>
-  (contents || []).find(
-    (item) =>
-      item.page === page &&
-      item.identifier === identifier &&
-      !item.isArchived
-  );
+export const getContentItem = (contents, page, identifier) => (contents || []).find((item) => item.page === page && item.identifier === identifier && !item.isArchived);
 
 export const getCmsAssetUrl = (value) => {
   if (!value) return "";
-  if (value.startsWith("http://") || value.startsWith("https://")) {
-    return value;
-  }
-
-  const apiBase =
-    import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:8000";
-
+  if (value.startsWith("http://") || value.startsWith("https://")) return value;
+  const apiBase = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:8000";
   return `${apiBase}${value}`;
 };
 
-export const getContentValue = (
-  contents,
-  page,
-  identifier,
-  fallback = ""
-) => {
+export const getContentValue = (contents, page, identifier, fallback = "") => {
   const item = getContentItem(contents, page, identifier);
-
   if (!item) return fallback;
   if (item.type === "image") return item.content_image || fallback;
   return item.content_text || fallback;

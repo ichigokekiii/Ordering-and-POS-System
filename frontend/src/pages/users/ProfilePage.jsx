@@ -15,6 +15,7 @@ export default function ProfilePage() {
 
   const [profile, setProfile] = useState(null);
   const [addresses, setAddresses] = useState([]);
+  const [orders, setOrders] = useState([]); // <-- Added orders state
   const [loading, setLoading] = useState(true);
   
   // Navigation State
@@ -30,7 +31,6 @@ export default function ProfilePage() {
   const [addressForm, setAddressForm] = useState({ house_number: "", street: "", barangay: "", city: "", zip_code: "" });
 
   // --- Security State ---
-  // Re-integrated into Profile tab
   const [emailChangeMode, setEmailChangeMode] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [emailOtp, setEmailOtp] = useState("");
@@ -51,6 +51,7 @@ export default function ProfilePage() {
       const res = await api.get("/profile");
       setProfile(res.data);
       setAddresses(res.data.addresses || []);
+      setOrders(res.data.orders || []); // <-- Extract orders from response
       setLoading(false);
     } catch (err) {
       console.error("Failed to load profile", err);
@@ -143,7 +144,7 @@ export default function ProfilePage() {
   };
 
   // -------------------------------------------------------------
-  // SECURITY LOGIC (Now in My Profile)
+  // SECURITY LOGIC
   // -------------------------------------------------------------
   const sendEmailOtp = async () => {
     if (!newEmail || newEmail === profile.email) return alert("Enter a valid new email.");
@@ -196,6 +197,16 @@ export default function ProfilePage() {
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-[#fcfaf9] text-gray-900 font-sans"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-[#4f6fa5]"></div></div>;
   }
+
+  // Helper for Order Status colors
+  const getStatusStyle = (status) => {
+    if (status === "Pending") return "bg-amber-100 text-amber-700 border-amber-200";
+    if (status === "Processing") return "bg-blue-100 text-blue-700 border-blue-200";
+    if (status === "Shipped") return "bg-purple-100 text-purple-700 border-purple-200";
+    if (status === "Delivered" || status === "Completed") return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    if (status === "Cancelled") return "bg-rose-100 text-rose-700 border-rose-200";
+    return "bg-gray-100 text-gray-600 border-gray-200";
+  };
 
   return (
     <div className="min-h-screen bg-[#fcfaf9] text-gray-900 font-sans pt-0 pb-0">
@@ -455,14 +466,42 @@ export default function ProfilePage() {
                   </MotionDiv>
                )}
 
-               {/* --- ORDERS VIEW (MOCK) --- */}
+               {/* --- ORDERS VIEW (NOW DYNAMIC) --- */}
                {activeTab === 'orders' && (
                   <MotionDiv key="orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
-                    <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm flex flex-col items-center justify-center p-16 text-center">
-                       <Package className="w-12 h-12 text-gray-300 mb-4" />
-                       <h3 className="font-playfair font-bold text-gray-900 mb-1">No Orders Found</h3>
-                       <p className="text-sm text-gray-500 max-w-sm">You haven't placed any orders yet. Visit our Showcase to get started.</p>
-                       <button className="mt-6 bg-[#0f1b2d] text-white border border-[#0f1b2d] px-6 py-2 rounded-full font-medium text-sm hover:bg-white hover:text-[#0f1b2d] transition-all duration-300 ease-out">Shop Now</button>
+                    <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm">
+                      <div className="px-6 py-4 border-b border-gray-100">
+                         <h3 className="font-playfair font-bold text-gray-900">Order History</h3>
+                      </div>
+                      
+                      <div className="p-6">
+                        {orders.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-10 text-center">
+                             <Package className="w-12 h-12 text-gray-300 mb-4" />
+                             <h3 className="font-playfair font-bold text-gray-900 mb-1">No Orders Found</h3>
+                             <p className="text-sm text-gray-500 max-w-sm">You haven't placed any orders yet. Visit our Showcase to get started.</p>
+                             <button onClick={() => window.location.href = "/"} className="mt-6 bg-[#0f1b2d] text-white border border-[#0f1b2d] px-6 py-2 rounded-full font-medium text-sm hover:bg-white hover:text-[#0f1b2d] transition-all duration-300 ease-out">Shop Now</button>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {orders.map((order) => (
+                              <div key={order.order_id || order.id} className="border border-gray-100 rounded-2xl p-5 flex flex-col md:flex-row justify-between gap-4 hover:border-gray-300 transition-colors bg-gray-50/50">
+                                <div>
+                                  <p className="font-bold text-gray-900 text-sm mb-1">Order #{order.order_id || order.id}</p>
+                                  <p className="text-xs text-gray-500 mb-3">Placed on {new Date(order.created_at).toLocaleDateString()}</p>
+                                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${getStatusStyle(order.order_status)}`}>
+                                    {order.order_status || 'Pending'}
+                                  </span>
+                                </div>
+                                <div className="text-left md:text-right flex flex-col justify-between">
+                                  <p className="font-bold text-[#4f6fa5] text-lg">₱{order.total_amount}</p>
+                                  <p className="text-xs text-gray-500 capitalize">{order.delivery_method} Delivery</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </MotionDiv>
                )}
@@ -471,6 +510,7 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
     {/* Address Modal */}
     {showAddressModal && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">

@@ -44,118 +44,57 @@ export function ProductProvider({ children }) {
     loadAll();
   }, []);
 
-  // Add product
-const addProduct = async (productData) => {
-  try {
-    const formData = new FormData();
-    formData.append("name", productData.name);
-    formData.append("description", productData.description);
-    formData.append("price", productData.price);
-    formData.append("category", productData.category);
-    formData.append("type", productData.type || "");
-    formData.append("isAvailable", Number(productData.isAvailable));
-    if (productData.category === "Bouquets") {
-      formData.append("required_main_count", productData.required_main_count ?? 1);
-      formData.append("required_filler_count", productData.required_filler_count ?? 2);
+  // Add product (Axios automatically handles FormData headers)
+  const addProduct = async (formData) => {
+    try {
+      const res = await api.post("/products", formData);
+      setProducts((prev) => [res.data, ...prev]);
+      return res.data;
+    } catch (error) {
+      console.error("Failed to add product", error);
+      throw error;
     }
-    if (productData.image) {
-      formData.append("image", productData.image);
+  };
+
+  // Add premade
+  const addPremade = async (formData) => {
+    try {
+      const res = await api.post("/premades", formData);
+      setPremades((prev) => [res.data, ...prev]);
+      return res.data;
+    } catch (error) {
+      console.error("Failed to add premade", error);
+      throw error;
     }
+  };
 
-    const res = await api.post("/products", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    setProducts((prev) => [res.data, ...prev]);
-    return res.data;
-  } catch (error) {
-    console.error("Failed to add product", error);
-    throw error;
-  }
-};
-
-const addPremade = async (premadeData) => {
-  try {
-    const formData = new FormData();
-    formData.append("name", premadeData.name);
-    formData.append("description", premadeData.description);
-    formData.append("price", premadeData.price);
-    formData.append("category", premadeData.category || "");
-    formData.append("isAvailable", Number(premadeData.isAvailable));
-    if (premadeData.image) {
-      formData.append("image", premadeData.image);
+  // Update product
+  const updateProduct = async (id, formData) => {
+    try {
+      const res = await api.post(`/products/${id}`, formData);
+      setProducts((prev) =>
+        prev.map((p) => (p.id === id ? res.data : p))
+      );
+      return res.data;
+    } catch (error) {
+      console.error("Failed to update product", error);
+      throw error;
     }
+  };
 
-    const res = await api.post("/premades", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-
-    setPremades((prev) => [res.data, ...prev]);
-    return res.data;
-  } catch (error) {
-    console.error("Failed to add premade", error);
-    throw error;
-  }
-};
-
-// Update product
-const updateProduct = async (id, updatedData) => {
-  try {
-    const formData = new FormData();
-    formData.append("_method", "PUT");
-    formData.append("name", updatedData.name);
-    formData.append("description", updatedData.description);
-    formData.append("price", updatedData.price);
-    formData.append("category", updatedData.category);
-    formData.append("type", updatedData.type || "");
-    formData.append("isAvailable", Number(updatedData.isAvailable));
-    if (updatedData.category === "Bouquets") {
-      formData.append("required_main_count", updatedData.required_main_count ?? 1);
-      formData.append("required_filler_count", updatedData.required_filler_count ?? 2);
+  // Update premade
+  const updatePremade = async (id, formData) => {
+    try {
+      const res = await api.post(`/premades/${id}`, formData);
+      setPremades((prev) =>
+        prev.map((p) => (p.id === id ? res.data : p))
+      );
+      return res.data;
+    } catch (error) {
+      console.error("Failed to update premade", error);
+      throw error;
     }
-    if (updatedData.image) {
-      formData.append("image", updatedData.image);
-    }
-
-    const res = await api.post(`/products/${id}`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? res.data : p))
-    );
-    return res.data;
-  } catch (error) {
-    console.error("Failed to update product", error);
-    throw error;
-  }
-};
-
-const updatePremade = async (id, updatedData) => {
-  try {
-    const formData = new FormData();
-    formData.append("_method", "PUT");
-    formData.append("name", updatedData.name);
-    formData.append("description", updatedData.description);
-    formData.append("price", updatedData.price);
-    formData.append("category", updatedData.category || "");
-    formData.append("isAvailable", Number(updatedData.isAvailable));
-    if (updatedData.image) {
-      formData.append("image", updatedData.image);
-    }
-
-    const res = await api.post(`/premades/${id}`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-
-    setPremades((prev) =>
-      prev.map((p) => (p.id === id ? res.data : p))
-    );
-
-    return res.data;
-  } catch (error) {
-    console.error("Failed to update premade", error);
-    throw error;
-  }
-};
+  };
 
   // Delete product
   const deleteProduct = async (id) => {

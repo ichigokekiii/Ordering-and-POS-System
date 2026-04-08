@@ -41,7 +41,6 @@ const PREMADE_CATEGORIES = [
   "Addons",
 ];
 
-// Shortened dropdown labels
 const SECTION_OPTIONS = [
   { id: "custom", label: "Custom", icon: Layers },
   { id: "premades", label: "Premade", icon: Package },
@@ -64,7 +63,6 @@ const CharCount = ({ value, max }) => (
 const FieldError = ({ error }) =>
   error ? <p className="mt-1.5 text-[10px] font-bold text-rose-500 uppercase tracking-wide">{error}</p> : null;
 
-// Reusable Status Pill
 const StatusPill = ({ isAvailable }) => (
   <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest shadow-sm backdrop-blur-md border ${
     isAvailable ? "bg-emerald-500/90 text-white border-emerald-400" : "bg-rose-500/90 text-white border-rose-400"
@@ -73,7 +71,6 @@ const StatusPill = ({ isAvailable }) => (
   </span>
 );
 
-// Styled Product Card (Supports both Active and Archived visual states)
 const ProductCard = ({ product, onEdit, onDelete, canEdit, isArchived }) => (
   <div className={`flex flex-col rounded-[1.5rem] border border-gray-200 overflow-hidden transition-all group ${isArchived ? "bg-gray-50 opacity-80 hover:opacity-100 hover:shadow-md" : "bg-white shadow-sm hover:shadow-lg hover:border-[#4f6fa5]"}`}>
     <div className={`h-48 border-b border-gray-100 relative overflow-hidden ${isArchived ? "bg-gray-200 grayscale" : "bg-gray-50"}`}>
@@ -109,7 +106,7 @@ const ProductCard = ({ product, onEdit, onDelete, canEdit, isArchived }) => (
             <Pencil className="w-3.5 h-3.5" /> Edit
           </button>
           <button
-            onClick={() => onDelete(product.id)}
+            onClick={() => onDelete(product)}
             className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-4 py-1.5 text-xs font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-500 transition-all duration-300 shadow-sm"
           >
             <Trash2 className="w-3.5 h-3.5" /> Delete
@@ -174,8 +171,8 @@ function AdminProductPage({ user }) {
 
   const [errors, setErrors] = useState({ name: "", description: "", price: "", image: "" });
 
-  const [toast, setToast] = useState(null);
-  const toastTimeoutRef = useRef(null);
+  const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', message: '' });
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, item: null });
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -187,10 +184,8 @@ function AdminProductPage({ user }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const showToast = (type, message) => {
-    setToast({ type, message });
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    toastTimeoutRef.current = setTimeout(() => setToast(null), 3500);
+  const showModalAlert = (type, message) => {
+    setStatusModal({ isOpen: true, type, message });
   };
 
   const handleImageChange = (e) => {
@@ -222,57 +217,123 @@ function AdminProductPage({ user }) {
       name: validate("name", name),
       description: validate("description", description),
       price: validate("price", price),
+      image: (!image && !isEditing) ? "An image is required" : ""
     };
+    
     setErrors(newErrors);
-    return Object.values(newErrors).every((e) => e === "");
+    
+    if (Object.values(newErrors).some((e) => e !== "")) return false;
+
+    // Hard block missing categories to prevent 500 errors
+    if (activeSection === "custom") {
+      if (!category) {
+        showModalAlert("error", "Please select a Structural Category.");
+        return false;
+      }
+      if (category === "Additional" && !type) {
+        showModalAlert("error", "Please select a Flora Type.");
+        return false;
+      }
+    } else {
+      if (!category) {
+        showModalAlert("error", "Please select a Collection Category.");
+        return false;
+      }
+    }
+
+    return true;
   };
 
-  const handleSubmit = async (e) => {
+ const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateAll()) return;
+    
     try {
+      // 1. We MUST construct a FormData object to send images properly.
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("price", price);
+      formData.append("description", description);
+      formData.append("category", category);
+      formData.append("isAvailable", isAvailable ? 1 : 0); // Backend safely casts this to boolean now
+      
+      // Only append image if the user uploaded a new one
+      if (image) {
+        formData.append("image", image);
+      }
+
       if (activeSection === "custom") {
-        const payload = {
-          name, image, price, description, category, type, isAvailable,
-          required_main_count: requiredMainCount, required_filler_count: requiredFillerCount,
-        };
+        if (type) formData.append("type", type);
+        if (category === "Bouquets") {
+            formData.append("required_main_count", requiredMainCount);
+            formData.append("required_filler_count", requiredFillerCount);
+        }
+
         if (isEditing) {
-          await updateProduct(currentId, payload);
-          showToast("success", "Product updated successfully!");
+          // Send _method PUT so Laravel handles the multipart/form-data update properly
+          formData.append("_method", "PUT"); 
+          await updateProduct(currentId, formData);
+          showModalAlert("success", "Product updated successfully!");
         } else {
-          await addProduct(payload);
-          showToast("success", "Product added successfully!");
+          await addProduct(formData);
+          showModalAlert("success", "Product added successfully!");
         }
       } else {
-        const payload = { name, image, price, description, category, isAvailable };
         if (isEditing) {
-          await updatePremade(currentId, payload);
-          showToast("success", "Premade updated successfully!");
+          formData.append("_method", "PUT");
+          await updatePremade(currentId, formData);
+          showModalAlert("success", "Premade updated successfully!");
         } else {
-          await addPremade(payload);
-          showToast("success", "Premade added successfully!");
+          await addPremade(formData);
+          showModalAlert("success", "Premade added successfully!");
         }
       }
       resetForm();
       setShowModal(false);
-    } catch (error) {
+} catch (error) {
       console.error("Operation failed", error);
-      showToast("error", "Operation failed. Please check inputs.");
+      
+      let errorMsg = "Operation failed. Please check your inputs.";
+      
+      // If Laravel throws a 422, let's print EXACTLY what it rejected to the console!
+      if (error.response && error.response.status === 422) {
+         console.error("🚨 LARAVEL REJECTED THESE FIELDS:", error.response.data.errors);
+         
+         const serverErrors = error.response.data.errors;
+         if (serverErrors) {
+            // Grab the very first error message from Laravel and put it in the modal
+            const firstKey = Object.keys(serverErrors)[0];
+            errorMsg = serverErrors[firstKey][0];
+         } else if (error.response.data.message) {
+            errorMsg = error.response.data.message;
+         }
+      } else if (error.response?.data?.message) {
+         errorMsg = error.response.data.message;
+      }
+      
+      showModalAlert("error", errorMsg);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to permanently delete this item?")) return;
+  const promptDelete = (item) => {
+    setDeleteConfirm({ isOpen: true, item });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm.item) return;
     try {
-      if (activeSection === "custom") await deleteProduct(id);
-      else await deletePremade(id);
-      showToast("success", "Item deleted successfully.");
+      if (activeSection === "custom") await deleteProduct(deleteConfirm.item.id);
+      else await deletePremade(deleteConfirm.item.id);
+      
+      showModalAlert("success", "Item deleted successfully.");
     } catch (error) {
-      showToast("error", "Failed to delete item.");
+      showModalAlert("error", "Failed to delete item.");
+    } finally {
+      setDeleteConfirm({ isOpen: false, item: null });
     }
   };
 
-  const handleEdit = (product) => {
+const handleEdit = (product) => {
     setIsEditing(true);
     setCurrentId(product.id);
     setName(product.name);
@@ -281,7 +342,10 @@ function AdminProductPage({ user }) {
     setDescription(product.description);
     setCategory(product.category);
     setType(product.type || "");
-    setIsAvailable(product.isAvailable);
+    
+    // CHANGE THIS LINE: Safely interpret whatever the database sent
+    setIsAvailable(product.isAvailable === 1 || product.isAvailable === true || product.isAvailable === "1" ? 1 : 0);
+    
     setRequiredMainCount(String(product.required_main_count ?? 1));
     setRequiredFillerCount(String(product.required_filler_count ?? 2));
     setErrors({ name: "", description: "", price: "", image: "" });
@@ -301,14 +365,12 @@ function AdminProductPage({ user }) {
     [activeSection]
   );
 
-  // Split Active and Archived data
   const activeProducts = products.filter(p => p.isAvailable);
   const archivedProducts = products.filter(p => !p.isAvailable);
 
   const activePremades = premades.filter(p => p.isAvailable);
   const archivedPremades = premades.filter(p => !p.isAvailable);
 
-  // Group active custom products
   const bouquets = activeProducts.filter((p) => p.category === "Bouquets");
   const mainFlowers = activeProducts.filter((p) => p.category === "Additional" && p.type === "Main Flowers");
   const fillers = activeProducts.filter((p) => p.category === "Additional" && p.type === "Fillers");
@@ -316,40 +378,6 @@ function AdminProductPage({ user }) {
   return (
     <div className="min-h-screen flex flex-col px-8 py-8 bg-white rounded-lg relative font-sans">
       
-      {/* TOAST SYSTEM */}
-      {toast && (
-        <div className="fixed top-6 right-6 z-[500] animate-in slide-in-from-right duration-300">
-          <div className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border backdrop-blur-md ${
-            toast.type === 'success' ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-rose-500 border-rose-400 text-white'
-          }`}>
-            {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <X className="w-5 h-5" />}
-            <span className="text-sm font-bold tracking-tight">{toast.message}</span>
-            <button onClick={() => setToast(null)} className="ml-2 opacity-70 hover:opacity-100 transition-opacity"><X className="w-4 h-4" /></button>
-          </div>
-        </div>
-      )}
-
-<<<<<<< HEAD
-      {activeTab === "premades" && (
-        <div className="space-y-6">
-          <h3 className="text-xl font-semibold text-gray-700 pb-2">Premades</h3>
-          {premades.length === 0 ? (
-            <div className="flex h-40 items-center justify-center rounded-lg bg-gray-50">
-              <p className="text-gray-400">No premades yet</p>
-            </div>
-          ) : (
-            <div className="grid gap-6 md:grid-cols-3">
-              {premades.map((premade) => (
-                <ProductCard
-                  key={premade.id}
-                  product={premade}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  canEdit={canEdit}
-                />
-              ))}
-            </div>
-=======
       {/* HEADER AREA */}
       <div className="mb-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between relative z-[160]">
         <div>
@@ -373,7 +401,6 @@ function AdminProductPage({ user }) {
               <PackagePlus className="w-4 h-4" />
               {activeSection === "custom" ? "+ Add Custom" : "+ Add Premade"}
             </button>
->>>>>>> 3c8e5da922bb6599ed514004a95e3a8467ea448a
           )}
 
           {/* DROPDOWN NAVIGATION */}
@@ -421,10 +448,9 @@ function AdminProductPage({ user }) {
       <div className="flex-1 mt-4">
         {activeSection === "custom" && (
           <div className="animate-in fade-in duration-500">
-            {/* Active Items */}
-            <SectionGrid title="Bouquet Frameworks" items={bouquets} emptyMsg="No bouquets available in inventory." onEdit={handleEdit} onDelete={handleDelete} canEdit={canEdit} />
-            <SectionGrid title="Main Flowers" items={mainFlowers} emptyMsg="No main flowers available in inventory." onEdit={handleEdit} onDelete={handleDelete} canEdit={canEdit} />
-            <SectionGrid title="Filler Elements" items={fillers} emptyMsg="No fillers available in inventory." onEdit={handleEdit} onDelete={handleDelete} canEdit={canEdit} />
+            <SectionGrid title="Bouquet Frameworks" items={bouquets} emptyMsg="No bouquets available in inventory." onEdit={handleEdit} onDelete={promptDelete} canEdit={canEdit} />
+            <SectionGrid title="Main Flowers" items={mainFlowers} emptyMsg="No main flowers available in inventory." onEdit={handleEdit} onDelete={promptDelete} canEdit={canEdit} />
+            <SectionGrid title="Filler Elements" items={fillers} emptyMsg="No fillers available in inventory." onEdit={handleEdit} onDelete={promptDelete} canEdit={canEdit} />
 
             {/* Archived Items (Out of Stock) */}
             <div className="mt-16 pt-8 border-t border-gray-100">
@@ -445,7 +471,7 @@ function AdminProductPage({ user }) {
               ) : (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {archivedProducts.map((p) => (
-                    <ProductCard key={p.id} product={p} onEdit={handleEdit} onDelete={handleDelete} canEdit={canEdit} isArchived={true} />
+                    <ProductCard key={p.id} product={p} onEdit={handleEdit} onDelete={promptDelete} canEdit={canEdit} isArchived={true} />
                   ))}
                 </div>
               )}
@@ -455,8 +481,7 @@ function AdminProductPage({ user }) {
 
         {activeSection === "premades" && (
           <div className="animate-in fade-in duration-500">
-            {/* Active Premades */}
-            <SectionGrid title="Curated Collections" items={activePremades} emptyMsg="No curated collections available in inventory." onEdit={handleEdit} onDelete={handleDelete} canEdit={canEdit} />
+            <SectionGrid title="Curated Collections" items={activePremades} emptyMsg="No curated collections available in inventory." onEdit={handleEdit} onDelete={promptDelete} canEdit={canEdit} />
 
             {/* Archived Premades */}
             <div className="mt-16 pt-8 border-t border-gray-100">
@@ -477,7 +502,7 @@ function AdminProductPage({ user }) {
               ) : (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {archivedPremades.map((p) => (
-                    <ProductCard key={p.id} product={p} onEdit={handleEdit} onDelete={handleDelete} canEdit={canEdit} isArchived={true} />
+                    <ProductCard key={p.id} product={p} onEdit={handleEdit} onDelete={promptDelete} canEdit={canEdit} isArchived={true} />
                   ))}
                 </div>
               )}
@@ -489,7 +514,7 @@ function AdminProductPage({ user }) {
       {/* ADD/EDIT MODAL */}
       {showModal && canEdit && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-lg rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             
             <div className="mb-6">
               <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5] mb-3 inline-block">
@@ -515,7 +540,6 @@ function AdminProductPage({ user }) {
                     value={name}
                     onChange={(e) => handleFieldChange("name", e.target.value, setName)}
                     maxLength={VALIDATION.name.maxLength}
-                    required
                   />
                   <FieldError error={errors.name} />
                 </div>
@@ -532,7 +556,6 @@ function AdminProductPage({ user }) {
                     value={price}
                     onChange={handlePriceChange}
                     maxLength={VALIDATION.price.maxLength}
-                    required
                   />
                   <FieldError error={errors.price} />
                 </div>
@@ -550,7 +573,6 @@ function AdminProductPage({ user }) {
                   value={description}
                   onChange={(e) => handleFieldChange("description", e.target.value, setDescription)}
                   maxLength={VALIDATION.description.maxLength}
-                  required
                 />
                 <FieldError error={errors.description} />
               </div>
@@ -637,7 +659,6 @@ function AdminProductPage({ user }) {
                             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm focus:border-[#4f6fa5] focus:outline-none focus:ring-2 focus:ring-[#eaf2ff]"
                             value={requiredMainCount}
                             onChange={(e) => setRequiredMainCount(e.target.value)}
-                            required
                           />
                         </div>
                         <div>
@@ -648,7 +669,6 @@ function AdminProductPage({ user }) {
                             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm focus:border-[#4f6fa5] focus:outline-none focus:ring-2 focus:ring-[#eaf2ff]"
                             value={requiredFillerCount}
                             onChange={(e) => setRequiredFillerCount(e.target.value)}
-                            required
                           />
                         </div>
                       </div>
@@ -664,7 +684,6 @@ function AdminProductPage({ user }) {
                     className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    required
                   >
                     <option value="" disabled>Select Premade Category...</option>
                     {PREMADE_CATEGORIES.map((cat) => (
@@ -711,7 +730,6 @@ function AdminProductPage({ user }) {
                     accept="image/*"
                     onChange={handleImageChange}
                     className="w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-gray-600 hover:file:bg-gray-200 transition-all cursor-pointer"
-                    required={!isEditing}
                   />
                   {!image && isEditing && (
                     <p className="mt-2 text-[9px] font-bold text-amber-500 uppercase tracking-wider leading-tight">
@@ -742,6 +760,57 @@ function AdminProductPage({ user }) {
           </div>
         </div>
       )}
+
+      {/* --- CONFIRM DELETE MODAL --- */}
+      {deleteConfirm.isOpen && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 text-rose-500">
+               <Trash2 size={28} />
+            </div>
+            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">Delete Item?</h3>
+            <p className="text-sm text-gray-500 mb-8 px-2">Are you sure you want to permanently delete "{deleteConfirm.item?.name}"? This action cannot be undone.</p>
+            <div className="flex justify-center gap-3">
+              <button 
+                onClick={() => setDeleteConfirm({ isOpen: false, item: null })} 
+                className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDelete} 
+                className="rounded-lg bg-rose-500 px-5 py-2 text-sm font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-600 transition-all duration-300 shadow-sm"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- STATUS ALERT MODAL --- */}
+      {statusModal.isOpen && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
+            <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${statusModal.type === 'success' ? 'bg-emerald-100 text-emerald-500' : 'bg-rose-100 text-rose-500'}`}>
+               {statusModal.type === 'success' ? <CheckCircle2 size={28} /> : <X size={28} />}
+            </div>
+            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
+              {statusModal.type === 'success' ? 'Success' : 'Action Failed'}
+            </h3>
+            <p className="text-sm text-gray-500 mb-8 px-2">{statusModal.message}</p>
+            <div className="flex justify-center">
+              <button 
+                onClick={() => setStatusModal({ isOpen: false, type: 'success', message: '' })} 
+                className="rounded-xl bg-gray-900 px-8 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+              >
+                Okay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

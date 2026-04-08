@@ -16,7 +16,7 @@ class ProfileController extends Controller
     /**
      * Get authenticated user's profile with addresses
      */
-    public function profile()
+public function profile()
     {
         /** @var User $user */
         $user = Auth::user();
@@ -27,7 +27,13 @@ class ProfileController extends Controller
             ], 401);
         }
 
-        $user->load('addresses');
+        // Load addresses and orders (sorted newest first)
+        $user->load([
+            'addresses', 
+            'orders' => function($query) {
+                $query->orderBy('created_at', 'desc');
+            }
+        ]);
 
         return response()->json([
             'id' => $user->id,
@@ -36,7 +42,8 @@ class ProfileController extends Controller
             'email' => $user->email,
             'phone_number' => $user->phone_number,
             'role' => $user->role,
-            'addresses' => $user->addresses
+            'addresses' => $user->addresses,
+            'orders' => $user->orders // <-- Added orders to the API response
         ]);
     }
 

@@ -10,6 +10,7 @@ use App\Mail\SendOtpMail;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
@@ -26,52 +27,43 @@ class UserController extends Controller
     }
 
     // Public Registration (with OTP)
-    public function register(Request $request)
+public function register(Request $request)
     {
-        $firstName = $request->input('first_name');
-        $lastName = $request->input('last_name');
-        $email = $request->input('email');
-        $password = $request->input('password');
-        $phoneNumber = $request->input('phone_number');
+        $validator = Validator::make($request->all(), [
+            'first_name'   => ['required', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
+            'last_name'    => ['required', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
+            'email'        => 'required|string|email|max:255|unique:users,email',
+            'password'     => 'required|string|min:6',
+            'phone_number' => ['required', 'string', 'regex:/^\d{11}$/'],
+        ], [
+            'first_name.regex'   => 'First name can only contain letters and spaces.',
+            'last_name.regex'    => 'Last name can only contain letters and spaces.',
+            'phone_number.regex' => 'Phone number must be exactly 11 digits.',
+        ]);
 
-        if (empty($email)) {
-            return response()->json(['error' => 'Email is required'], 400);
-        }
-
-        if (empty($password) || strlen($password) < 6) {
-            return response()->json(['error' => 'Password must be at least 6 characters'], 400);
-        }
-
-        if (User::where('email', $email)->exists()) {
-            return response()->json(['error' => 'Email already exists'], 400);
-        }
-
-        if (empty($firstName) || empty($lastName)) {
-            return response()->json(['error' => 'First name and last name are required'], 400);
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 400);
         }
 
         $user = new User();
-        $user->first_name = $firstName;
-        $user->last_name = $lastName;
-        $user->email = $email;
-        $user->password = Hash::make($password);
+        $user->first_name = $request->input('first_name');
+        $user->last_name = $request->input('last_name');
+        $user->email = $request->input('email');
+        $user->password = Hash::make($request->input('password'));
         $user->role = 'user';
         $user->status = 'Active';
-        $user->phone_number = $phoneNumber;
+        $user->phone_number = $request->input('phone_number');
         $user->failed_attempt_count = 0;
-        $user->last_failed_attempt_at = null;
         $user->is_locked = false;
         $user->priority = 0;
         $user->save();
 
         $otpCode = rand(100000, 999999);
 
-        Otp::updateOrCreate([
-            'user_id' => $user->id,
-        ], [
-            'code' => $otpCode,
-            'expires_at' => Carbon::now()->addMinutes(5),
-        ]);
+        Otp::updateOrCreate(
+            ['user_id' => $user->id],
+            ['code' => $otpCode, 'expires_at' => Carbon::now()->addMinutes(5)]
+        );
 
         Mail::to($user->email)->send(new SendOtpMail($otpCode));
 
@@ -82,47 +74,40 @@ class UserController extends Controller
     }
 
     // Admin Create User (NO OTP)
-    public function store(Request $request)
+public function store(Request $request)
     {
         if (!Auth::check() || Auth::user()->role !== 'admin') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $firstName = $request->input('first_name');
-        $lastName = $request->input('last_name');
-        $email = $request->input('email');
-        $password = $request->input('password');
-        $role = $request->input('role', 'user');
-        $status = $request->input('status', 'active');
-        $phoneNumber = $request->input('phone_number');
+        $validator = Validator::make($request->all(), [
+            'first_name'   => ['required', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
+            'last_name'    => ['required', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
+            'email'        => 'required|string|email|max:255|unique:users,email',
+            'password'     => 'required|string|min:6',
+            'phone_number' => ['required', 'string', 'regex:/^\d{11}$/'],
+            'role'         => 'nullable|string|in:user,admin,owner',
+            'status'       => 'nullable|string'
+        ], [
+            'first_name.regex'   => 'First name can only contain letters and spaces.',
+            'last_name.regex'    => 'Last name can only contain letters and spaces.',
+            'phone_number.regex' => 'Phone number must be exactly 11 digits.',
+        ]);
 
-        if (empty($email)) {
-            return response()->json(['error' => 'Email is required'], 400);
-        }
-
-        if (empty($password) || strlen($password) < 6) {
-            return response()->json(['error' => 'Password must be at least 6 characters'], 400);
-        }
-
-        if (User::where('email', $email)->exists()) {
-            return response()->json(['error' => 'Email already exists'], 400);
-        }
-
-        if (empty($firstName) || empty($lastName)) {
-            return response()->json(['error' => 'First name and last name are required'], 400);
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 400);
         }
 
         $user = new User();
-        $user->first_name = $firstName;
-        $user->last_name = $lastName;
-        $user->email = $email;
-        $user->password = Hash::make($password);
-        $user->role = $role;
-        $user->status = $status;
-        $user->phone_number = $phoneNumber;
-        $user->is_verified = true; // Admin-created users bypass OTP
+        $user->first_name = $request->input('first_name');
+        $user->last_name = $request->input('last_name');
+        $user->email = $request->input('email');
+        $user->password = Hash::make($request->input('password'));
+        $user->role = $request->input('role', 'user');
+        $user->status = $request->input('status', 'active');
+        $user->phone_number = $request->input('phone_number');
+        $user->is_verified = true;
         $user->failed_attempt_count = 0;
-        $user->last_failed_attempt_at = null;
         $user->is_locked = false;
         $user->priority = 0;
         $user->save();
@@ -157,43 +142,30 @@ class UserController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        // Admin can update everything
-        // Owner can update basic info but NOT role
-        if (Auth::user()->role === 'owner') {
-            if ($request->filled('role')) {
-                return response()->json(['error' => 'Owner cannot change roles'], 403);
-            }
-        } elseif (Auth::user()->role !== 'admin') {
+        if (Auth::user()->role === 'owner' && $request->filled('role')) {
+            return response()->json(['error' => 'Owner cannot change roles'], 403);
+        } elseif (Auth::user()->role !== 'admin' && Auth::user()->role !== 'owner') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $user = User::find($id);
-
         if (!$user) {
             return response()->json(['error' => 'User not found'], 404);
         }
 
-        // Validate phone number if provided
-        if ($request->filled('phone_number')) {
-            $phone = $request->input('phone_number');
-            if (!preg_match('/^\d{11}$/', $phone)) {
-                return response()->json(['error' => 'Phone number must be exactly 11 digits'], 400);
-            }
-        }
+        // Validate incoming data safely
+        $validator = Validator::make($request->all(), [
+            'first_name'   => ['sometimes', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
+            'last_name'    => ['sometimes', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
+            'phone_number' => ['sometimes', 'string', 'regex:/^\d{11}$/'],
+        ], [
+            'first_name.regex'   => 'First name can only contain letters and spaces.',
+            'last_name.regex'    => 'Last name can only contain letters and spaces.',
+            'phone_number.regex' => 'Phone number must be exactly 11 digits.',
+        ]);
 
-        // Validate names
-        if ($request->filled('first_name')) {
-            $firstName = $request->input('first_name');
-            if (!preg_match('/^[A-Za-z\s\-\\\']{2,50}$/', $firstName)) {
-                return response()->json(['error' => 'First name must be 2-50 letters only'], 400);
-            }
-        }
-
-        if ($request->filled('last_name')) {
-            $lastName = $request->input('last_name');
-            if (!preg_match('/^[A-Za-z\s\-\\\']{2,50}$/', $lastName)) {
-                return response()->json(['error' => 'Last name must be 2-50 letters only'], 400);
-            }
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 400);
         }
 
         // Handle email change with OTP

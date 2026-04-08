@@ -16,13 +16,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PosTransactionsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContentController;
-<<<<<<< HEAD
-use App\Http\Controllers\FeedbackController;
-
-=======
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\AnalyticsController;
->>>>>>> 3c8e5da922bb6599ed514004a95e3a8467ea448a
 
 /*
 |--------------------------------------------------------------------------
@@ -46,6 +41,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/feedbacks', [FeedbackController::class, 'store']);
 });
 
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/analytics', [AnalyticsController::class, 'index']);
+    Route::post('/analytics/email', [AnalyticsController::class, 'sendReportEmail']);
+});
+
 // Product & Premade routes (Public so customers can see menu)
 Route::apiResource('products', ProductController::class)->only(['index', 'show']);
 Route::apiResource('premades', PremadeController::class)->only(['index', 'show']);
@@ -59,8 +59,8 @@ Route::apiResource('contents', ContentController::class);
 Route::delete('/contents/archived/{id}', [ContentController::class, 'destroyArchived']);
 
 //pos api route
-Route::get('/pos-transactions/analytics', [PosTransactionsController::class, 'analytics']);
-Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
+// Route::get('/pos-transactions/analytics', [PosTransactionsController::class, 'analytics']);
+// Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
 
 // Allow customers/guests to place an order
 Route::post('/orders', [OrderController::class, 'store']);

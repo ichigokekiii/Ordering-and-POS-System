@@ -11,80 +11,56 @@ class ProductService
 {
     public static function syncCustomProduct(CustomProduct $product): Products
     {
-        return self::syncSourceProduct($product, 'custom');
+        return self::syncSourceProduct($product);
     }
 
     public static function syncPremadeProduct(PremadeProduct $product): Products
     {
-        return self::syncSourceProduct($product, 'premade');
+        return self::syncSourceProduct($product);
     }
 
-    public static function resolveCatalogId(
-        ?int $productId,
-        ?string $productName = null,
-        ?int $customId = null,
-        ?int $premadeId = null
-    ): ?int {
-        if ($customId !== null) {
-            return self::catalogIdForSource('custom', $productId);
-        }
-
-        if ($premadeId !== null) {
-            return self::catalogIdForSource('premade', $productId);
-        }
-
-        if ($productId !== null) {
-            foreach (['custom', 'premade'] as $sourceType) {
-                $catalogId = self::catalogIdForSource($sourceType, $productId);
-                if ($catalogId !== null) {
-                    return $catalogId;
-                }
+    public static function resolveCatalogId(?int $productId, ?string $productName = null): ?int 
+    {
+        // 1. If we have a product name, we look it up directly in the catalog
+        if ($productName !== null && trim($productName) !== '') {
+            $catalog = Products::where('name', $productName)->first();
+            
+            if ($catalog) {
+                return $catalog->id;
             }
         }
 
-        if ($productName !== null && trim($productName) !== '') {
-            $catalog = Products::query()
-                ->whereIn('product_source', ['custom', 'premade'])
-                ->where('name', $productName)
-                ->orderByRaw("CASE product_source WHEN 'custom' THEN 0 WHEN 'premade' THEN 1 ELSE 2 END")
-                ->first();
-
-            return $catalog?->id;
+        // 2. If we only have an ID and no name, we assume the ID provided 
+        // IS the catalog ID, since we no longer track source origins.
+        if ($productId !== null) {
+            return $productId;
         }
 
         return null;
     }
 
-    protected static function syncSourceProduct(Model $product, string $sourceType): Products
+    protected static function syncSourceProduct(Model $product): Products
     {
-        $catalog = Products::query()->updateOrCreate(
+        // SYNC STRICTLY BY PRODUCT NAME (No product_source columns used)
+        $catalog = Products::updateOrCreate(
             [
-                'product_source' => $sourceType,
-                'source_product_id' => $product->getKey(),
+                'name' => $product->name, 
             ],
             [
-                'name' => $product->name,
                 'description' => $product->description,
-                'category' => $product->category,
-                'type' => $product->type,
-                'price' => $product->price,
-                'image' => $product->image,
+                'category'    => $product->category,
+                'type'        => $product->type ?? null,
+                'price'       => $product->price,
+                'image'       => $product->image,
                 'isAvailable' => (bool) $product->isAvailable,
             ]
         );
 
-        if ($product->product_id !== $catalog->id) {
+        // Optional: If your custom/premade tables have a 'product_id' column, update it.
+        if (isset($product->product_id) && $product->product_id !== $catalog->id) {
             $product->forceFill(['product_id' => $catalog->id])->saveQuietly();
         }
 
         return $catalog;
-    }
-
-    protected static function catalogIdForSource(string $sourceType, int $sourceId): ?int
-    {
-        return Products::query()
-            ->where('product_source', $sourceType)
-            ->where('source_product_id', $sourceId)
-            ->value('id');
     }
 }

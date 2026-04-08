@@ -31,7 +31,7 @@ class AnalyticsController extends Controller
     /**
      * NEW: Handles the request to generate a PDF and email it to the user.
      */
-    public function sendReportEmail(Request $request): JsonResponse
+public function sendReportEmail(Request $request): JsonResponse
     {
         $user = $request->user() ?? Auth::user();
 
@@ -49,21 +49,28 @@ class AnalyticsController extends Controller
 
         $section = $request->input('section', 'overview');
         $context = $request->input('context', 'Full Report');
-        
-        $fullData = $this->getRawAnalyticsData();
-        $pdfPayload = $this->buildPdfPayload($section, $context, $fullData);
 
         try {
+            $fullData = $this->getRawAnalyticsData();
+            $pdfPayload = $this->buildPdfPayload($section, $context, $fullData);
+
+            // Generate PDF
             $pdf = Pdf::loadView('pdf.analytics', $pdfPayload);
             $pdfContent = $pdf->output();
 
+            // Send Email
             Mail::to($user->email)->send(
                 new AnalyticsReportMail($user->first_name ?: 'Petal Express User', $context, $pdfContent)
             );
 
             return response()->json(['message' => 'Report emailed successfully!']);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Mail/PDF Error: ' . $e->getMessage()], 500);
+            
+        } catch (\Throwable $e) {
+            // CHANGED TO \Throwable: This will now catch Fatal Errors (like missing DomPDF or Views) 
+            // and send the exact error message back to your React Modal!
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 

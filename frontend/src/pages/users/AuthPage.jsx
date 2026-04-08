@@ -128,16 +128,30 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
     }
   };
 
-  const handleRegisterSubmit = async (e) => {
+const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    if (cmsPreview?.enabled) return; // Prevent API calls in CMS preview
+    if (cmsPreview?.enabled) return;
     setRegError("");
 
+    // 1. Validate Names (No Symbols or Numbers)
+    const nameRegex = /^[A-Za-z\s\-']+$/;
+    if (!nameRegex.test(regFirstName) || !nameRegex.test(regLastName)) {
+      setRegError("Names can only contain letters, spaces, and hyphens.");
+      return;
+    }
+
+    // 2. Validate Phone Number (Exactly 11 digits)
+    const phoneRegex = /^\d{11}$/;
+    if (!phoneRegex.test(regPhone)) {
+      setRegError("Phone number must be exactly 11 digits (e.g. 09123456789).");
+      return;
+    }
+
+    // 3. Validate Passwords
     if (regPassword !== regConfirmPassword) {
       setRegError("Passwords do not match.");
       return;
     }
-
     if (regPassword.length < 6) {
       setRegError("Password must be at least 6 characters.");
       return;

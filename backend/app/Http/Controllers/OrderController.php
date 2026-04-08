@@ -7,12 +7,11 @@ use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 use App\Mail\OrderStatusUpdated;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Log;
-
 
 class OrderController extends Controller
 {
@@ -29,13 +28,13 @@ class OrderController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to fetch orders',
-                'error' => $e->getMessage()
+                'error'   => $e->getMessage()
             ], 500);
         }
     }
+
     public function store(Request $request)
     {
-
         $request->validate([
             'user_id'          => 'required|integer|exists:users,id',
             'address'          => 'required|string',
@@ -54,7 +53,6 @@ class OrderController extends Controller
         $paymentId = 'PAY-' . $datePart . '-' . strtoupper(substr(uniqid(), -4));
 
         // Store image before transaction to avoid doing I/O inside DB transaction
-        // Store image before transaction
         $imagePath = $request->file('reference_image')->store('payments', 'public');
 
         try {
@@ -88,44 +86,39 @@ class OrderController extends Controller
                 $order->payment_id = $paymentId;
                 $order->save();
             });
-            } catch (\Exception $e) {
-                Storage::disk('public')->delete($imagePath);
-
-                return response()->json([
-                    'message' => 'Order could not be placed. Please try again.',
-                    'error'   => $e->getMessage(),
-                ], 500);
-            }
-
-            // 4. Send email AFTER transaction succeeds — outside the try/catch
-            //    so a mail failure doesn't affect the order response
-
 
             return response()->json([
                 'message'    => 'Order placed successfully',
                 'order_id'   => $orderId,
                 'payment_id' => $paymentId,
             ], 201);
+
+        } catch (\Exception $e) {
+            Storage::disk('public')->delete($imagePath);
+
+            return response()->json([
+                'message' => 'Order could not be placed. Please try again.',
+                'error'   => $e->getMessage(),
+            ], 500);
         }
+    }
 
     public function update(Request $request, $id)
-{
-    try {
-        $request->validate([
-            'order_status' => 'nullable|string'
-        ]);
+    {
+        try {
+            $request->validate([
+                'order_status' => 'nullable|string',
+                'status'       => 'nullable|string'
+            ]);
 
-        $order = Order::where('order_id', $id)->firstOrFail();
+            $order = Order::where('order_id', $id)->firstOrFail();
 
-        $status = $request->input('status') ?? $request->input('order_status');
+            $status = $request->input('status') ?? $request->input('order_status');
 
-<<<<<<< HEAD
-        if (!$status) {
-=======
             if (!$status) {
                 return response()->json([
                     'message' => 'Failed to update order',
-                    'error' => 'The status field is required.'
+                    'error'   => 'The status field is required.'
                 ], 400);
             }
 
@@ -133,61 +126,42 @@ class OrderController extends Controller
             $order->save();
 
             // Reload relationships so frontend receives full order data
-            $order->load([
-                'user',
-                'payment',
-                'orderItems'
-            ]);
+            $order->load(['user', 'payment', 'orderItems.product']);
+
+            // ── Send status update email ──────────────────────────────────
+            try {
+                if ($order->user && $order->user->email) {
+                    $items = $order->orderItems->map(fn($item) => [
+                        'product_name'      => $item->product->name ?? $item->product_name,
+                        'quantity'          => $item->quantity,
+                        'price_at_purchase' => $item->price_at_purchase,
+                        'special_message'   => $item->special_message ?? null,
+                    ])->toArray();
+
+                    Mail::to($order->user->email)->send(new OrderStatusUpdated(
+                        orderId:        $order->order_id,
+                        newStatus:      $status,
+                        totalAmount:    (float) $order->total_amount,
+                        deliveryMethod: $order->delivery_method,
+                        userName:       trim(($order->user->first_name ?? '') . ' ' . ($order->user->last_name ?? '')),
+                        userEmail:      $order->user->email,
+                        items:          $items,
+                    ));
+                }
+            } catch (\Throwable $e) {
+                // Never let mail failure break the status update
+                Log::warning("Status update email failed for order {$id}: " . $e->getMessage());
+            }
 
             return response()->json($order);
 
         } catch (\Exception $e) {
->>>>>>> 3c8e5da922bb6599ed514004a95e3a8467ea448a
             return response()->json([
                 'message' => 'Failed to update order',
-                'error' => 'The status field is required.'
-            ], 400);
+                'error'   => $e->getMessage()
+            ], 500);
         }
-
-        $order->order_status = $status;
-        $order->save();
-
-        $order->load(['user', 'payment', 'orderItems.product']);
-
-        // ── Send status update email ──────────────────────────────────
-        try {
-            if ($order->user && $order->user->email) {
-                $items = $order->orderItems->map(fn($item) => [
-                    'product_name'      => $item->product->name ?? $item->product_name,
-                    'quantity'          => $item->quantity,
-                    'price_at_purchase' => $item->price_at_purchase,
-                    'special_message'   => $item->special_message ?? null,
-                ])->toArray();
-
-                Mail::to($order->user->email)->send(new OrderStatusUpdated(
-                    orderId:        $order->order_id,
-                    newStatus:      $status,
-                    totalAmount:    (float) $order->total_amount,
-                    deliveryMethod: $order->delivery_method,
-                    userName:       trim(($order->user->first_name ?? '') . ' ' . ($order->user->last_name ?? '')),
-                    userEmail:      $order->user->email,
-                    items:          $items,
-                ));
-            }
-        } catch (\Throwable $e) {
-            // Never let mail failure break the status update
-            Log::warning("Status update email failed for order {$id}: " . $e->getMessage());
-        }
-
-        return response()->json($order);
-
-    } catch (\Exception $e) {
-        return response()->json([
-            'message' => 'Failed to update order',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
     public function destroy($id)
     {
@@ -203,7 +177,7 @@ class OrderController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to delete order',
-                'error' => $e->getMessage()
+                'error'   => $e->getMessage()
             ], 500);
         }
     }

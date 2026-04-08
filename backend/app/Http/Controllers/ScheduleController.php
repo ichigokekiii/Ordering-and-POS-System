@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\SendScheduleBookingMail;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class ScheduleController extends Controller
 {
@@ -21,14 +22,25 @@ class ScheduleController extends Controller
     // CREATE schedule
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'schedule_name' => 'required|string|max:255',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
-            'schedule_description' => 'nullable|string',
-            'location' => 'required|string|max:255',
-            'event_date' => 'required|date|after_or_equal:today',
-            'isAvailable' => 'boolean'
+        $validator = Validator::make($request->all(), [
+            // Changed regex to only block < and > tags, allowing all other symbols
+            'schedule_name'        => ['required', 'string', 'max:255', 'regex:/^[^<>]*$/'],
+            'location'             => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s\-.,#]+$/'],
+            'schedule_description' => ['nullable', 'string', 'max:1000', 'regex:/^[^<>]*$/'], 
+            'event_date'           => 'required|date|after_or_equal:today',
+            'image'                => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+            'isAvailable'          => 'required|in:0,1,true,false'
+        ], [
+            'schedule_name.regex'        => 'Event name cannot contain HTML tags (< >).',
+            'location.regex'             => 'Location contains invalid symbols.',
+            'schedule_description.regex' => 'Description cannot contain HTML tags (< >).',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $validated = $validator->validated();
 
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('schedules', 'public');
@@ -45,22 +57,25 @@ class ScheduleController extends Controller
     {
         $schedule = Schedule::findOrFail($id);
 
+        $validator = Validator::make($request->all(), [
+            // Changed regex to only block < and > tags, allowing all other symbols
+            'schedule_name'        => ['sometimes', 'required', 'string', 'max:255', 'regex:/^[^<>]*$/'],
+            'location'             => ['sometimes', 'required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s\-.,#]+$/'],
+            'schedule_description' => ['nullable', 'string', 'max:1000', 'regex:/^[^<>]*$/'],
+            'event_date'           => 'sometimes|required|date|after_or_equal:today', 
+            'image'                => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+            'isAvailable'          => 'sometimes|in:0,1,true,false'
+        ], [
+            'schedule_name.regex'        => 'Event name cannot contain HTML tags (< >).',
+            'location.regex'             => 'Location contains invalid symbols.',
+            'schedule_description.regex' => 'Description cannot contain HTML tags (< >).',
+        ]);
 
-        // Prevent booking if the schedule date is already in the past
-        if (Carbon::parse($schedule->event_date)->lt(Carbon::today())) {
-            return response()->json([
-                'message' => 'This event date has already passed.'
-            ], 400);
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $validated = $request->validate([
-            'schedule_name' => 'sometimes|required|string|max:255',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
-            'schedule_description' => 'nullable|string',
-            'location' => 'sometimes|required|string|max:255',
-            'event_date' => 'sometimes|required|date|after_or_equal:today',
-            'isAvailable' => 'boolean'
-        ]);
+        $validated = $validator->validated();
 
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('schedules', 'public');
@@ -81,7 +96,7 @@ class ScheduleController extends Controller
         return response()->json(['message' => 'Schedule deleted successfully']);
     }
 
-    //Email to Calendar
+    // Email to Calendar
     public function book(Request $request, $id)
     {
         $request->validate([
@@ -90,24 +105,23 @@ class ScheduleController extends Controller
 
         $schedule = Schedule::findOrFail($id);
 
-        // Prevent duplicate booking for same email + schedule
+        if (Carbon::parse($schedule->event_date)->lt(Carbon::today())) {
+            return response()->json(['message' => 'This event has already passed and cannot be booked.'], 400);
+        }
+
         $existingBooking = ScheduleBooking::where('schedule_id', $schedule->id)
             ->where('email', $request->email)
             ->first();
 
         if ($existingBooking) {
-            return response()->json([
-                'message' => 'You have already booked this event.'
-            ], 400);
+            return response()->json(['message' => 'You have already booked this event.'], 400);
         }
 
-        // Store booking
         ScheduleBooking::firstOrCreate([
             'schedule_id' => $schedule->id,
             'email' => $request->email,
         ]);
 
-        // Generate Google Calendar link
         $start = Carbon::parse($schedule->event_date)->format('Ymd\THis');
         $end = Carbon::parse($schedule->event_date)->addHours(2)->format('Ymd\THis');
 

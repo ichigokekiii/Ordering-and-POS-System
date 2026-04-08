@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useSchedules } from "../../contexts/ScheduleContext";
 import { CalendarPlus, MapPin, CalendarClock, Pencil, Archive, ArchiveRestore, CheckCircle2, X } from "lucide-react";
 
@@ -23,19 +23,18 @@ function AdminSchedulePage({ user }) {
   const [image, setImage] = useState(null);
   const [isAvailable, setIsAvailable] = useState(1);
 
-  // Modern Toast State
-  const [toast, setToast] = useState(null);
-  const toastTimeoutRef = useRef(null);
+  // Inline errors state
+  const [errors, setErrors] = useState({});
+
+  // Replaced Toast with Modal System
+  const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', message: '' });
 
   useEffect(() => {
     fetchSchedules();
-    return () => clearTimeout(toastTimeoutRef.current);
   }, []);
 
-  const showToast = (type, message) => {
-    setToast({ type, message });
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    toastTimeoutRef.current = setTimeout(() => setToast(null), 3500);
+  const showModalAlert = (type, message) => {
+    setStatusModal({ isOpen: true, type, message });
   };
 
   const handleImageChange = (e) => {
@@ -43,8 +42,57 @@ function AdminSchedulePage({ user }) {
     if (file) setImage(file);
   };
 
+  const resetForm = () => {
+    setScheduleName("");
+    setScheduleDescription("");
+    setLocation("");
+    setEventDate("");
+    setImage(null);
+    setIsAvailable(1);
+    setEditingSchedule(null);
+    setShowModal(false);
+    setErrors({});
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // --- FRONTEND VALIDATION ---
+    const newErrors = {};
+    const locationRegex = /^[a-zA-Z0-9\s\-.,#]+$/;
+    const htmlRegex = /<[^>]*>/g;
+
+    // Validate Event Name
+    if (!scheduleName.trim()) {
+      newErrors.schedule_name = ["This field is required"];
+    } else if (htmlRegex.test(scheduleName)) {
+      newErrors.schedule_name = ["Event Name cannot contain HTML tags."];
+    }
+
+    // Validate Location
+    if (!location.trim()) {
+      newErrors.location = ["This field is required"];
+    } else if (!locationRegex.test(location)) {
+      newErrors.location = ["Location contains invalid symbols."];
+    }
+
+    // Validate Date
+    if (!eventDate) {
+      newErrors.event_date = ["This field is required"];
+    }
+
+    // Validate Description
+    if (!scheduleDescription.trim()) {
+      newErrors.schedule_description = ["This field is required"];
+    } else if (htmlRegex.test(scheduleDescription)) {
+      newErrors.schedule_description = ["Description cannot contain HTML tags."];
+    }
+
+    // If there are errors, set them and stop submission
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
 
     try {
       const formData = new FormData();
@@ -60,25 +108,22 @@ function AdminSchedulePage({ user }) {
 
       if (editingSchedule) {
         await updateSchedule(editingSchedule.id, formData);
-        showToast("success", "Schedule updated successfully!");
+        showModalAlert("success", "Schedule updated successfully!");
       } else {
         await addSchedule(formData);
-        showToast("success", "Schedule created successfully!");
+        showModalAlert("success", "Schedule created successfully!");
       }
 
-      // Reset form
-      setScheduleName("");
-      setScheduleDescription("");
-      setLocation("");
-      setEventDate("");
-      setImage(null);
-      setIsAvailable(1);
-      setEditingSchedule(null);
-      setShowModal(false);
+      resetForm();
 
     } catch (error) {
       console.error("Schedule operation failed", error);
-      showToast("error", "Operation failed. Please try again.");
+      // Parse backend validation error response (422) for inline display
+      if (error.response && error.response.status === 422) {
+        setErrors(error.response.data.errors);
+      } else {
+        showModalAlert("error", "Operation failed. Please try again.");
+      }
     }
   };
 
@@ -91,6 +136,7 @@ function AdminSchedulePage({ user }) {
     setImage(null);
     setIsAvailable(schedule.isAvailable ?? 1);
     setShowModal(true);
+    setErrors({});
   };
 
   const handleToggleArchive = async (schedule) => {
@@ -99,11 +145,11 @@ function AdminSchedulePage({ user }) {
         isAvailable: schedule.isAvailable ? 0 : 1,
       });
 
-      showToast("success", schedule.isAvailable ? "Schedule archived successfully." : "Schedule restored successfully.");
+      showModalAlert("success", schedule.isAvailable ? "Schedule archived successfully." : "Schedule restored successfully.");
       fetchSchedules();
     } catch (error) {
       console.error("Failed to update schedule status", error);
-      showToast("error", "Failed to update schedule status.");
+      showModalAlert("error", "Failed to update schedule status.");
     }
   };
 
@@ -118,19 +164,6 @@ function AdminSchedulePage({ user }) {
   return (
     <div className="min-h-screen flex flex-col px-8 py-8 bg-white rounded-lg relative font-sans">
       
-      {/* TOAST SYSTEM */}
-      {toast && (
-        <div className="fixed top-6 right-6 z-[500] animate-in slide-in-from-right duration-300">
-          <div className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border backdrop-blur-md ${
-            toast.type === 'success' ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-rose-500 border-rose-400 text-white'
-          }`}>
-            {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <X className="w-5 h-5" />}
-            <span className="text-sm font-bold tracking-tight">{toast.message}</span>
-            <button onClick={() => setToast(null)} className="ml-2 opacity-70 hover:opacity-100 transition-opacity"><X className="w-4 h-4" /></button>
-          </div>
-        </div>
-      )}
-
       {/* HEADER AREA */}
       <div className="mb-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
@@ -149,8 +182,7 @@ function AdminSchedulePage({ user }) {
           {canEdit && (
             <button
               onClick={() => {
-                setEditingSchedule(null);
-                setScheduleName(""); setScheduleDescription(""); setLocation(""); setEventDate(""); setImage(null); setIsAvailable(1);
+                resetForm();
                 setShowModal(true);
               }}
               className="flex items-center gap-2 rounded-xl bg-gray-900 border-2 border-gray-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm active:scale-95"
@@ -283,7 +315,7 @@ function AdminSchedulePage({ user }) {
       {/* ADD/EDIT MODAL */}
       {showModal && canEdit && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[200]">
-          <div className="bg-white rounded-[2rem] w-[90%] max-w-lg shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-[2rem] w-[90%] max-w-lg shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             
             <div className="mb-6">
               <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5] mb-3 inline-block">
@@ -294,18 +326,26 @@ function AdminSchedulePage({ user }) {
               </h2>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
               
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Event Name</label>
                 <input
                   type="text"
                   value={scheduleName}
-                  onChange={(e) => setScheduleName(e.target.value)}
+                  onChange={(e) => {
+                    setScheduleName(e.target.value);
+                    if (errors.schedule_name) setErrors(prev => ({ ...prev, schedule_name: null }));
+                  }}
                   placeholder="e.g. Summer Floral Workshop"
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all font-semibold text-gray-900"
-                  required
+                  className={`w-full rounded-xl border ${errors.schedule_name ? 'border-rose-500' : 'border-gray-200'} bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all font-semibold text-gray-900`}
                 />
+                {/* Inline Validation Error */}
+                {errors.schedule_name && (
+                  <p className="text-rose-500 text-[10px] font-bold mt-1.5 uppercase tracking-wide">
+                    {errors.schedule_name[0]}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -313,11 +353,19 @@ function AdminSchedulePage({ user }) {
                 <input
                   type="text"
                   value={location}
-                  onChange={(e) => setLocation(e.target.value)}
+                  onChange={(e) => {
+                    setLocation(e.target.value);
+                    if (errors.location) setErrors(prev => ({ ...prev, location: null }));
+                  }}
                   placeholder="e.g. Petal Express Main Studio"
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all font-semibold text-gray-900"
-                  required
+                  className={`w-full rounded-xl border ${errors.location ? 'border-rose-500' : 'border-gray-200'} bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all font-semibold text-gray-900`}
                 />
+                {/* Inline Validation Error */}
+                {errors.location && (
+                  <p className="text-rose-500 text-[10px] font-bold mt-1.5 uppercase tracking-wide">
+                    {errors.location[0]}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -326,21 +374,37 @@ function AdminSchedulePage({ user }) {
                   type="date"
                   value={eventDate}
                   min={new Date().toISOString().split("T")[0]}
-                  onChange={(e) => setEventDate(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all font-semibold text-gray-900"
-                  required
+                  onChange={(e) => {
+                    setEventDate(e.target.value);
+                    if (errors.event_date) setErrors(prev => ({ ...prev, event_date: null }));
+                  }}
+                  className={`w-full rounded-xl border ${errors.event_date ? 'border-rose-500' : 'border-gray-200'} bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all font-semibold text-gray-900`}
                 />
+                {/* Inline Validation Error */}
+                {errors.event_date && (
+                  <p className="text-rose-500 text-[10px] font-bold mt-1.5 uppercase tracking-wide">
+                    {errors.event_date[0]}
+                  </p>
+                )}
               </div>
 
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Description</label>
                 <textarea
                   value={scheduleDescription}
-                  onChange={(e) => setScheduleDescription(e.target.value)}
+                  onChange={(e) => {
+                    setScheduleDescription(e.target.value);
+                    if (errors.schedule_description) setErrors(prev => ({ ...prev, schedule_description: null }));
+                  }}
                   placeholder="Provide event details, requirements, or marketing copy..."
-                  className="min-h-24 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all text-gray-700 leading-relaxed"
-                  required
+                  className={`min-h-24 w-full rounded-xl border ${errors.schedule_description ? 'border-rose-500' : 'border-gray-200'} bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all text-gray-700 leading-relaxed`}
                 />
+                {/* Inline Validation Error */}
+                {errors.schedule_description && (
+                  <p className="text-rose-500 text-[10px] font-bold mt-1.5 uppercase tracking-wide">
+                    {errors.schedule_description[0]}
+                  </p>
+                )}
               </div>
 
               <div className="pt-2 border-t border-gray-100">
@@ -366,10 +430,7 @@ function AdminSchedulePage({ user }) {
               <div className="flex justify-end gap-3 mt-8 pt-4">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setEditingSchedule(null);
-                  }}
+                  onClick={resetForm}
                   className="rounded-lg px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
                 >
                   Cancel
@@ -383,6 +444,29 @@ function AdminSchedulePage({ user }) {
               </div>
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* --- STATUS ALERT MODAL (Replaces Toast) --- */}
+      {statusModal.isOpen && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
+            <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${statusModal.type === 'success' ? 'bg-emerald-100 text-emerald-500' : 'bg-rose-100 text-rose-500'}`}>
+               {statusModal.type === 'success' ? <CheckCircle2 size={28} /> : <X size={28} />}
+            </div>
+            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
+              {statusModal.type === 'success' ? 'Success' : 'Action Failed'}
+            </h3>
+            <p className="text-sm text-gray-500 mb-8 px-2">{statusModal.message}</p>
+            <div className="flex justify-center">
+              <button 
+                onClick={() => setStatusModal({ isOpen: false, type: 'success', message: '' })} 
+                className="rounded-xl bg-gray-900 px-8 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+              >
+                Okay
+              </button>
+            </div>
           </div>
         </div>
       )}

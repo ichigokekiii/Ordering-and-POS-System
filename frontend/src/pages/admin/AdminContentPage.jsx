@@ -8,7 +8,7 @@ import LandingPage from "../users/LandingPage";
 import AboutPage from "../users/AboutPage";
 import { useContents } from "../../contexts/ContentContext";
 import { CMS_PAGES, getCmsAssetUrl } from "../../cms/cmsRegistry";
-import { ChevronDown, Monitor, LayoutTemplate, Layers, ArchiveRestore, Trash2, Archive } from "lucide-react";
+import { ChevronDown, Monitor, LayoutTemplate, Layers, ArchiveRestore, Trash2, Archive, CheckCircle2, X } from "lucide-react";
 
 // ISOLATED PREVIEWS
 function PreviewScene({ activePage, cmsPreview }) {
@@ -34,7 +34,6 @@ function PreviewScene({ activePage, cmsPreview }) {
          {/* Login / Register Toggle */}
          <div>
            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4 text-center">Login / Register View</p>
-           {/* You can click "Sign Up" inside the preview to reveal the register fields */}
            <AuthPage cmsPreview={cmsPreview} />
          </div>
          
@@ -113,9 +112,8 @@ function AdminContentPage() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // TOAST & CONFIRM MODAL STATES
-  const [toast, setToast] = useState(null);
-  const toastTimeoutRef = useRef(null);
+  // REPLACED TOAST WITH MODAL CONSISTENCY
+  const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', message: '' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: "", item: null });
 
   const pageContents = useMemo(
@@ -135,16 +133,8 @@ function AdminContentPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    return () => {
-      window.clearTimeout(toastTimeoutRef.current);
-    };
-  }, []);
-
-  const showToast = (type, message) => {
-    setToast({ type, message });
-    window.clearTimeout(toastTimeoutRef.current);
-    toastTimeoutRef.current = window.setTimeout(() => setToast(null), 3000);
+  const showModalAlert = (type, message) => {
+    setStatusModal({ isOpen: true, type, message });
   };
 
   const cmsPreview = {
@@ -212,18 +202,18 @@ function AdminContentPage() {
     try {
       if (type === "delete") {
         if (!item.isArchived) {
-           showToast("error", "You must archive this content before deleting it.");
+           showModalAlert("error", "You must archive this content before deleting it.");
            setConfirmModal({ isOpen: false, type: "", item: null });
            return;
         }
         await handlePermanentDelete(item);
-        showToast("success", "Content permanently deleted.");
+        showModalAlert("success", "Content permanently deleted.");
       } else if (type === "archive") {
         await toggleArchiveContent(item);
-        showToast("success", "Content archived successfully.");
+        showModalAlert("success", "Content archived successfully.");
       } else if (type === "restore") {
         await toggleArchiveContent(item);
-        showToast("success", "Content restored successfully.");
+        showModalAlert("success", "Content restored successfully.");
       }
 
       if (editingContent && editingContent.id === item.id) {
@@ -231,7 +221,7 @@ function AdminContentPage() {
       }
     } catch (error) {
       console.error(`Failed to ${type} content`, error);
-      showToast("error", `Failed to ${type} content.`);
+      showModalAlert("error", `Failed to ${type} content.`);
     } finally {
       setConfirmModal({ isOpen: false, type: "", item: null });
     }
@@ -242,23 +232,6 @@ function AdminContentPage() {
   return (
     <div className="min-h-screen flex flex-col px-8 py-8 bg-white rounded-lg relative">
       
-      {/* TOAST NOTIFICATION */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-[300] pointer-events-none transition-all duration-300 transform">
-          <div
-            className={`flex items-center gap-2 px-5 py-3 rounded-lg shadow-xl text-sm font-medium backdrop-blur-sm border max-w-[280px] ${
-              toast.type === "success"
-                ? "bg-emerald-500/95 text-white border-emerald-400"
-                : toast.type === "info"
-                ? "bg-blue-500/95 text-white border-blue-400"
-                : "bg-red-500/95 text-white border-red-400"
-            }`}
-          >
-            <span className="truncate drop-shadow-sm">{toast.message}</span>
-          </div>
-        </div>
-      )}
-
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-3xl font-playfair font-bold text-gray-900">Content Manager</h2>
@@ -410,7 +383,7 @@ function AdminContentPage() {
       {/* CONFIRMATION MODAL */}
       {confirmModal.isOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 transition-all">
-          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
             
             <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${
               confirmModal.type === 'delete' ? 'bg-red-100 text-red-500' :
@@ -439,7 +412,7 @@ function AdminContentPage() {
               </button>
               <button 
                 onClick={executeConfirmAction} 
-                className={`rounded-lg px-5 py-2 text-sm font-semibold text-white transition-all duration-300 shadow-sm hover:shadow-md ${
+                className={`rounded-lg px-5 py-2 text-sm font-bold text-white transition-all duration-300 shadow-sm hover:shadow-md ${
                   confirmModal.type === "delete" ? "bg-red-500 hover:bg-red-600" :
                   confirmModal.type === "archive" ? "bg-amber-500 hover:bg-amber-600" :
                   "bg-emerald-500 hover:bg-emerald-600"
@@ -456,7 +429,7 @@ function AdminContentPage() {
       {/* WYSIWYG EDITOR MODAL */}
       {!confirmModal.isOpen && editorField && (
          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 transition-all">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl border border-white/20">
+          <div className="w-full max-w-lg rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 animate-in zoom-in-95 duration-200">
             <div className="mb-6 flex justify-between items-start">
               <div>
                 <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5]">
@@ -491,25 +464,24 @@ function AdminContentPage() {
                   formData.set("content_text", formDataState.content_text || "");
                 }
                 
-                // --- FIXED: Checked the file size, because an empty input still returns a File object ---
                 const imageFile = formData.get("content_image");
                 if (formDataState.type === "image" && !editingContent && (!imageFile || imageFile.size === 0)) {
-                  showToast("error", "Please upload an image before saving.");
+                  showModalAlert("error", "Please upload an image before saving.");
                   return;
                 }
 
                 try {
                   if (editingContent) { 
                     await updateContent(editingContent.id, formData); 
-                    showToast("success", "Content updated successfully.");
+                    showModalAlert("success", "Content updated successfully.");
                   } else { 
                     await addContent(formData); 
-                    showToast("success", "Content created successfully.");
+                    showModalAlert("success", "Content created successfully.");
                   }
                   closeEditor();
                 } catch (error) { 
                   console.error("Failed to save", error); 
-                  showToast("error", "Failed to save changes.");
+                  showModalAlert("error", "Failed to save changes.");
                 }
               }}
             >
@@ -587,6 +559,30 @@ function AdminContentPage() {
           </div>
         </div>
       )}
+
+      {/* --- STATUS ALERT MODAL --- */}
+      {statusModal.isOpen && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
+            <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${statusModal.type === 'success' ? 'bg-emerald-100 text-emerald-500' : 'bg-rose-100 text-rose-500'}`}>
+               {statusModal.type === 'success' ? <CheckCircle2 size={28} /> : <X size={28} />}
+            </div>
+            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
+              {statusModal.type === 'success' ? 'Success' : 'Action Failed'}
+            </h3>
+            <p className="text-sm text-gray-500 mb-8 px-2">{statusModal.message}</p>
+            <div className="flex justify-center">
+              <button 
+                onClick={() => setStatusModal({ isOpen: false, type: 'success', message: '' })} 
+                className="rounded-xl bg-gray-900 px-8 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+              >
+                Okay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

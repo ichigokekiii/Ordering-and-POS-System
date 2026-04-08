@@ -10,38 +10,6 @@ use App\Models\User;
 use App\Models\Product;
 use App\Models\PremadeProduct;
 use Illuminate\Support\Facades\DB;
-<<<<<<< HEAD
-use Illuminate\Support\Facades\Log;
-
-class PosTransactionsController extends Controller
-{
-    public function store(Request $request)
-    {
-        try {
-            // 1. Create the Main Sale Record
-            $pos_transactions = PosTransactions::create([
-                'total_amount' => $request->total_amount,
-            ]);
-
-            // 2. Loop through the cart and save each item individually
-            foreach ($request->items as $item) {
-                $pos_transactions->items()->create([
-                    'product_id'   => $item['id'],
-                    'product_name' => $item['name'],
-                    'price'        => $item['price'],
-                    'quantity'     => $item['qty'],
-                ]);
-            }
-
-            return response()->json(['message' => 'Sale recorded!'], 201);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Database crash',
-                'error'   => $e->getMessage()
-            ], 500);
-        }
-=======
 use App\Support\ProductService;
 
 class PosTransactionsController extends Controller
@@ -111,8 +79,7 @@ public function analytics()
             ['name' => 'Week 3', 'value' => 0],
             ['name' => 'Week 4', 'value' => 0],
         ]);
->>>>>>> 3c8e5da922bb6599ed514004a95e3a8467ea448a
-    }
+    } 
 
     public function analytics()
     {
@@ -146,31 +113,12 @@ public function analytics()
                 ]);
             }
 
-<<<<<<< HEAD
-            // ── Totals ────────────────────────────────────────────────────
-            $totalOrders = Order::count();
-=======
     // Get total products from the two active catalog sources
     $totalProducts = \App\Models\CustomProduct::count() + \App\Models\PremadeProduct::count();
->>>>>>> 3c8e5da922bb6599ed514004a95e3a8467ea448a
 
             // Only count customers who have placed orders
             $totalCustomers = User::whereHas('orders')->count();
 
-<<<<<<< HEAD
-            // Safely count products — handle missing PremadeProduct table
-            $totalProducts = 0;
-            try {
-                $totalProducts += Product::count();
-            } catch (\Exception $e) {
-                Log::warning('analytics: products table error - ' . $e->getMessage());
-            }
-            try {
-                $totalProducts += PremadeProduct::count();
-            } catch (\Exception $e) {
-                Log::warning('analytics: premade_products table error - ' . $e->getMessage());
-            }
-=======
     // Get sales overview by product type
     $salesByType = PosTransactions::join('pos_items', 'pos_transactions.id', '=', 'pos_items.pos_id')
         ->leftJoin('products', 'pos_items.catalog_product_id', '=', 'products.id')
@@ -192,7 +140,6 @@ public function analytics()
                 'value' => (int) $item->total_sales
             ];
         });
->>>>>>> 3c8e5da922bb6599ed514004a95e3a8467ea448a
 
             $totalViews = 0; // Placeholder — needs a views-tracking system
 

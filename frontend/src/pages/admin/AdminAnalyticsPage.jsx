@@ -16,7 +16,7 @@ import {
   MoreHorizontal,
   CircleDollarSign,
   TrendingUp,
-  Loader2, // This was missing in your console
+  Loader2,
   Mail,
   FileText,
   CheckCircle2,
@@ -200,13 +200,17 @@ function AdminAnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const dropdownRef = useRef(null);
-  const [toast, setToast] = useState(null);
-  const toastTimeoutRef = useRef(null);
+
+  // Consistency: Centered Modal for Status Alerts
+  const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', message: '' });
 
   useEffect(() => {
     fetchAnalytics();
-    return () => clearTimeout(toastTimeoutRef.current);
   }, []);
+
+  const showModalAlert = (type, message) => {
+    setStatusModal({ isOpen: true, type, message });
+  };
 
   const fetchAnalytics = async () => {
     setLoading(true); setError("");
@@ -225,16 +229,17 @@ function AdminAnalyticsPage() {
   };
 
   const handleEmailReport = async (contextName) => {
-    setToast({ type: "info", message: `Generating PDF for ${contextName}...` });
+    // Show loading state in modal while it compiles
+    setStatusModal({ isOpen: true, type: "loading", message: `Generating PDF for ${contextName}...` });
+    
     try {
       await api.post('/analytics/email', { section: activeSection, context: contextName });
-      setToast({ type: "success", message: `Report sent successfully to your email!` });
+      showModalAlert("success", `Report sent successfully to your email!`);
     } catch (err) {
-      const msg = err.response?.data?.error || "Check mail settings.";
-      setToast({ type: "error", message: `Failed: ${msg}` });
+      // The backend catch(\Throwable) block will now pass the EXACT PHP error here
+      const msg = err.response?.data?.error || err.response?.data?.message || "Check mail settings.";
+      showModalAlert("error", msg);
     }
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    toastTimeoutRef.current = setTimeout(() => setToast(null), 4000);
   };
 
   useEffect(() => {
@@ -887,20 +892,8 @@ function AdminAnalyticsPage() {
 
   return (
     <div className="min-h-screen flex flex-col px-8 py-8 bg-white rounded-lg relative font-sans">
-      {toast && (
-        <div className="fixed top-4 right-4 z-[300] transition-all transform animate-in slide-in-from-top-4">
-          <div className={`flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-xl text-sm font-medium backdrop-blur-md border ${
-              toast.type === "success" ? "bg-emerald-500 text-white" :
-              toast.type === "info" ? "bg-gray-900 text-white" : "bg-rose-500 text-white"
-            }`}
-          >
-            {toast.type === "info" ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
-            <span className="drop-shadow-sm pr-4">{toast.message}</span>
-            <button onClick={() => setToast(null)}><X size={16} /></button>
-          </div>
-        </div>
-      )}
-
+      
+      {/* HEADER AREA */}
       <div className="relative z-[160] mb-8 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-3xl font-playfair font-bold text-gray-900 tracking-tight">Analytics</h1>
@@ -938,6 +931,41 @@ function AdminAnalyticsPage() {
       ) : error ? (
         <div className="rounded-[2rem] border border-rose-100 bg-rose-50 px-6 py-20 text-center text-rose-600 font-bold">{error}</div>
       ) : renderActiveSection()}
+
+      {/* --- STATUS ALERT MODAL --- */}
+      {statusModal.isOpen && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
+            <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${
+              statusModal.type === 'success' ? 'bg-emerald-100 text-emerald-500' : 
+              statusModal.type === 'loading' ? 'bg-[#eaf2ff] text-[#4f6fa5]' : 
+              'bg-rose-100 text-rose-500'
+            }`}>
+               {statusModal.type === 'success' ? <CheckCircle2 size={28} /> : 
+                statusModal.type === 'loading' ? <Loader2 size={28} className="animate-spin" /> : 
+                <X size={28} />}
+            </div>
+            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
+              {statusModal.type === 'success' ? 'Success' : 
+               statusModal.type === 'loading' ? 'Processing' : 
+               'Action Failed'}
+            </h3>
+            <p className="text-sm text-gray-500 mb-8 px-2">{statusModal.message}</p>
+            
+            {statusModal.type !== 'loading' && (
+              <div className="flex justify-center">
+                <button 
+                  onClick={() => setStatusModal({ isOpen: false, type: 'success', message: '' })} 
+                  className="rounded-xl bg-gray-900 px-8 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+                >
+                  Okay
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

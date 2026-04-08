@@ -34,10 +34,9 @@ function AdminUsersPage({ user }) {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newUser, setNewUser] = useState({
-    first_name: "", last_name: "", email: "", password: "", role: "customer",
+    first_name: "", last_name: "", email: "", password: "", phone_number: "", role: "customer",
   });
 
-  const [toast, setToast] = useState(null);
   const dropdownRef = useRef(null);
   const sortRef = useRef(null);
 
@@ -47,6 +46,9 @@ function AdminUsersPage({ user }) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showConfirmSave, setShowConfirmSave] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  
+  // Replaced Toast with Modal System
+  const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', message: '' });
 
   const [editForm, setEditForm] = useState({
     email: "", password: "", confirmPassword: "", phone_number: "",
@@ -67,6 +69,11 @@ function AdminUsersPage({ user }) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Helper to trigger status modal
+  const showModalAlert = (type, message) => {
+    setStatusModal({ isOpen: true, type, message });
+  };
 
   const fetchUsersFromDatabase = () => {
     setLoading(true);
@@ -114,8 +121,7 @@ function AdminUsersPage({ user }) {
       .then((res) => {
         setUsers((prev) => prev.map((u) => (u.id === userId ? res.data : u)));
         setShowEditModal(false);
-        setToast({ type: "success", message: "Account unlocked successfully" });
-        setTimeout(() => setToast(null), 4000);
+        showModalAlert("success", "Account unlocked successfully");
       });
   };
 
@@ -125,12 +131,10 @@ function AdminUsersPage({ user }) {
         setUsers((prev) => prev.filter((u) => u.id !== userId));
         setShowConfirmDelete(false);
         setShowEditModal(false);
-        setToast({ type: "success", message: "User deleted successfully" });
-        setTimeout(() => setToast(null), 4000);
+        showModalAlert("success", "User deleted successfully");
       })
       .catch(() => {
-        setToast({ type: "error", message: "Failed to delete user" });
-        setTimeout(() => setToast(null), 4000);
+        showModalAlert("error", "Failed to delete user");
       });
   };
 
@@ -145,39 +149,37 @@ function AdminUsersPage({ user }) {
   };
 
   const handleCreateUser = () => {
+    // Frontend validation before hitting the backend
+    if (!/^\d{11}$/.test(newUser.phone_number.trim())) {
+      showModalAlert("error", "Phone number must be exactly 11 digits");
+      return;
+    }
+
     api.post("/users", { ...newUser, role: roleToBackend(newUser.role), status: "Active" })
       .then((res) => {
-        setUsers((prev) => [...prev, res.data]);
-        setToast({ type: "success", message: "User created successfully" });
+        setUsers((prev) => [...prev, res.data.user || res.data]);
+        showModalAlert("success", "User created successfully");
         setShowCreateModal(false);
-        setNewUser({ first_name: "", last_name: "", email: "", password: "", role: "customer" });
-        setTimeout(() => setToast(null), 4000);
+        setNewUser({ first_name: "", last_name: "", email: "", password: "", phone_number: "", role: "customer" });
       })
       .catch((err) => {
-        setToast({
-          type: "error",
-          message: err.response?.data?.message || "Failed to create user",
-        });
-        setTimeout(() => setToast(null), 4000);
+        showModalAlert("error", err.response?.data?.error || err.response?.data?.message || "Failed to create user");
       });
   };
 
   const handleSaveChanges = () => {
     if (editForm.phone_number && !/^\d{11}$/.test(editForm.phone_number.trim())) {
-      setToast({ type: "error", message: "Phone number must be exactly 11 digits" });
-      setTimeout(() => setToast(null), 4000);
+      showModalAlert("error", "Phone number must be exactly 11 digits");
       return;
     }
 
     const namePattern = /^[A-Za-z\s\-']{2,50}$/;
     if (!editForm.first_name.trim() || !namePattern.test(editForm.first_name.trim())) {
-      setToast({ type: "error", message: "First name must be 2-50 letters only" });
-      setTimeout(() => setToast(null), 4000);
+      showModalAlert("error", "First name must be 2-50 letters only");
       return;
     }
     if (!editForm.last_name.trim() || !namePattern.test(editForm.last_name.trim())) {
-      setToast({ type: "error", message: "Last name must be 2-50 letters only" });
-      setTimeout(() => setToast(null), 4000);
+      showModalAlert("error", "Last name must be 2-50 letters only");
       return;
     }
 
@@ -193,13 +195,11 @@ function AdminUsersPage({ user }) {
       return;
     }
     if ((emailChanged && !emailOtp) || (passwordChanged && !passwordOtp)) {
-      setToast({ type: "error", message: "Please enter the OTP codes" });
-      setTimeout(() => setToast(null), 4000);
+      showModalAlert("error", "Please enter the OTP codes");
       return;
     }
     if (editForm.password && editForm.password !== editForm.confirmPassword) {
-      setToast({ type: "error", message: "Passwords do not match" });
-      setTimeout(() => setToast(null), 4000);
+      showModalAlert("error", "Passwords do not match");
       return;
     }
 
@@ -210,11 +210,9 @@ function AdminUsersPage({ user }) {
     try {
       await api.post(`/users/${selectedUser.id}/email-otp`, { email: editForm.email });
       setEmailOtpSent(true);
-      setToast({ type: "success", message: "OTP sent to new email address" });
-      setTimeout(() => setToast(null), 4000);
+      showModalAlert("success", "OTP sent to new email address");
     } catch (err) {
-      setToast({ type: "error", message: err.response?.data?.message || "Failed to send email OTP" });
-      setTimeout(() => setToast(null), 4000);
+      showModalAlert("error", err.response?.data?.message || "Failed to send email OTP");
     }
   };
 
@@ -222,11 +220,9 @@ function AdminUsersPage({ user }) {
     try {
       await api.post(`/users/${selectedUser.id}/password-otp`);
       setPasswordOtpSent(true);
-      setToast({ type: "success", message: "OTP sent to user's email" });
-      setTimeout(() => setToast(null), 4000);
+      showModalAlert("success", "OTP sent to user's email");
     } catch (err) {
-      setToast({ type: "error", message: err.response?.data?.message || "Failed to send password OTP" });
-      setTimeout(() => setToast(null), 4000);
+      showModalAlert("error", err.response?.data?.message || "Failed to send password OTP");
     }
   };
 
@@ -234,9 +230,12 @@ function AdminUsersPage({ user }) {
     const payload = {
       first_name: editForm.first_name,
       last_name: editForm.last_name,
-      phone_number: editForm.phone_number,
       status: editForm.status
     };
+
+    if (editForm.phone_number && editForm.phone_number.trim() !== "") {
+      payload.phone_number = editForm.phone_number.trim();
+    }
 
     if (editForm.email !== selectedUser.email) {
       payload.email = editForm.email;
@@ -254,12 +253,10 @@ function AdminUsersPage({ user }) {
         setShowEditModal(false);
         setEmailOtp(""); setEmailOtpSent(false);
         setPasswordOtp(""); setPasswordOtpSent(false);
-        setToast({ type: "success", message: "User updated successfully" });
-        setTimeout(() => setToast(null), 4000);
+        showModalAlert("success", "User updated successfully");
       })
       .catch((err) => {
-        setToast({ type: "error", message: err.response?.data?.message || "Failed to update user" });
-        setTimeout(() => setToast(null), 4000);
+        showModalAlert("error", err.response?.data?.error || err.response?.data?.message || "Failed to update user");
       });
   };
 
@@ -277,18 +274,6 @@ function AdminUsersPage({ user }) {
   return (
     <div className="min-h-screen flex flex-col px-8 py-8 bg-white rounded-lg relative font-sans">
       
-      {/* TOAST SYSTEM */}
-      {toast && (
-        <div className="fixed top-6 right-6 z-[500] animate-in slide-in-from-right duration-300">
-          <div className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border backdrop-blur-md ${
-            toast.type === 'success' ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-rose-500 border-rose-400 text-white'
-          }`}>
-            <CheckCircle2 className="w-5 h-5" />
-            <span className="text-sm font-bold tracking-tight">{toast.message}</span>
-          </div>
-        </div>
-      )}
-
       {/* HEADER AREA */}
       <div className="mb-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
@@ -318,7 +303,7 @@ function AdminUsersPage({ user }) {
            />
         </div>
 
-<div className="flex gap-3">
+        <div className="flex gap-3">
           {/* SORT DROPDOWN */}
           <div className="relative" ref={sortRef}>
             <button 
@@ -403,7 +388,6 @@ function AdminUsersPage({ user }) {
                           {u.first_name?.charAt(0)}
                         </div>
                         <div>
-                          {/* whitespace-nowrap prevents names from wrapping */}
                           <p className="font-bold text-gray-900 tracking-tight whitespace-nowrap">{u.first_name} {u.last_name}</p>
                           <p className="text-xs font-medium text-gray-400">ID: #{u.id}</p>
                         </div>
@@ -474,7 +458,7 @@ function AdminUsersPage({ user }) {
       {/* ADD USER MODAL */}
       {showCreateModal && canManageUsers && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[200]">
-          <div className="bg-white rounded-3xl w-[90%] max-w-md shadow-2xl border border-white/20 p-8">
+          <div className="bg-white rounded-3xl w-[90%] max-w-md shadow-2xl border border-white/20 p-8 animate-in zoom-in-95 duration-200">
             <h2 className="text-2xl font-playfair font-bold mb-6 text-gray-900">Add New User</h2>
 
             <div className="space-y-4">
@@ -499,6 +483,14 @@ function AdminUsersPage({ user }) {
                 placeholder="Email Address"
                 value={newUser.email}
                 onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
+              />
+
+              <input
+                type="tel"
+                placeholder="Phone Number (11 digits)"
+                value={newUser.phone_number}
+                onChange={(e) => setNewUser({ ...newUser, phone_number: e.target.value })}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
               />
 
@@ -551,11 +543,11 @@ function AdminUsersPage({ user }) {
       {/* Edit User Modal */}
       {showEditModal && selectedUser && canManageUsers && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[200]">
-          <div className="bg-white rounded-3xl w-[90%] max-w-lg shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl w-[90%] max-w-lg shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-6">
                <h2 className="text-2xl font-playfair font-bold text-gray-900">Edit User Details</h2>
                <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                  ID: #{selectedUser.id}
+                 ID: #{selectedUser.id}
                </span>
             </div>
 
@@ -716,7 +708,7 @@ function AdminUsersPage({ user }) {
       {/* Confirm Save Modal */}
       {showConfirmSave && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300]">
-          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-500">
                <ShieldCheck size={28} />
             </div>
@@ -737,7 +729,7 @@ function AdminUsersPage({ user }) {
       {/* Confirm Delete Modal */}
       {showConfirmDelete && selectedUser && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300]">
-          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 text-rose-500">
                <Trash2 size={28} />
             </div>
@@ -749,6 +741,29 @@ function AdminUsersPage({ user }) {
               </button>
               <button onClick={() => handleDeleteUser(selectedUser.id)} className="rounded-lg bg-rose-500 px-5 py-2 text-sm font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-600 transition-all duration-300 shadow-sm">
                 Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- STATUS ALERT MODAL (Replaces Toast) --- */}
+      {statusModal.isOpen && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
+            <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${statusModal.type === 'success' ? 'bg-emerald-100 text-emerald-500' : 'bg-rose-100 text-rose-500'}`}>
+               {statusModal.type === 'success' ? <CheckCircle2 size={28} /> : <X size={28} />}
+            </div>
+            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
+              {statusModal.type === 'success' ? 'Success' : 'Action Failed'}
+            </h3>
+            <p className="text-sm text-gray-500 mb-8 px-2">{statusModal.message}</p>
+            <div className="flex justify-center">
+              <button 
+                onClick={() => setStatusModal({ isOpen: false, type: 'success', message: '' })} 
+                className="rounded-xl bg-gray-900 px-8 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+              >
+                Okay
               </button>
             </div>
           </div>

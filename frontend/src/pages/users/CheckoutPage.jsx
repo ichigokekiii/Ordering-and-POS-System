@@ -16,6 +16,7 @@ function CheckoutPage() {
   const [fileInputKey, setFileInputKey] = useState(0);
 
   const [showTerms, setShowTerms] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
 
   // ── Success modal (same pattern as VerifyOtpPage) ──
   const [modalMessage, setModalMessage] = useState("");
@@ -233,36 +234,39 @@ function CheckoutPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10 md:px-8">
-      <div className="mx-auto max-w-4xl">
+    <div className="min-h-screen bg-[#fcfaf9] px-4 py-8 md:px-12 md:py-16">
+      <div className="mx-auto max-w-[1200px]">
 
         {/* Header */}
-        <div className="mb-6 flex items-center gap-4">
-          <button
-            onClick={() => navigate("/cart")}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-gray-500 shadow-sm transition hover:bg-gray-100"
-          >
-            ←
-          </button>
-          <h1 className="text-2xl font-bold text-gray-800">Checkout</h1>
+        <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between pb-6 border-b border-gray-200">
+          <div>
+            <button
+              onClick={() => navigate("/cart")}
+              className="mb-4 flex items-center justify-center h-10 w-10 text-xl rounded-full bg-white border border-gray-200 text-gray-500 hover:text-gray-900 shadow-sm transition-colors"
+            >
+              ←
+            </button>
+            <p className="text-[#4f6fa5] font-semibold tracking-widest uppercase text-xs mb-1">Make it yours</p>
+            <h1 className="text-4xl md:text-5xl font-playfair font-bold text-gray-900">Checkout</h1>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid gap-8 md:grid-cols-12">
+        <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-10 lg:gap-16">
 
           {/* LEFT COLUMN */}
-          <div className="md:col-span-7 space-y-6">
+          <div className="flex-1 space-y-8">
 
             {/* 1. Delivery Method */}
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-lg font-semibold text-gray-700">1. Delivery Method</h2>
+            <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
+              <h2 className="mb-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-4">1. Delivery Method</h2>
               <div className="flex gap-4">
                 <button
                   type="button"
                   onClick={() => setDeliveryMode("pickup")}
-                  className={`flex-1 rounded-xl border-2 py-3 text-sm font-medium transition ${
+                  className={`flex-1 rounded-2xl border py-4 text-xs font-bold uppercase tracking-widest transition-all ${
                     deliveryMode === "pickup"
-                      ? "border-rose-500 bg-rose-50 text-rose-600"
-                      : "border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200"
+                      ? "border-[#4f6fa5] bg-[#4f6fa5]/5 text-[#4f6fa5] shadow-inner"
+                      : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 shadow-sm hover:shadow"
                   }`}
                 >
                   Pickup
@@ -270,10 +274,10 @@ function CheckoutPage() {
                 <button
                   type="button"
                   onClick={() => setDeliveryMode("delivery")}
-                  className={`flex-1 rounded-xl border-2 py-3 text-sm font-medium transition ${
+                  className={`flex-1 rounded-2xl border py-4 text-xs font-bold uppercase tracking-widest transition-all ${
                     deliveryMode === "delivery"
-                      ? "border-rose-500 bg-rose-50 text-rose-600"
-                      : "border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200"
+                      ? "border-[#4f6fa5] bg-[#4f6fa5]/5 text-[#4f6fa5] shadow-inner"
+                      : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 shadow-sm hover:shadow"
                   }`}
                 >
                   Delivery
@@ -287,44 +291,44 @@ function CheckoutPage() {
             </div>
 
             {/* 2. Contact Details */}
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-lg font-semibold text-gray-700">2. Contact Details</h2>
+            <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
+              <h2 className="mb-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-4">2. Contact Details</h2>
               <div className="space-y-4">
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="mb-1 block text-xs text-gray-400">Full Name</label>
+                    <label className="mb-2 block text-[10px] uppercase tracking-widest font-bold text-gray-400">Full Name</label>
                     <input
                       readOnly
                       value={userName}
-                      className="w-full rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-500 cursor-not-allowed"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500 cursor-not-allowed"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-gray-400">Email</label>
+                    <label className="mb-2 block text-[10px] uppercase tracking-widest font-bold text-gray-400">Email</label>
                     <input
                       readOnly
                       value={userEmail}
-                      className="w-full rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-500 cursor-not-allowed"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500 cursor-not-allowed"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <div className="flex justify-between mb-1">
-                    <label className="text-xs text-gray-400">Contact Number</label>
+                  <div className="flex justify-between mb-2">
+                    <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400">Contact Number</label>
                   </div>
                   <input
                     readOnly
                     value={userPhone}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-500 cursor-not-allowed"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500 cursor-not-allowed"
                   />
                 </div>
 
                 {/* ── Delivery Address ── */}
                 {deliveryMode === "delivery" && (
-                  <div className="space-y-3">
-                    <label className="text-xs text-gray-400">Delivery Address *</label>
+                  <div className="space-y-4 pt-2">
+                    <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400">Delivery Address *</label>
 
                     {!useManualAddress && (
                       <div className="relative">
@@ -337,7 +341,7 @@ function CheckoutPage() {
                           className={`w-full appearance-none rounded-xl border px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-1 ${
                             errors.address
                               ? "border-red-400 focus:border-red-400 focus:ring-red-400"
-                              : "border-gray-200 bg-gray-50 focus:border-rose-500 focus:ring-rose-500"
+                              : "border-gray-200 bg-white focus:border-[#4f6fa5] focus:ring-[#4f6fa5]"
                           } ${selectedAddressIndex === "" ? "text-gray-400" : "text-gray-700"}`}
                         >
                           <option value="" disabled>
@@ -378,7 +382,7 @@ function CheckoutPage() {
                           className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-1 ${
                             errors.address
                               ? "border-red-400 focus:border-red-400 focus:ring-red-400"
-                              : "border-gray-200 bg-gray-50 focus:border-rose-500 focus:ring-rose-500"
+                              : "border-gray-200 bg-white focus:border-[#4f6fa5] focus:ring-[#4f6fa5]"
                           }`}
                         />
                       </div>
@@ -397,7 +401,7 @@ function CheckoutPage() {
                         setAddress("");
                         setErrors(prev => ({ ...prev, address: "" }));
                       }}
-                      className="text-xs text-rose-500 underline hover:text-rose-600 transition"
+                      className="text-xs text-[#4f6fa5] font-semibold hover:underline transition"
                     >
                       {useManualAddress
                         ? "← Use a saved address instead"
@@ -409,48 +413,62 @@ function CheckoutPage() {
             </div>
 
             {/* 3. Payment */}
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-lg font-semibold text-gray-700">3. Payment</h2>
-              <div className="space-y-4">
+            <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
+              <h2 className="mb-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-4">3. Payment</h2>
+              <div className="space-y-6">
 
-                <div className="flex justify-center">
-                  <div className="flex flex-col items-center">
-                    <div className="mb-2 h-40 w-40 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 p-2">
+                <div className="flex flex-col items-center">
+                  <div className="relative group cursor-pointer" onClick={() => setShowQRModal(true)}>
+                    <div className="h-40 w-40 overflow-hidden rounded-2xl border-2 border-gray-100 bg-white p-3 shadow-sm hover:shadow transition-shadow group-hover:border-[#4f6fa5]/30">
                       <img
                         src="http://localhost:8000/storage/qr_payment.jpg"
                         alt="GCash QR"
                         className="h-full w-full object-contain"
                       />
+                      <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
+                         <span className="bg-white/90 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5] shadow-sm">
+                           Click to zoom
+                         </span>
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-400">Scan to pay</p>
                   </div>
+                  <p className="mt-3 text-[10px] uppercase tracking-widest font-bold text-[#4f6fa5]">Scan & Pay</p>
                 </div>
 
                 <div>
-                  <div className="flex justify-between mb-1">
-                    <label className="text-xs text-gray-400">Payment Method *</label>
-                    <span className="text-xs text-gray-400">{paymentMethod.length}/50</span>
+                  <div className="flex justify-between mb-2">
+                    <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400">Payment Method *</label>
                   </div>
-                  <input
-                    value={paymentMethod}
-                    onChange={(e) => {
-                      if (e.target.value.length <= 50) setPaymentMethod(e.target.value);
-                    }}
-                    placeholder="e.g. GCash, PayMaya, BDO, BPI"
-                    maxLength={50}
-                    className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-1 ${
-                      errors.paymentMethod
-                        ? "border-red-400 focus:border-red-400 focus:ring-red-400"
-                        : "border-gray-200 bg-gray-50 focus:border-rose-500 focus:ring-rose-500"
-                    }`}
-                  />
-                  {errors.paymentMethod && <p className="mt-1 text-xs text-red-500">{errors.paymentMethod}</p>}
+                  <div className="relative">
+                    <select
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className={`w-full appearance-none rounded-xl border px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-1 ${
+                        errors.paymentMethod
+                          ? "border-red-400 focus:border-red-400 focus:ring-red-400"
+                          : "border-gray-200 bg-white focus:border-[#4f6fa5] focus:ring-[#4f6fa5]"
+                      } ${!paymentMethod ? "text-gray-400" : "text-gray-700"}`}
+                    >
+                      <option value="" disabled>Select Provider</option>
+                      <option value="GCash">GCash</option>
+                      <option value="Maya">Maya</option>
+                      <option value="BPI">BPI</option>
+                      <option value="BDO">BDO</option>
+                      <option value="Other">Other Bank Transfer</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                  {errors.paymentMethod && <p className="mt-1 text-xs text-red-500 font-semibold">{errors.paymentMethod}</p>}
                 </div>
 
                 <div>
-                  <div className="flex justify-between mb-1">
-                    <label className="text-xs text-gray-400">Reference Code *</label>
-                    <span className="text-xs text-gray-400">{referenceCode.length}/30</span>
+                  <div className="flex justify-between mb-2">
+                    <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400">Reference Code *</label>
+                    <span className="text-[10px] text-gray-400 font-bold">{referenceCode.length}/30</span>
                   </div>
                   <input
                     value={referenceCode}
@@ -462,20 +480,20 @@ function CheckoutPage() {
                     className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-1 ${
                       errors.referenceCode
                         ? "border-red-400 focus:border-red-400 focus:ring-red-400"
-                        : "border-gray-200 bg-gray-50 focus:border-rose-500 focus:ring-rose-500"
+                        : "border-gray-200 bg-white focus:border-[#4f6fa5] focus:ring-[#4f6fa5]"
                     }`}
                   />
-                  {errors.referenceCode && <p className="mt-1 text-xs text-red-500">{errors.referenceCode}</p>}
+                  {errors.referenceCode && <p className="mt-1 text-xs text-red-500 font-semibold">{errors.referenceCode}</p>}
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs text-gray-400">Payment Screenshot *</label>
-                  <label className="flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 py-6 transition hover:bg-gray-100">
-                    <span className="text-2xl">📎</span>
-                    <p className="mb-1 text-sm text-gray-500">
-                      <span className="font-semibold">Click to upload</span> screenshot
+                  <label className="mb-2 block text-[10px] uppercase tracking-widest font-bold text-gray-400">Payment Screenshot *</label>
+                  <label className="flex w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 py-8 transition-colors hover:bg-white hover:border-[#4f6fa5]/50 group">
+                    <span className="text-3xl grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all">📎</span>
+                    <p className="mt-3 mb-1 text-sm text-gray-600 font-medium">
+                      Click to upload screenshot
                     </p>
-                    <p className="text-xs text-gray-400">PNG, JPG (MAX. 2MB)</p>
+                    <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400">PNG, JPG (MAX. 2MB)</p>
                     <input
                       key={fileInputKey}
                       ref={fileInputRef}
@@ -505,11 +523,13 @@ function CheckoutPage() {
           </div>
 
           {/* RIGHT COLUMN */}
-          <div className="md:col-span-5">
-            <div className="sticky top-6 rounded-2xl bg-white p-6 shadow-sm">
-              <h3 className="mb-4 text-lg font-semibold text-gray-700">Order Summary</h3>
+          <div className="lg:w-[400px]">
+            <div className="sticky top-10 rounded-3xl bg-white p-8 shadow-sm border border-gray-100">
+              <h3 className="mb-6 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-4">
+                Order Summary
+              </h3>
 
-              <div className="mb-4 max-h-64 overflow-y-auto pr-2 space-y-3">
+              <div className="mb-6 max-h-[300px] overflow-y-auto pr-2 space-y-4 nice-scrollbar">
                 {cartItems.map((item, index) => (
                   <div key={`${item.id}-${index}`} className="space-y-1.5">
                     <div className="flex justify-between text-sm">
@@ -517,20 +537,19 @@ function CheckoutPage() {
                         <span className="font-medium text-gray-600 text-xs h-5 w-5 flex items-center justify-center bg-gray-100 rounded-full flex-shrink-0">
                           {item.quantity}
                         </span>
-                        <div className="flex flex-col">
-                          <span className="text-gray-700">{item.name}</span>
+                        <div className="flex flex-col min-w-0 pr-2">
+                          <span className="text-gray-900 font-semibold truncate">{item.name}</span>
                           {item.type === "custom" && (
-                            <span className="text-[10px] text-gray-400">Custom Bouquet</span>
+                            <span className="text-[9px] uppercase tracking-widest font-bold text-[#4f6fa5] mt-0.5">Custom Build</span>
                           )}
                         </div>
                       </div>
-                      <span className="text-gray-500 flex-shrink-0">₱{(item.price * item.quantity).toLocaleString()}</span>
+                      <span className="text-gray-900 font-bold flex-shrink-0">₱{(item.price * item.quantity).toLocaleString()}</span>
                     </div>
                     {item.greetingCard && (
-                      <div className="ml-8 flex items-start gap-1.5 rounded-lg border border-rose-100 bg-rose-50 px-2.5 py-1.5">
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-medium text-rose-500">Greeting Card · <span className="font-normal">+₱5</span></p>
-                          <p className="text-[10px] text-gray-400 break-words line-clamp-2">{item.greetingCard}</p>
+                      <div className="ml-8 flex items-start gap-1.5">
+                        <div className="min-w-0 border-l-2 border-[#4f6fa5]/20 pl-2">
+                          <p className="text-[10px] font-bold text-[#4f6fa5] uppercase tracking-widest">Card Included · <span className="font-bold">+₱5</span></p>
                         </div>
                       </div>
                     )}
@@ -538,50 +557,45 @@ function CheckoutPage() {
                 ))}
               </div>
 
-              <div className="my-4 border-t border-dashed border-gray-200" />
-
-              <div className="space-y-2 text-sm text-gray-600">
-                <div className="flex justify-between">
+              <div className="space-y-3 text-sm text-gray-600 mb-6">
+                <div className="flex justify-between font-medium">
                   <span>Subtotal</span>
-                  <span>₱{totalPrice.toLocaleString()}</span>
+                  <span className="text-gray-900">₱{totalPrice.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Delivery</span>
-                  <span className="text-gray-400">
-                    {deliveryMode === "delivery" ? "Third-Party Delivery" : "Free (Pickup)"}
+                <div className="flex justify-between font-medium">
+                  <span>Delivery fee</span>
+                  <span className="text-gray-400 text-xs uppercase tracking-widest font-bold">
+                    {deliveryMode === "delivery" ? "Third-Party" : "Free pickup"}
                   </span>
                 </div>
               </div>
 
-              <div className="my-4 border-t border-gray-200" />
-
-              <div className="flex justify-between text-lg font-bold text-gray-800">
-                <span>Total</span>
-                <span className="text-rose-500">₱{GRAND_TOTAL.toLocaleString()}</span>
+              <div className="flex items-end justify-between border-t border-gray-100 pt-6 mb-8">
+                <span className="text-sm font-bold uppercase tracking-widest text-gray-900">Total</span>
+                <span className="text-3xl font-playfair font-bold text-[#4f6fa5]">₱{GRAND_TOTAL.toLocaleString()}</span>
               </div>
 
               <button
                 type="submit"
                 disabled={!paymentProof || isSubmitting}
-                className={`mt-6 w-full rounded-xl py-4 text-sm font-semibold text-white shadow transition
+                className={`w-full rounded-2xl py-4 text-xs font-bold tracking-widest uppercase text-white shadow-md transition-all active:scale-95
                   ${paymentProof && !isSubmitting
-                    ? "bg-rose-500 hover:bg-rose-600 active:scale-95"
-                    : "cursor-not-allowed bg-gray-300"
+                    ? "bg-gray-900 hover:bg-[#4f6fa5] hover:shadow-lg"
+                    : "cursor-not-allowed bg-gray-200 text-gray-400 shadow-none border border-gray-200"
                   }`}
               >
-                {isSubmitting ? "Placing Order..." : paymentProof ? "Complete Order" : "Upload Payment to Proceed"}
+                {isSubmitting ? "Processing..." : paymentProof ? "Confirm Order" : "Upload proof to continue"}
               </button>
 
-              <p className="mt-3 text-center text-xs text-gray-400">
+              <p className="mt-5 text-center text-[10px] uppercase tracking-widest font-bold text-gray-400">
                 By placing this order, you agree to our{" "}
                 <button
                   type="button"
                   onClick={() => setShowTerms(true)}
-                  className="underline text-rose-400 hover:text-rose-500 transition"
+                  className="underline text-[#4f6fa5] hover:text-[#4f6fa5]/80 transition"
                 >
-                  terms of service
+                  Terms of Service
                 </button>
-                .
               </p>
             </div>
           </div>
@@ -590,20 +604,20 @@ function CheckoutPage() {
 
       {/* ── Terms Modal ── */}
       {showTerms && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-800">Terms & Conditions</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl max-h-[85vh] flex flex-col border border-gray-100">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+              <h2 className="text-2xl font-playfair font-bold text-gray-900">Terms & Conditions</h2>
               <button
                 type="button"
                 onClick={() => setShowTerms(false)}
-                className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+                className="text-gray-400 hover:text-[#4f6fa5] transition flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 hover:bg-[#4f6fa5]/10"
               >
                 ✕
               </button>
             </div>
 
-            <div className="overflow-y-auto pr-1 text-sm text-gray-600 space-y-4">
+            <div className="overflow-y-auto pr-4 text-sm text-gray-600 space-y-6 nice-scrollbar">
 
               <div>
                 <h3 className="font-semibold text-gray-800 text-base mb-1">Customer Terms & Conditions</h3>
@@ -675,16 +689,35 @@ function CheckoutPage() {
 
             </div>
 
-            <div className="mt-6 flex justify-end">
+            <div className="mt-8 flex justify-end pt-4 border-t border-gray-100">
               <button
                 type="button"
                 onClick={() => setShowTerms(false)}
-                className="rounded-xl bg-rose-500 px-6 py-2 text-sm font-semibold text-white hover:bg-rose-600 transition"
+                className="rounded-full bg-gray-900 px-8 py-3 text-xs font-bold uppercase tracking-widest text-white hover:bg-[#4f6fa5] transition"
               >
                 I Understand
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── QR Zoom Modal ── */}
+      {showQRModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowQRModal(false)}>
+           <div className="relative max-w-2xl w-full p-4" onClick={e => e.stopPropagation()}>
+              <button
+                className="absolute -top-12 right-0 text-white flex gap-2 items-center text-sm uppercase tracking-widest font-bold hover:text-[#4f6fa5] transition"
+                onClick={() => setShowQRModal(false)}
+              >
+                Close ✕
+              </button>
+              <img
+                 src="http://localhost:8000/storage/qr_payment.jpg"
+                 alt="GCash QR Zoom"
+                 className="w-full h-auto rounded-3xl shadow-2xl object-contain bg-white p-4"
+              />
+           </div>
         </div>
       )}
 

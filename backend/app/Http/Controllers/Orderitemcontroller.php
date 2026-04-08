@@ -45,11 +45,9 @@ class OrderItemController extends Controller
             'quantity'          => $item['quantity'],
             'price_at_purchase' => $item['price_at_purchase'],
             'special_message'   => $item['special_message'] ?? null,
-            'created_at'        => now(),
-            'updated_at'        => now(),
         ])->toArray();
 
-        OrderItem::insert($rows);
+        $order->orderItems()->createMany($rows);
 
         // Load the order + its user so we have the email address and order meta
         try {

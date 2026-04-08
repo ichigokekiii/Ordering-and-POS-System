@@ -20,9 +20,7 @@ return new class extends Migration
                 ->on('orders')
                 ->cascadeOnDelete();
 
-            // Plain unsignedBigInteger instead of foreignId() so it can hold
-            // IDs from both the `products` table and the `premades` table
-            // without a foreign key constraint failing.
+            // Store the ordered product's source ID directly.
             $table->unsignedBigInteger('product_id');
 
             // Snapshot of the product name at time of purchase
@@ -45,6 +43,8 @@ return new class extends Migration
             $table->text('special_message')->nullable();
 
             $table->timestamps();
+
+            $table->index(['order_id', 'product_id']);
         });
     }
 

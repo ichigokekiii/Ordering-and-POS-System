@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('custom_products', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('product_id')->nullable()->constrained('products')->nullOnDelete()->unique();
 
             $table->string('name');
             $table->string('image')->nullable();
@@ -21,6 +22,8 @@ return new class extends Migration
             $table->string('type')->nullable();
             $table->decimal('price', 10, 2);
             $table->boolean('isAvailable')->default(true);
+            $table->unsignedInteger('required_main_count')->nullable();
+            $table->unsignedInteger('required_filler_count')->nullable();
             $table->timestamps();
         });
     }

@@ -1,3 +1,4 @@
+import { ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../contexts/CartContext";
 
@@ -7,166 +8,180 @@ function CartPage() {
 
   if (cartItems.length === 0) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gray-50 px-8">
-        <div className="text-6xl">🛒</div>
-        <h2 className="text-xl font-semibold text-gray-700">Your cart is empty</h2>
-        <p className="text-sm text-gray-400">Go back and add some bouquets!</p>
+      <div className="flex min-h-[90vh] flex-col items-center justify-center gap-4 bg-[#fcfaf9] px-8">
+        <div className="rounded-full border border-gray-200 bg-white p-5 shadow-sm">
+          <ShoppingCart className="h-10 w-10 text-gray-300" />
+        </div>
+        <h2 className="text-3xl font-playfair font-bold text-gray-900 mt-4">Your cart is empty</h2>
+        <p className="text-sm uppercase tracking-widest font-semibold text-gray-400">Discover our floral collection</p>
         <button
           onClick={() => navigate("/order")}
-          className="mt-2 rounded-xl bg-rose-500 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-600"
+          className="mt-6 rounded-full bg-gray-900 px-8 py-3.5 text-xs font-bold uppercase tracking-widest text-white transition-all hover:bg-[#4f6fa5] hover:shadow-lg active:scale-95"
         >
-          Browse Orders
+          Begin your journey
         </button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-10">
-      <div className="mx-auto max-w-2xl">
+    <div className="min-h-screen bg-[#fcfaf9] px-4 py-8 md:px-12 md:py-16">
+      <div className="mx-auto max-w-[1200px]">
 
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-200">
           <div>
             <button
               onClick={() => navigate("/order")}
-              className="mb-1 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+              className="mb-4 flex items-center justify-center h-10 w-10 text-xl rounded-full bg-white border border-gray-200 text-gray-500 hover:text-gray-900 shadow-sm transition-colors"
+              title="Go Back"
             >
-              ← Back to Order
+              ←
             </button>
-            <h2 className="text-2xl font-semibold text-gray-800">Your Cart</h2>
-            <p className="text-sm text-gray-400">{totalItems} item{totalItems !== 1 ? "s" : ""}</p>
+            <p className="text-[#4f6fa5] font-semibold tracking-widest uppercase text-xs mb-1">Make it yours</p>
+            <h2 className="text-4xl md:text-5xl font-playfair font-bold text-gray-900">Your Cart</h2>
           </div>
           <button
             onClick={clearCart}
-            className="text-xs text-gray-400 underline hover:text-red-400"
+            className="text-xs uppercase tracking-widest font-bold text-gray-400 border-b border-transparent hover:border-gray-900 hover:text-gray-900 transition-all pb-0.5"
           >
-            Clear all
+            Clear cart
           </button>
         </div>
 
-        {/* Cart Items */}
-        <div className="space-y-3">
-          {cartItems.map((item) => (
-            <div
-              key={item.id}
-              className="rounded-2xl bg-white p-4 shadow-sm"
-            >
-              <div className="flex items-center gap-4">
-                {/* Image */}
-                <img
-                  src={`http://localhost:8000${item.image}`}
-                  alt={item.name}
-                  className="h-16 w-16 rounded-xl object-cover flex-shrink-0"
-                />
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-gray-800 truncate">{item.name}</h3>
-                    {item.type === "custom" && (
-                      <span className="flex-shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-500">
-                        Custom
-                      </span>
-                    )}
-                  </div>
-                  {/* Custom bouquet: show each flower on its own line */}
-                  {item.type === "custom" && item.items ? (
-                    <ul className="mt-0.5 space-y-0.5">
-                      {item.items.map((flower) => (
-                        <li key={flower.id} className="text-xs text-gray-400">
-                          {flower.name} ×{flower.quantity}
-                          <span className="ml-1 text-gray-300">
-                            {flower.free ? "— Free" : `— ₱${(flower.price * flower.quantity).toLocaleString()}`}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-xs text-gray-400 truncate">{item.description}</p>
-                  )}
-                  <p className="mt-1 text-sm font-bold text-rose-500">
-                    ₱{(item.price * item.quantity).toLocaleString()}
-                  </p>
-                </div>
-
-                {/* Quantity Controls */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                    className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:border-rose-400 hover:text-rose-500 transition"
-                  >
-                    −
-                  </button>
-                  <span className="w-5 text-center text-sm font-semibold text-gray-700">
-                    {item.quantity}
-                  </span>
-                  <button
-                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                    className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:border-rose-400 hover:text-rose-500 transition"
-                  >
-                    +
-                  </button>
-                </div>
-
-                {/* Remove */}
-                <button
-                  onClick={() => removeFromCart(item.id)}
-                  className="ml-1 flex-shrink-0 text-gray-300 hover:text-red-400 transition text-lg leading-none"
-                  title="Remove"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Greeting Card — shown below the item row when present */}
-              {item.greetingCard && (
-                <div className="mt-3 flex items-start gap-2 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2">
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-rose-500">Greeting Card <span className="font-normal text-rose-400">(+₱5)</span></p>
-                    <p className="mt-0.5 text-xs text-gray-500 break-words">{item.greetingCard}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Order Summary */}
-        <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold text-gray-600 uppercase tracking-wide">
-            Order Summary
-          </h3>
-          <div className="space-y-2">
+        <div className="flex flex-col lg:flex-row gap-10 lg:gap-16">
+          {/* Left Column: Cart Items */}
+          <div className="flex-1 space-y-6">
+            <h3 className="text-xs uppercase tracking-widest font-bold text-gray-500 mb-2">{totalItems} Item{totalItems !== 1 ? "s" : ""} selected</h3>
             {cartItems.map((item) => (
-              <div key={item.id} className="space-y-0.5">
-                <div className="flex justify-between text-sm text-gray-500">
-                  <span>{item.name} × {item.quantity}</span>
-                  <span>₱{(item.price * item.quantity).toLocaleString()}</span>
+              <div
+                key={item.id}
+                className="group rounded-3xl bg-white p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative"
+              >
+                <div className="flex items-start gap-5">
+                  {/* Image */}
+                  <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-50">
+                    <img
+                      src={`http://localhost:8000${item.image}`}
+                      alt={item.name}
+                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0 py-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="font-playfair font-bold text-xl text-gray-900 truncate">{item.name}</h3>
+                        {/* Remove */}
+                        <button
+                          onClick={() => removeFromCart(item.id)}
+                          className="flex-shrink-0 text-gray-300 hover:text-red-500 transition-colors"
+                          title="Remove"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      
+                      {item.type === "custom" && (
+                         <span className="inline-block mt-1 mb-2 rounded bg-[#4f6fa5]/10 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-[#4f6fa5]">
+                           Custom Structure
+                         </span>
+                      )}
+
+                      {/* Item Breakdown or Description */}
+                      {item.type === "custom" && item.items ? (
+                        <ul className="mt-1 space-y-1">
+                          {item.items.map((flower) => (
+                            <li key={flower.id} className="text-xs text-gray-500 font-medium">
+                              {flower.name} ×{flower.quantity}
+                              <span className="ml-1 text-gray-300">
+                                {flower.free ? "" : `— +₱${(flower.price * flower.quantity).toLocaleString()}`}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs font-medium uppercase tracking-widest text-gray-400 truncate mt-1">{item.description}</p>
+                      )}
+                    </div>
+                    
+                    <div className="mt-4 flex items-center justify-between">
+                      <p className="text-lg font-bold text-[#4f6fa5]">
+                        ₱{(item.price * item.quantity).toLocaleString()}
+                      </p>
+                      {/* Quantity Controls */}
+                      <div className="flex items-center gap-3 bg-gray-50 rounded-full border border-gray-100 p-1 shadow-sm">
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-gray-500 shadow-sm transition hover:text-[#4f6fa5]"
+                        >
+                          −
+                        </button>
+                        <span className="w-5 text-center text-xs font-bold text-gray-800">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-gray-500 shadow-sm transition hover:text-[#4f6fa5]"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Greeting Card Included Notice */}
                 {item.greetingCard && (
-                  <div className="flex justify-between text-xs text-rose-400 pl-2">
-                    <span>↳ Greeting card included</span>
-                    <span>+₱5</span>
+                  <div className="mt-5 rounded-2xl border border-[#4f6fa5]/20 bg-[#4f6fa5]/5 px-4 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5] mb-1">Personal Touch Included (+₱5)</p>
+                    <p className="text-xs text-gray-700 italic border-l-2 border-[#4f6fa5]/30 pl-3">"{item.greetingCard}"</p>
                   </div>
                 )}
               </div>
             ))}
           </div>
-          <div className="mt-4 flex justify-between border-t pt-3 text-base font-bold text-gray-800">
-            <span>Total</span>
-            <span className="text-rose-500">₱{totalPrice.toLocaleString()}</span>
+
+          {/* Right Column: Order Summary */}
+          <div className="lg:w-[400px]">
+             <div className="sticky top-10 rounded-3xl bg-white p-8 shadow-sm border border-gray-100">
+                <h3 className="mb-6 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-4">
+                  Summary
+                </h3>
+                
+                <div className="space-y-4 mb-6">
+                  {cartItems.map((item) => (
+                    <div key={item.id} className="space-y-1">
+                      <div className="flex justify-between text-sm font-semibold text-gray-600">
+                        <span className="truncate pr-4">{item.name} <span className="text-xs text-gray-400 ml-1">x{item.quantity}</span></span>
+                        <span className="flex-shrink-0">₱{(item.price * item.quantity).toLocaleString()}</span>
+                      </div>
+                      {item.greetingCard && (
+                        <div className="flex justify-between text-[11px] font-medium text-[#4f6fa5] pl-2 border-l-2 border-[#4f6fa5]/20">
+                          <span>Card included</span>
+                          <span>+₱5</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-between border-t border-gray-100 pt-6 mb-8 items-end">
+                  <span className="text-sm font-bold uppercase tracking-widest text-gray-900">Total</span>
+                  <span className="text-3xl font-playfair font-bold text-gray-900">₱{totalPrice.toLocaleString()}</span>
+                </div>
+
+                <button
+                  className="w-full rounded-2xl bg-gray-900 py-4 text-xs font-bold uppercase tracking-widest text-white shadow-md transition-all hover:bg-[#4f6fa5] hover:shadow-lg active:scale-95"
+                  onClick={() => navigate("/checkout")}
+                >
+                  Proceed to Checkout
+                </button>
+             </div>
           </div>
+
         </div>
-
-        {/* Checkout Button */}
-        <button
-          className="mt-5 w-full rounded-xl bg-rose-500 py-3.5 text-sm font-semibold text-white shadow transition hover:bg-rose-600 active:scale-95"
-          onClick={() => navigate("/checkout")}
-        >
-          Place Order — ₱{totalPrice.toLocaleString()}
-        </button>
-
       </div>
     </div>
   );

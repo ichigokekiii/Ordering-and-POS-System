@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Content;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class ContentController extends Controller
 {
@@ -26,11 +27,16 @@ class ContentController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'identifier' => 'required|string|max:255',
             'page' => 'required|string|max:255',
             'type' => 'required|in:text,image',
             'content_text' => 'nullable|string',
             'content_image' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+            'identifier' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('contents')->where(fn ($query) => $query->where('page', $request->page)->where('isArchived', false)),
+            ],
         ]);
 
         try {
@@ -70,6 +76,20 @@ class ContentController extends Controller
         try {
             $content = Content::findOrFail($id);
 
+            if ($request->filled('identifier') || $request->filled('page')) {
+                $request->validate([
+                    'identifier' => [
+                        'nullable',
+                        'string',
+                        'max:255',
+                        Rule::unique('contents')
+                            ->ignore($content->id)
+                            ->where(fn ($query) => $query->where('page', $request->input('page', $content->page))->where('isArchived', false)),
+                    ],
+                    'page' => 'nullable|string|max:255',
+                ]);
+            }
+
             if ($request->filled('identifier')) {
                 $content->identifier = $request->identifier;
             }
@@ -78,11 +98,15 @@ class ContentController extends Controller
                 $content->page = $request->page;
             }
 
-            if ($request->filled('content_text')) {
+            if ($request->has('content_text')) {
                 $content->content_text = $request->content_text;
             }
 
             if ($request->hasFile('content_image')) {
+                if ($content->content_image) {
+                    Storage::disk('public')->delete(str_replace('/storage/', '', $content->content_image));
+                }
+
                 $path = $request->file('content_image')->store('contents', 'public');
                 $content->content_image = Storage::url($path);
             }
@@ -111,6 +135,11 @@ class ContentController extends Controller
     {
         try {
             $content = Content::findOrFail($id);
+
+            if ($content->content_image) {
+                Storage::disk('public')->delete(str_replace('/storage/', '', $content->content_image));
+            }
+
             $content->delete();
 
             return response()->json([
@@ -135,6 +164,10 @@ class ContentController extends Controller
                 return response()->json([
                     'message' => 'Only archived content can be deleted'
                 ], 403);
+            }
+
+            if ($content->content_image) {
+                Storage::disk('public')->delete(str_replace('/storage/', '', $content->content_image));
             }
 
             $content->delete();

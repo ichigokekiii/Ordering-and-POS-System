@@ -17,12 +17,15 @@ return new class extends Migration
             $table->foreignId('user_id')
                   ->constrained('users')
                   ->cascadeOnDelete();
+            $table->unique('user_id');
 
             $table->string('code');
 
             $table->dateTime('expires_at');
 
             $table->timestamps();
+
+            $table->index('expires_at');
         });
     }
 

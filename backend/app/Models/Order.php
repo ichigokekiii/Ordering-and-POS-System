@@ -23,8 +23,8 @@ class Order extends Model
         'total_amount',
         'order_status',
         'special_message',
-        'address',
         'delivery_method',
+        'address',
     ];
 
     // Define the relationship: An Order has one Payment

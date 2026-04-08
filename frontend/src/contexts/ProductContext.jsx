@@ -54,6 +54,10 @@ const addProduct = async (productData) => {
     formData.append("category", productData.category);
     formData.append("type", productData.type || "");
     formData.append("isAvailable", Number(productData.isAvailable));
+    if (productData.category === "Bouquets") {
+      formData.append("required_main_count", productData.required_main_count ?? 1);
+      formData.append("required_filler_count", productData.required_filler_count ?? 2);
+    }
     if (productData.image) {
       formData.append("image", productData.image);
     }
@@ -75,6 +79,7 @@ const addPremade = async (premadeData) => {
     formData.append("name", premadeData.name);
     formData.append("description", premadeData.description);
     formData.append("price", premadeData.price);
+    formData.append("category", premadeData.category || "");
     formData.append("isAvailable", Number(premadeData.isAvailable));
     if (premadeData.image) {
       formData.append("image", premadeData.image);
@@ -103,6 +108,10 @@ const updateProduct = async (id, updatedData) => {
     formData.append("category", updatedData.category);
     formData.append("type", updatedData.type || "");
     formData.append("isAvailable", Number(updatedData.isAvailable));
+    if (updatedData.category === "Bouquets") {
+      formData.append("required_main_count", updatedData.required_main_count ?? 1);
+      formData.append("required_filler_count", updatedData.required_filler_count ?? 2);
+    }
     if (updatedData.image) {
       formData.append("image", updatedData.image);
     }
@@ -127,6 +136,7 @@ const updatePremade = async (id, updatedData) => {
     formData.append("name", updatedData.name);
     formData.append("description", updatedData.description);
     formData.append("price", updatedData.price);
+    formData.append("category", updatedData.category || "");
     formData.append("isAvailable", Number(updatedData.isAvailable));
     if (updatedData.image) {
       formData.append("image", updatedData.image);

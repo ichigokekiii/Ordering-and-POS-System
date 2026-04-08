@@ -19,6 +19,8 @@ return new class extends Migration
             $table->string('email');
 
             $table->timestamps();
+
+            $table->unique(['schedule_id', 'email']);
         });
     }
 

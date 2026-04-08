@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\PremadeProduct;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Support\ProductService;
 
 class PremadeController extends Controller
 {
@@ -28,15 +30,21 @@ class PremadeController extends Controller
         // Store file in storage/app/public/premades
         $imagePath = $request->file('image')->store('premades', 'public');
 
-        $premade = PremadeProduct::create([
-            'name'        => $request->name,
-            'image'       => Storage::url($imagePath), // returns /storage/premades/filename.jpg
-            'description' => $request->description,
-            'category'    => $request->category,
-            'type'        => $request->type,
-            'price'       => $request->price,
-            'isAvailable' => $request->isAvailable,
-        ]);
+        $premade = DB::transaction(function () use ($request, $imagePath) {
+            $premade = PremadeProduct::create([
+                'name'        => $request->name,
+                'image'       => Storage::url($imagePath), // returns /storage/premades/filename.jpg
+                'description' => $request->description,
+                'category'    => $request->category,
+                'type'        => $request->type,
+                'price'       => $request->price,
+                'isAvailable' => $request->isAvailable,
+            ]);
+
+            ProductService::syncPremadeProduct($premade);
+
+            return $premade->fresh();
+        });
 
         return response()->json($premade, 201);
     }
@@ -68,6 +76,7 @@ class PremadeController extends Controller
         }
 
         $premade->update($data);
+        ProductService::syncPremadeProduct($premade->fresh());
 
         return response()->json($premade);
     }

@@ -19,6 +19,7 @@ return new class extends Migration
                   ->references('order_id')
                   ->on('orders')
                   ->cascadeOnDelete();
+            $table->unique('order_id');
 
             $table->string('payment_method');
 
@@ -36,6 +37,8 @@ return new class extends Migration
                   ->nullOnDelete();
 
             $table->timestamps();
+
+            $table->index('payment_status');
         });
     }
 

@@ -16,8 +16,13 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PosTransactionsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContentController;
+<<<<<<< HEAD
 use App\Http\Controllers\FeedbackController;
 
+=======
+use App\Http\Controllers\LogController;
+use App\Http\Controllers\AnalyticsController;
+>>>>>>> 3c8e5da922bb6599ed514004a95e3a8467ea448a
 
 /*
 |--------------------------------------------------------------------------
@@ -51,6 +56,7 @@ Route::post('/schedules/{id}/book', [ScheduleController::class, 'book']);
 
 //cms controller
 Route::apiResource('contents', ContentController::class);
+Route::delete('/contents/archived/{id}', [ContentController::class, 'destroyArchived']);
 
 //pos api route
 Route::get('/pos-transactions/analytics', [PosTransactionsController::class, 'analytics']);
@@ -66,6 +72,9 @@ Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
+// Analytics routes
+Route::get('/analytics', [AnalyticsController::class, 'index']);
 
 
 /*
@@ -108,6 +117,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/orders/{id}', [OrderController::class, 'show']);
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/{id}', [UserController::class, 'show']);
+    Route::get('/logs', [LogController::class, 'index']);
+    Route::get('/logs/export', [LogController::class, 'export']);
+    Route::get('/analytics', [AnalyticsController::class, 'index']);
+    Route::post('/analytics/email', [AnalyticsController::class, 'sendReportEmail']);
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);

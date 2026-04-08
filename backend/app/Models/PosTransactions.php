@@ -11,6 +11,8 @@ class PosTransactions extends Model
 
     protected $fillable = [
         'total_amount',
+        'payment_method',
+        'cash_received',
     ];
 
     public function items()

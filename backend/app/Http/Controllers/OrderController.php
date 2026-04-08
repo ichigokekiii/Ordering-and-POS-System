@@ -22,7 +22,7 @@ class OrderController extends Controller
             $orders = Order::with([
                 'user',
                 'payment',
-                'orderItems.product'
+                'orderItems'
             ])->orderBy('created_at', 'desc')->get();
 
             return response()->json($orders);
@@ -119,7 +119,30 @@ class OrderController extends Controller
 
         $status = $request->input('status') ?? $request->input('order_status');
 
+<<<<<<< HEAD
         if (!$status) {
+=======
+            if (!$status) {
+                return response()->json([
+                    'message' => 'Failed to update order',
+                    'error' => 'The status field is required.'
+                ], 400);
+            }
+
+            $order->order_status = $status;
+            $order->save();
+
+            // Reload relationships so frontend receives full order data
+            $order->load([
+                'user',
+                'payment',
+                'orderItems'
+            ]);
+
+            return response()->json($order);
+
+        } catch (\Exception $e) {
+>>>>>>> 3c8e5da922bb6599ed514004a95e3a8467ea448a
             return response()->json([
                 'message' => 'Failed to update order',
                 'error' => 'The status field is required.'

@@ -1,232 +1,557 @@
-/* eslint-disable react-hooks/purity */
 import { useState } from "react";
+import {
+  ArrowLeft,
+  Check,
+  Minus,
+  Plus,
+  ShoppingCart,
+} from "lucide-react";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { useProducts } from "../../contexts/ProductContext";
+import { useCart } from "../../contexts/CartContext";
 
-function OrderCustom({ onBack, onNext }) {
+const MAX_GREETING_CHARS = 150;
+const GREETING_CARD_PRICE = 5;
+
+function QuantityCard({
+  product,
+  quantity,
+  onDecrease,
+  onIncrease,
+  disabledIncrease = false,
+  subtitle,
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white transition-all duration-200 hover:shadow-sm">
+      <div className="flex h-52 items-center justify-center border-b border-gray-100 bg-gray-50/40 p-6">
+        <img
+          src={`http://localhost:8000${product.image}`}
+          alt={product.name}
+          className="h-full w-full object-contain"
+        />
+      </div>
+      <div className="space-y-4 p-5">
+        <div className="text-center">
+          <h3 className="truncate text-base font-semibold text-gray-900">
+            {product.name}
+          </h3>
+          {subtitle && (
+            <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-[#4f6fa5]">
+              {subtitle}
+            </p>
+          )}
+        </div>
+        <div className="mx-auto flex w-fit items-center gap-3 rounded-full border border-gray-200 bg-gray-50 px-2 py-1">
+          <button
+            type="button"
+            onClick={() => onDecrease(product.id)}
+            disabled={quantity === 0}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-500 shadow-sm transition hover:text-[#4f6fa5] disabled:opacity-40"
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <span className="w-6 text-center text-sm font-bold text-gray-900">
+            {quantity}
+          </span>
+          <button
+            type="button"
+            onClick={() => onIncrease(product.id)}
+            disabled={disabledIncrease}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-500 shadow-sm transition hover:text-[#4f6fa5] disabled:opacity-40"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BouquetCard({ product, isSelected, onSelect }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(product)}
+      className={`overflow-hidden rounded-2xl border bg-white text-left transition-all duration-200 ${
+        isSelected
+          ? "border-[#4f6fa5] shadow-md ring-2 ring-[#4f6fa5]/10"
+          : "border-gray-200 hover:shadow-sm"
+      }`}
+    >
+      <div className="relative flex h-56 items-center justify-center border-b border-gray-100 bg-gray-50/40 p-6">
+        <img
+          src={`http://localhost:8000${product.image}`}
+          alt={product.name}
+          className="h-full w-full object-contain"
+        />
+        {isSelected && (
+          <div className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-[#4f6fa5] text-white shadow-sm">
+            <Check className="h-4 w-4" />
+          </div>
+        )}
+      </div>
+      <div className="space-y-2 p-5">
+        <h3 className="truncate text-lg font-playfair font-bold text-gray-900">
+          {product.name}
+        </h3>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+          Requires {Number(product.required_main_count ?? 1)} main,{" "}
+          {Number(product.required_filler_count ?? 2)} filler
+        </p>
+        <p className="text-lg font-bold text-[#4f6fa5]">
+          ₱{Number(product.price).toLocaleString()}
+        </p>
+      </div>
+    </button>
+  );
+}
+
+function OrderCustom() {
+  const navigate = useNavigate();
+  const { searchTerm = "" } = useOutletContext() || {};
   const { products, loading } = useProducts();
+  const { addToCart } = useCart();
 
   const [selectedBouquet, setSelectedBouquet] = useState(null);
+  const [mainCounts, setMainCounts] = useState({});
   const [fillerCounts, setFillerCounts] = useState({});
+  const [additionalCounts, setAdditionalCounts] = useState({});
+  const [greetingCard, setGreetingCard] = useState(false);
+  const [greetingMessage, setGreetingMessage] = useState("");
+  const [added, setAdded] = useState(false);
 
-  const availableProducts = products.filter((p) => p.isAvailable);
-  const bouquets = availableProducts.filter((p) => p.category === "Bouquets");
-  const fillers = availableProducts.filter((p) => p.category === "Additional" && p.type === "Fillers");
+  const availableProducts = products.filter((product) => product.isAvailable);
+  const normalizedSearch = searchTerm.trim().toLowerCase();
 
-  // Total filler quantity selected
-  const totalFillers = Object.values(fillerCounts).reduce((sum, q) => sum + q, 0);
+  const matchesSearch = (product) =>
+    !normalizedSearch ||
+    product.name.toLowerCase().includes(normalizedSearch) ||
+    (product.category || "").toLowerCase().includes(normalizedSearch) ||
+    (product.type || "").toLowerCase().includes(normalizedSearch);
 
-  const increaseFiller = (id) => {
-    if (totalFillers >= 2) return; // strict max of 2
-    setFillerCounts((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
-  };
+  const bouquets = availableProducts.filter(
+    (product) => product.category === "Bouquets" && matchesSearch(product)
+  );
+  const mainFlowers = availableProducts.filter(
+    (product) =>
+      product.category === "Additional" &&
+      product.type === "Main Flowers" &&
+      matchesSearch(product)
+  );
+  const fillers = availableProducts.filter(
+    (product) =>
+      product.category === "Additional" &&
+      product.type === "Fillers" &&
+      matchesSearch(product)
+  );
+  const addOns = availableProducts.filter(
+    (product) =>
+      product.category === "Additional" &&
+      (product.type === "Main Flowers" || product.type === "Fillers") &&
+      matchesSearch(product)
+  );
 
-  const decreaseFiller = (id) => {
-    setFillerCounts((prev) => ({
+  const requiredMainCount = Number(selectedBouquet?.required_main_count ?? 1);
+  const requiredFillerCount = Number(selectedBouquet?.required_filler_count ?? 2);
+  const totalMains = Object.values(mainCounts).reduce((sum, qty) => sum + qty, 0);
+  const totalFillers = Object.values(fillerCounts).reduce((sum, qty) => sum + qty, 0);
+
+  const selectedMains = availableProducts
+    .filter((product) => (mainCounts[product.id] || 0) > 0)
+    .map((product) => ({ ...product, quantity: mainCounts[product.id] }));
+  const selectedFillers = availableProducts
+    .filter((product) => (fillerCounts[product.id] || 0) > 0)
+    .map((product) => ({ ...product, quantity: fillerCounts[product.id] }));
+  const selectedAddOns = availableProducts
+    .filter((product) => (additionalCounts[product.id] || 0) > 0)
+    .map((product) => ({ ...product, quantity: additionalCounts[product.id] }));
+
+  const basePrice = Number(selectedBouquet?.price || 0);
+  const addOnTotal = selectedAddOns.reduce(
+    (sum, item) => sum + Number(item.price) * item.quantity,
+    0
+  );
+  const greetingTotal = greetingCard ? GREETING_CARD_PRICE : 0;
+  const totalPrice = basePrice + addOnTotal + greetingTotal;
+
+  const canAddToCart =
+    selectedBouquet &&
+    totalMains === requiredMainCount &&
+    totalFillers === requiredFillerCount &&
+    (!greetingCard || greetingMessage.trim());
+
+  const updateCounter = (setter, id, value) => {
+    setter((prev) => ({
       ...prev,
-      [id]: Math.max(0, (prev[id] || 0) - 1),
+      [id]: Math.max(0, value),
     }));
   };
 
-  const canProceed = selectedBouquet && totalFillers === 2;
-
-  const handleNext = () => {
-    const selectedFillers = fillers
-      .filter((p) => (fillerCounts[p.id] || 0) > 0)
-      .map((p) => ({ ...p, quantity: fillerCounts[p.id] }));
-
-    onNext({
-      bouquet: selectedBouquet,
-      fillers: selectedFillers,
-      basePrice: selectedBouquet.price,
-    });
+  const handleBouquetSelect = (product) => {
+    const isSameBouquet = selectedBouquet?.id === product.id;
+    setSelectedBouquet(isSameBouquet ? null : product);
+    setMainCounts({});
+    setFillerCounts({});
+    setAdditionalCounts({});
+    setGreetingCard(false);
+    setGreetingMessage("");
   };
 
-  if (loading)
+  const handleAddToCart = () => {
+    if (!canAddToCart) return;
+
+    const items = [
+      { ...selectedBouquet, quantity: 1 },
+      ...selectedMains.map((item) => ({ ...item, free: true })),
+      ...selectedFillers.map((item) => ({ ...item, free: true })),
+      ...selectedAddOns,
+    ];
+
+    addToCart(
+      {
+        id: `custom-${Date.now()}`,
+        type: "custom",
+        name: "Custom Bouquet",
+        description: [
+          selectedBouquet.name,
+          ...selectedMains.map((item) => `${item.name} ×${item.quantity}`),
+          ...selectedFillers.map((item) => `${item.name} ×${item.quantity}`),
+          ...selectedAddOns.map((item) => `${item.name} ×${item.quantity}`),
+        ].join(", "),
+        price: totalPrice,
+        image: selectedBouquet.image,
+        items,
+        greetingCard: greetingCard ? greetingMessage.trim() : null,
+      },
+      1
+    );
+
+    setAdded(true);
+    window.setTimeout(() => {
+      navigate("/cart");
+    }, 700);
+  };
+
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-[#fcfaf9]">
         <p className="animate-pulse text-gray-400">Loading products...</p>
       </div>
     );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-10">
-      <div className="mx-auto max-w-5xl">
-        <button
-          onClick={onBack}
-          className="mb-6 flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
-        >
-          ← Back
-        </button>
-
-        <h2 className="mb-2 text-center text-2xl font-semibold text-gray-800">
-          Build Your Bouquet
-        </h2>
-        <p className="mb-10 text-center text-sm text-gray-400">
-          Choose one bouquet, then pick exactly 2 fillers.
-        </p>
-
-        <div className="space-y-10">
-
-          {/* Bouquets — single select */}
-          <section>
-            <div className="mb-4 flex items-center gap-3">
-              <h3 className="text-lg font-semibold text-gray-700">Bouquets</h3>
-              {selectedBouquet && (
-                <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-medium text-rose-600">
-                  ✓ Selected
-                </span>
-              )}
-            </div>
-
-            {bouquets.length === 0 ? (
-              <p className="py-8 text-center text-gray-400">No bouquets available</p>
-            ) : (
-              <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3">
-                {bouquets.map((product) => {
-                  const isSelected = selectedBouquet?.id === product.id;
-                  return (
-                    <div
-                      key={product.id}
-                      onClick={() => setSelectedBouquet(isSelected ? null : product)}
-                      className={`group cursor-pointer overflow-hidden rounded-2xl bg-white shadow-sm transition-all ${
-                        isSelected
-                          ? "ring-2 ring-rose-400 shadow-md"
-                          : "hover:shadow-md"
-                      }`}
-                    >
-                      <div className="relative h-40 overflow-hidden">
-                        <img
-                          src={`http://localhost:8000${product.image}`}
-                          alt={product.name}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                        {isSelected && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-rose-500/20">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-500 text-white shadow">
-                              ✓
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-4">
-                        <h3 className="font-semibold text-gray-800">{product.name}</h3>
-                        <p className="mt-0.5 line-clamp-2 text-xs text-gray-400">
-                          {product.description}
-                        </p>
-                        <p className="mt-2 text-sm font-bold text-rose-500">
-                          ₱{Number(product.price).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          {/* Fillers — max 2 total */}
-          <section>
-            <div className="mb-1 flex items-center gap-3">
-              <h3 className="text-lg font-semibold text-gray-700">Fillers</h3>
-              <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                totalFillers === 2
-                  ? "bg-rose-100 text-rose-600"
-                  : "bg-gray-100 text-gray-500"
-              }`}>
-                {totalFillers}/2 selected
-              </span>
-            </div>
-            <p className="mb-4 text-xs text-gray-400">
-              Pick exactly 2 fillers. You may pick 2 of the same or 2 different.
-            </p>
-
-            {fillers.length === 0 ? (
-              <p className="py-8 text-center text-gray-400">No fillers available</p>
-            ) : (
-              <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3">
-                {fillers.map((product) => {
-                  const qty = fillerCounts[product.id] || 0;
-                  const atMax = totalFillers >= 2;
-                  return (
-                    <div
-                      key={product.id}
-                      className={`group overflow-hidden rounded-2xl bg-white shadow-sm transition-all ${
-                        qty > 0 ? "ring-2 ring-rose-400 shadow-md" : "hover:shadow-md"
-                      }`}
-                    >
-                      <div className="relative h-40 overflow-hidden">
-                        <img
-                          src={`http://localhost:8000${product.image}`}
-                          alt={product.name}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                        {qty > 0 && (
-                          <div className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white shadow">
-                            {qty}
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-4">
-                        <h3 className="font-semibold text-gray-800">{product.name}</h3>
-                        <p className="mt-0.5 line-clamp-2 text-xs text-gray-400">
-                          {product.description}
-                        </p>
-                        <div className="mt-3 flex items-center justify-between">
-                          {/* Quantity control */}
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => decreaseFiller(product.id)}
-                              disabled={qty === 0}
-                              className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition hover:border-rose-400 hover:text-rose-500 disabled:opacity-30"
-                            >
-                              −
-                            </button>
-                            <span className="w-4 text-center text-sm font-semibold text-gray-700">
-                              {qty}
-                            </span>
-                            <button
-                              onClick={() => increaseFiller(product.id)}
-                              disabled={atMax && qty === 0}
-                              className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition hover:border-rose-400 hover:text-rose-500 disabled:opacity-30"
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        </div>
-
-        {/* Sticky Next Bar */}
-        <div
-          className={`fixed bottom-0 left-0 right-0 z-30 border-t bg-white px-6 py-4 shadow-xl transition-transform duration-300 ${
-            canProceed ? "translate-y-0" : "translate-y-full"
-          }`}
-        >
-          <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm text-gray-500">
-                {selectedBouquet?.name} + {totalFillers} filler{totalFillers !== 1 ? "s" : ""}
-              </p>
-              <p className="text-base font-bold text-gray-800">
-                ₱{Number(selectedBouquet?.price || 0).toLocaleString()}
-              </p>
-            </div>
+    <div className="min-h-screen bg-[#fcfaf9] px-6 pb-32 pt-10 md:px-12">
+      <div className="mx-auto max-w-[1400px]">
+        <div className="mb-10 flex flex-col gap-6 border-b border-gray-100 pb-8 md:flex-row md:items-end md:justify-between">
+          <div>
             <button
-              onClick={handleNext}
-              className="flex-shrink-0 rounded-xl bg-rose-500 px-8 py-3 text-sm font-semibold text-white transition hover:bg-rose-600 active:scale-95"
+              type="button"
+              onClick={() => navigate("/order")}
+              className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-[#4f6fa5]"
             >
-              Next →
+              <ArrowLeft className="h-4 w-4" />
+              Back to order options
             </button>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#4f6fa5]">
+              Make it yours
+            </p>
+            <h1 className="text-4xl font-playfair font-bold text-gray-900 md:text-5xl">
+              Custom Bouquet Builder
+            </h1>
+          </div>
+          <div className="max-w-lg">
+            <p className="text-sm leading-relaxed text-gray-500">
+              Choose a bouquet wrapper, complete the required flowers, then add
+              extras and a personal message before sending it to your cart.
+            </p>
+            <p className="mt-3 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+              {searchTerm ? `Filtering by "${searchTerm}"` : "Showing all available options"}
+            </p>
           </div>
         </div>
 
-        {canProceed && <div className="h-24" />}
+        <div className="mb-12 flex flex-wrap gap-2 border-b border-gray-100 pb-6">
+          {[
+            "1. Bouquet",
+            "2. Main Flowers",
+            "3. Fillers",
+            "4. Add-ons",
+            "5. Personal Touch",
+          ].map((step) => (
+            <span
+              key={step}
+              className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-widest text-gray-500"
+            >
+              {step}
+            </span>
+          ))}
+        </div>
+
+        <div className="space-y-14">
+          <section>
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-3xl font-playfair font-bold text-gray-900">
+                Bouquet Wrapper
+              </h2>
+              {selectedBouquet && (
+                <span className="rounded-full bg-[#4f6fa5]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-[#4f6fa5]">
+                  Selected
+                </span>
+              )}
+            </div>
+            {bouquets.length === 0 ? (
+              <p className="py-12 text-gray-400">No bouquets match the current search.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                {bouquets.map((product) => (
+                  <BouquetCard
+                    key={product.id}
+                    product={product}
+                    isSelected={selectedBouquet?.id === product.id}
+                    onSelect={handleBouquetSelect}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className={!selectedBouquet ? "pointer-events-none opacity-45" : ""}>
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-playfair font-bold text-gray-900">
+                  Main Flowers
+                </h2>
+                <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+                  {requiredMainCount} required
+                </p>
+              </div>
+              <span className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-widest text-gray-500">
+                {totalMains}/{requiredMainCount}
+              </span>
+            </div>
+            {mainFlowers.length === 0 ? (
+              <p className="py-12 text-gray-400">No main flowers match the current search.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-5 lg:grid-cols-4 xl:grid-cols-5">
+                {mainFlowers.map((product) => (
+                  <QuantityCard
+                    key={product.id}
+                    product={product}
+                    quantity={mainCounts[product.id] || 0}
+                    onDecrease={(id) => updateCounter(setMainCounts, id, (mainCounts[id] || 0) - 1)}
+                    onIncrease={(id) => {
+                      if (totalMains >= requiredMainCount && (mainCounts[id] || 0) === 0) return;
+                      updateCounter(setMainCounts, id, (mainCounts[id] || 0) + 1);
+                    }}
+                    disabledIncrease={totalMains >= requiredMainCount && (mainCounts[product.id] || 0) === 0}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section
+            className={
+              !selectedBouquet || totalMains !== requiredMainCount
+                ? "pointer-events-none opacity-45"
+                : ""
+            }
+          >
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-playfair font-bold text-gray-900">
+                  Fillers
+                </h2>
+                <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+                  {requiredFillerCount} required
+                </p>
+              </div>
+              <span className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-widest text-gray-500">
+                {totalFillers}/{requiredFillerCount}
+              </span>
+            </div>
+            {fillers.length === 0 ? (
+              <p className="py-12 text-gray-400">No fillers match the current search.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-5 lg:grid-cols-4 xl:grid-cols-5">
+                {fillers.map((product) => (
+                  <QuantityCard
+                    key={product.id}
+                    product={product}
+                    quantity={fillerCounts[product.id] || 0}
+                    onDecrease={(id) => updateCounter(setFillerCounts, id, (fillerCounts[id] || 0) - 1)}
+                    onIncrease={(id) => {
+                      if (totalFillers >= requiredFillerCount && (fillerCounts[id] || 0) === 0) return;
+                      updateCounter(setFillerCounts, id, (fillerCounts[id] || 0) + 1);
+                    }}
+                    disabledIncrease={totalFillers >= requiredFillerCount && (fillerCounts[product.id] || 0) === 0}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section
+            className={
+              !selectedBouquet ||
+              totalMains !== requiredMainCount ||
+              totalFillers !== requiredFillerCount
+                ? "pointer-events-none opacity-45"
+                : ""
+            }
+          >
+            <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#4f6fa5]">
+                Current Base Build
+              </p>
+              <p className="text-sm text-gray-700">
+                {selectedBouquet
+                  ? [
+                      selectedBouquet.name,
+                      ...selectedMains.map((item) => `${item.name} ×${item.quantity}`),
+                      ...selectedFillers.map((item) => `${item.name} ×${item.quantity}`),
+                    ].join(" + ")
+                  : "Select a bouquet to begin."}
+              </p>
+              <p className="mt-3 text-base font-semibold text-gray-900">
+                Base price: ₱{basePrice.toLocaleString()}
+              </p>
+            </div>
+
+            <div className="mb-6">
+              <h2 className="text-3xl font-playfair font-bold text-gray-900">
+                Add-ons
+              </h2>
+              <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+                Optional extras
+              </p>
+            </div>
+            {addOns.length === 0 ? (
+              <p className="py-12 text-gray-400">No add-ons match the current search.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-5 lg:grid-cols-4 xl:grid-cols-5">
+                {addOns.map((product) => (
+                  <QuantityCard
+                    key={product.id}
+                    product={product}
+                    quantity={additionalCounts[product.id] || 0}
+                    onDecrease={(id) => updateCounter(setAdditionalCounts, id, (additionalCounts[id] || 0) - 1)}
+                    onIncrease={(id) => updateCounter(setAdditionalCounts, id, (additionalCounts[id] || 0) + 1)}
+                    subtitle={`+₱${Number(product.price).toLocaleString()}`}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section
+            className={
+              !selectedBouquet ||
+              totalMains !== requiredMainCount ||
+              totalFillers !== requiredFillerCount
+                ? "pointer-events-none opacity-45"
+                : ""
+            }
+          >
+            <div className="mb-6">
+              <h2 className="text-3xl font-playfair font-bold text-gray-900">
+                Personal Touch
+              </h2>
+              <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+                Add a greeting card
+              </p>
+            </div>
+
+            <div className="max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-semibold text-gray-900">Greeting card</p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Include a personal message for an additional ₱{GREETING_CARD_PRICE}.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGreetingCard((prev) => !prev);
+                    if (greetingCard) {
+                      setGreetingMessage("");
+                    }
+                  }}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+                    greetingCard ? "bg-[#4f6fa5]" : "bg-gray-200"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                      greetingCard ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {greetingCard && (
+                <div className="mt-6">
+                  <div className="mb-2 flex justify-between">
+                    <label className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">
+                      Your message
+                    </label>
+                    <span className="text-[11px] font-semibold text-gray-400">
+                      {greetingMessage.length}/{MAX_GREETING_CHARS}
+                    </span>
+                  </div>
+                  <textarea
+                    rows={4}
+                    value={greetingMessage}
+                    onChange={(e) => {
+                      if (e.target.value.length <= MAX_GREETING_CHARS) {
+                        setGreetingMessage(e.target.value);
+                      }
+                    }}
+                    placeholder="Write your heartfelt message here..."
+                    className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 focus:border-[#4f6fa5] focus:outline-none focus:ring-2 focus:ring-[#4f6fa5]/15"
+                  />
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+
+        <div
+          className={`fixed bottom-8 left-1/2 z-50 w-[92%] -translate-x-1/2 md:w-auto ${
+            selectedBouquet ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+        >
+          <div className="flex min-w-0 items-center justify-between gap-5 rounded-[28px] bg-gray-900 px-6 py-4 text-white shadow-2xl md:min-w-[560px]">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-white/60">
+                {canAddToCart ? "Ready to add" : "Complete required selections"}
+              </p>
+              <div className="mt-1 flex items-center justify-between gap-4">
+                <p className="truncate text-lg font-playfair font-bold">
+                  {selectedBouquet?.name || "Custom Bouquet"}
+                </p>
+                <p className="text-xl font-bold">₱{totalPrice.toLocaleString()}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              disabled={!canAddToCart || added}
+              className={`inline-flex items-center gap-2 rounded-full px-6 py-3 text-xs font-bold uppercase tracking-widest transition-all ${
+                added
+                  ? "bg-green-500 text-white"
+                  : canAddToCart
+                    ? "bg-white text-gray-900 hover:bg-[#4f6fa5] hover:text-white"
+                    : "cursor-not-allowed bg-white/10 text-white/60"
+              }`}
+            >
+              <ShoppingCart className="h-4 w-4" />
+              {added ? "Added" : "Add to Cart"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

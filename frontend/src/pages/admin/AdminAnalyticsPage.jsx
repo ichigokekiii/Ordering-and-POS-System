@@ -258,15 +258,20 @@ function AdminAnalyticsPage() {
 
     return (
       <div className="flex flex-col gap-6">
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2 flex flex-col gap-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {metrics.slice(0, 4).map((m, i) => {
-                 const icons = [CircleDollarSign, ShoppingBag, CreditCard, Users];
-                 return <MetricCard key={m.label} metric={m} icon={icons[i]} onEmail={handleEmailReport} />;
-              })}
-            </div>
-            <AnalyticsPanel title="Revenue Trend" subtitle="Daily online vs POS" onEmail={handleEmailReport}>
+        {/* KPI Cards Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+          {metrics.slice(0, 4).map((m, i) => {
+             const icons = [CircleDollarSign, ShoppingBag, CreditCard, Users];
+             return <MetricCard key={m.label} metric={m} icon={icons[i]} onEmail={handleEmailReport} />;
+          })}
+        </div>
+
+        {/* Charts Row - FIXED SPACING */}
+        <div className="flex flex-col xl:flex-row gap-6">
+          
+          {/* Main Chart - Flex-1 allows it to grow and fill empty space */}
+          <div className="flex-1 min-w-[60%]">
+            <AnalyticsPanel title="Revenue Trend" subtitle="Daily online vs POS" onEmail={handleEmailReport} className="h-full">
               {revenueTrend.length ? (
                 <div className="h-[300px] w-full mt-4">
                   <ResponsiveContainer width="100%" height="100%">
@@ -283,7 +288,9 @@ function AdminAnalyticsPage() {
               ) : <div className="h-full flex items-center justify-center text-gray-400">No data found</div>}
             </AnalyticsPanel>
           </div>
-          <div className="flex flex-col gap-6 h-fit">
+
+          {/* Side Panel - Fixed width so it doesn't stretch weirdly, but chart takes the rest */}
+          <div className="xl:w-[400px] shrink-0 h-fit">
             <AnalyticsPanel title="Top Products" onEmail={handleEmailReport}>
                {topProducts.length ? (
                  <div className="space-y-5 mt-2">
@@ -291,7 +298,10 @@ function AdminAnalyticsPage() {
                      <div key={i} className="flex items-center justify-between group">
                        <div className="flex items-center gap-3">
                          <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-[#4f6fa5] font-bold text-sm border border-slate-100">{prod.name.charAt(0)}</div>
-                         <div><p className="text-sm font-bold text-gray-800 tracking-tight line-clamp-1">{prod.name}</p><p className="text-[11px] font-semibold text-gray-400 uppercase">{prod.quantity} Units</p></div>
+                         <div>
+                            <p className="text-sm font-bold text-gray-800 tracking-tight line-clamp-1">{prod.name}</p>
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase">{prod.quantity} Units</p>
+                         </div>
                        </div>
                        <p className="text-sm font-bold text-gray-900">{formatValue(prod.revenue, "currency")}</p>
                      </div>
@@ -301,6 +311,7 @@ function AdminAnalyticsPage() {
             </AnalyticsPanel>
           </div>
         </div>
+
         <AnalyticsPanel title="Recent Transactions" onEmail={handleEmailReport}>
            <SimpleTable
              columns={[

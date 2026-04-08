@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, ChevronDown, Search, User, LogOut } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import api from "../services/api";
 
 const ADMIN_ROUTES = [
   { label: "Overview", path: "/admin", keywords: ["dashboard", "overview", "home"] },
@@ -14,11 +15,9 @@ const ADMIN_ROUTES = [
   { label: "Logs", path: "/admin/logs", keywords: ["logs", "activity", "audit"] },
 ];
 
-const DEFAULT_NOTIFICATIONS = [
-  { id: 1, title: "New order received", description: "A new order just came in." },
-  { id: 2, title: "Schedule updated", description: "A booking schedule was changed." },
-  { id: 3, title: "User activity", description: "A user profile was recently updated." },
-];
+const NOTIFICATION_STORAGE_PREFIX = "admin-navbar-notifications";
+const NOTIFICATION_FETCH_LIMIT = 6;
+const NOTIFICATION_POLL_INTERVAL = 15000;
 
 const getDisplayName = (user) => {
   const fullName = `${user?.first_name || ""} ${user?.last_name || ""}`.trim();
@@ -33,16 +32,109 @@ const getInitials = (name) =>
     .map((part) => part[0]?.toUpperCase() || "")
     .join("") || "A";
 
+const normalizeLogId = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getLatestLogId = (logs) => normalizeLogId(logs?.[0]?.log_id);
+
+const readNotificationState = (storageKey) => {
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw);
+
+    return {
+      seenLogId: normalizeLogId(parsed?.seenLogId),
+      clearedLogId: normalizeLogId(parsed?.clearedLogId),
+    };
+  } catch {
+    return null;
+  }
+};
+
+const writeNotificationState = (storageKey, state) => {
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(state));
+  } catch {
+    // Ignore storage write failures so notifications still work in-session.
+  }
+};
+
+const formatNotificationTime = (value) => {
+  if (!value) {
+    return "";
+  }
+
+  const timestamp = new Date(value);
+
+  if (Number.isNaN(timestamp.getTime())) {
+    return "";
+  }
+
+  const diffInMinutes = Math.round((Date.now() - timestamp.getTime()) / 60000);
+
+  if (diffInMinutes < 1) {
+    return "Just now";
+  }
+
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes}m ago`;
+  }
+
+  const diffInHours = Math.round(diffInMinutes / 60);
+
+  if (diffInHours < 24) {
+    return `${diffInHours}h ago`;
+  }
+
+  const diffInDays = Math.round(diffInHours / 24);
+
+  if (diffInDays < 7) {
+    return `${diffInDays}d ago`;
+  }
+
+  return timestamp.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
+const buildNotificationDescription = (log) => {
+  const actorName =
+    log?.user_name ||
+    `${log?.user?.first_name || ""} ${log?.user?.last_name || ""}`.trim() ||
+    log?.user?.email ||
+    "System";
+
+  return [actorName, log?.module || "General", formatNotificationTime(log?.created_at)]
+    .filter(Boolean)
+    .join(" • ");
+};
+
 function AdminNavbar({ user, onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
   const profileRef = useRef(null);
   const notificationsRef = useRef(null);
+  const notificationStorageKey = `${NOTIFICATION_STORAGE_PREFIX}:${user?.id || "guest"}`;
   const [searchTerm, setSearchTerm] = useState("");
   const [searchMessage, setSearchMessage] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [notifications, setNotifications] = useState(DEFAULT_NOTIFICATIONS);
+  const [recentLogs, setRecentLogs] = useState([]);
+  const [notificationState, setNotificationState] = useState({
+    seenLogId: 0,
+    clearedLogId: 0,
+  });
+  const [notificationsInitialized, setNotificationsInitialized] = useState(false);
 
   const displayName = getDisplayName(user);
   const roleLabel = user?.role
@@ -64,6 +156,70 @@ function AdminNavbar({ user, onLogout }) {
   }, [location.pathname]);
 
   useEffect(() => {
+    const storedState = readNotificationState(notificationStorageKey);
+    setRecentLogs([]);
+    setShowNotifications(false);
+
+    if (storedState) {
+      setNotificationState(storedState);
+      setNotificationsInitialized(true);
+      return;
+    }
+
+    setNotificationState({ seenLogId: 0, clearedLogId: 0 });
+    setNotificationsInitialized(false);
+  }, [notificationStorageKey]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const fetchNotifications = async () => {
+      try {
+        const response = await api.get("/logs", {
+          params: { per_page: NOTIFICATION_FETCH_LIMIT },
+        });
+
+        if (!isActive) {
+          return;
+        }
+
+        const nextLogs = Array.isArray(response.data?.data) ? response.data.data : [];
+        setRecentLogs(nextLogs);
+
+        if (!notificationsInitialized) {
+          const latestLogId = getLatestLogId(nextLogs);
+          const baselineState = {
+            seenLogId: latestLogId,
+            clearedLogId: latestLogId,
+          };
+
+          setNotificationState(baselineState);
+          writeNotificationState(notificationStorageKey, baselineState);
+          setNotificationsInitialized(true);
+        }
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        console.error("Failed to fetch admin notifications", error);
+      }
+    };
+
+    fetchNotifications();
+
+    const intervalId = window.setInterval(fetchNotifications, NOTIFICATION_POLL_INTERVAL);
+    const handleFocus = () => fetchNotifications();
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      isActive = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [notificationStorageKey, notificationsInitialized]);
+
+  useEffect(() => {
     const handleClickOutside = (event) => {
       if (profileRef.current && !profileRef.current.contains(event.target)) {
         setShowProfileMenu(false);
@@ -80,6 +236,36 @@ function AdminNavbar({ user, onLogout }) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const updateNotificationState = (updater) => {
+    setNotificationState((currentState) => {
+      const nextState =
+        typeof updater === "function" ? updater(currentState) : updater;
+
+      writeNotificationState(notificationStorageKey, nextState);
+      return nextState;
+    });
+  };
+
+  const notifications = useMemo(
+    () =>
+      recentLogs
+        .filter((log) => normalizeLogId(log?.log_id) > notificationState.clearedLogId)
+        .map((log) => ({
+          id: normalizeLogId(log?.log_id),
+          title: log?.event || "Recent activity",
+          description: buildNotificationDescription(log),
+        })),
+    [recentLogs, notificationState.clearedLogId]
+  );
+
+  const hasUnreadNotifications = useMemo(
+    () =>
+      recentLogs.some(
+        (log) => normalizeLogId(log?.log_id) > notificationState.seenLogId
+      ),
+    [recentLogs, notificationState.seenLogId]
+  );
 
   const handleSearchSubmit = (event) => {
     event.preventDefault();
@@ -101,6 +287,37 @@ function AdminNavbar({ user, onLogout }) {
     }
 
     setSearchMessage("No matching admin page found.");
+  };
+
+  const handleNotificationsToggle = () => {
+    const nextShowState = !showNotifications;
+
+    if (nextShowState) {
+      const latestLogId = getLatestLogId(recentLogs);
+
+      if (latestLogId > notificationState.seenLogId) {
+        updateNotificationState((currentState) => ({
+          ...currentState,
+          seenLogId: latestLogId,
+        }));
+      }
+    }
+
+    setShowNotifications(nextShowState);
+  };
+
+  const handleClearNotifications = () => {
+    const latestLogId = getLatestLogId(recentLogs);
+
+    updateNotificationState((currentState) => ({
+      seenLogId: Math.max(currentState.seenLogId, latestLogId),
+      clearedLogId: Math.max(currentState.clearedLogId, latestLogId),
+    }));
+  };
+
+  const handleNotificationClick = () => {
+    setShowNotifications(false);
+    navigate("/admin/logs");
   };
 
   return (
@@ -129,12 +346,12 @@ function AdminNavbar({ user, onLogout }) {
         <div className="relative flex items-center" ref={notificationsRef}>
           <button
             type="button"
-            onClick={() => setShowNotifications((prev) => !prev)}
+            onClick={handleNotificationsToggle}
             className="relative text-gray-400 transition-colors hover:text-[#4f6fa5]"
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5" />
-            {notifications.length > 0 && (
+            {hasUnreadNotifications && (
               <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-red-500" />
             )}
           </button>
@@ -146,7 +363,7 @@ function AdminNavbar({ user, onLogout }) {
                 {notifications.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => setNotifications([])}
+                    onClick={handleClearNotifications}
                     className="text-xs font-bold text-[#4f6fa5] hover:text-[#2a4475] transition-colors"
                   >
                     Clear all
@@ -161,6 +378,7 @@ function AdminNavbar({ user, onLogout }) {
                   {notifications.map((notification) => (
                     <div
                       key={notification.id}
+                      onClick={handleNotificationClick}
                       className="rounded-xl bg-[#fcfaf9] p-3 text-sm transition-colors hover:bg-[#eaf2ff]/50 cursor-pointer border border-transparent hover:border-[#eaf2ff]"
                     >
                       <p className="font-semibold text-gray-900">{notification.title}</p>

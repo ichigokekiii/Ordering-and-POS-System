@@ -3,11 +3,15 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { useNavbar } from "../../contexts/NavbarContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { User, MapPin, Package, Shield, Plus, Camera, Trash2, Edit2, ChevronLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+const MotionDiv = motion.div;
+
 export default function ProfilePage() {
   const { updateUser, logoutUser } = useNavbar();
+  const { themePreference, setThemePreference } = useTheme();
 
   const [profile, setProfile] = useState(null);
   const [addresses, setAddresses] = useState([]);
@@ -122,7 +126,7 @@ export default function ProfilePage() {
       await api.put("/profile", { addresses: updated });
       setAddresses(updated);
       fetchProfile();
-    } catch (err) {
+    } catch {
       alert("Failed to remove address.");
     }
   };
@@ -193,17 +197,6 @@ export default function ProfilePage() {
     return <div className="min-h-screen flex items-center justify-center bg-[#fcfaf9] text-gray-900 font-sans"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-[#4f6fa5]"></div></div>;
   }
 
-  // Helper to map tab names to clean titles
-  const getTabTitle = () => {
-    switch(activeTab) {
-      case "profile": return "My Profile";
-      case "addresses": return "Addresses";
-      case "orders": return "My Orders";
-      case "settings": return "Account Settings";
-      default: return "";
-    }
-  }
-
   return (
     <div className="min-h-screen bg-[#fcfaf9] text-gray-900 font-sans pt-0 pb-0">
       <div className="w-full">
@@ -266,7 +259,7 @@ export default function ProfilePage() {
                
                {/* --- MY PROFILE VIEW --- */}
                {activeTab === 'profile' && (
-                  <motion.div key="profile" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
+                  <MotionDiv key="profile" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
                     
                     {/* Personal Information */}
                     <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm">
@@ -372,12 +365,12 @@ export default function ProfilePage() {
                          <button onClick={deleteAccount} className="text-xs font-semibold text-red-600 border border-red-500 px-4 py-2 rounded-full bg-white hover:bg-red-600 hover:text-white transition-all duration-300 ease-out">Delete Account</button>
                       </div>
                     </div>
-                  </motion.div>
+                  </MotionDiv>
                )}
 
                {/* --- ACCOUNT SETTINGS VIEW --- */}
                {activeTab === 'settings' && (
-                  <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
+                  <MotionDiv key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
                     <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm">
                       <div className="px-6 py-4 border-b border-gray-100">
                          <h3 className="font-playfair font-bold text-gray-900">Preferences</h3>
@@ -386,36 +379,40 @@ export default function ProfilePage() {
                         <div className="grid md:grid-cols-3 gap-6">
                           <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5">Theme</label>
-                            <select className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:border-[#3b82f6] outline-none">
-                              <option>Light Mode</option>
-                              <option>Dark Mode</option>
-                              <option>System Default</option>
+                            <select
+                              value={themePreference}
+                              onChange={(event) => setThemePreference(event.target.value)}
+                              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:border-[#3b82f6] outline-none"
+                            >
+                              <option value="light">Light Mode</option>
+                              <option value="dark">Dark Mode</option>
+                              <option value="system">System Default</option>
                             </select>
                           </div>
                           <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5">Text Size</label>
-                            <select className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:border-[#3b82f6] outline-none">
+                            <select defaultValue="medium" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:border-[#3b82f6] outline-none">
                               <option>Small</option>
-                              <option selected>Medium</option>
+                              <option value="medium">Medium</option>
                               <option>Large</option>
                             </select>
                           </div>
                           <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5">Animations</label>
-                            <select className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:border-[#3b82f6] outline-none">
-                              <option>Enabled</option>
-                              <option>Disabled</option>
+                            <select defaultValue="enabled" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:border-[#3b82f6] outline-none">
+                              <option value="enabled">Enabled</option>
+                              <option value="disabled">Disabled</option>
                             </select>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </MotionDiv>
                )}
 
                {/* --- ADDRESSES VIEW --- */}
                {activeTab === 'addresses' && (
-                  <motion.div key="addresses" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
+                  <MotionDiv key="addresses" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
                     <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm">
                       <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                          <h3 className="font-playfair font-bold text-gray-900">Saved Addresses</h3>
@@ -455,19 +452,19 @@ export default function ProfilePage() {
                         </div>
                       ) : null}
                     </div>
-                  </motion.div>
+                  </MotionDiv>
                )}
 
                {/* --- ORDERS VIEW (MOCK) --- */}
                {activeTab === 'orders' && (
-                  <motion.div key="orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
+                  <MotionDiv key="orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
                     <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm flex flex-col items-center justify-center p-16 text-center">
                        <Package className="w-12 h-12 text-gray-300 mb-4" />
                        <h3 className="font-playfair font-bold text-gray-900 mb-1">No Orders Found</h3>
                        <p className="text-sm text-gray-500 max-w-sm">You haven't placed any orders yet. Visit our Showcase to get started.</p>
                        <button className="mt-6 bg-[#0f1b2d] text-white border border-[#0f1b2d] px-6 py-2 rounded-full font-medium text-sm hover:bg-white hover:text-[#0f1b2d] transition-all duration-300 ease-out">Shop Now</button>
                     </div>
-                  </motion.div>
+                  </MotionDiv>
                )}
                
              </AnimatePresence>

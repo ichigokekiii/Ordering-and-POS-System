@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Facebook, Instagram, Twitter } from "lucide-react";
 import { useContents } from "../contexts/ContentContext";
+import { useTheme } from "../contexts/ThemeContext";
 import CmsEditableRegion from "./admin/CmsEditableRegion";
 import {
   getCmsField,
@@ -11,6 +12,7 @@ import {
 function Footer({ cmsPreview }) {
   const contentContext = useContents();
   const contents = contentContext?.contents || [];
+  const { isDarkMode } = useTheme();
 
   const getContentValue = (identifier, fallback = "") =>
     getCmsContentValue(contents, "footer", identifier, fallback);
@@ -24,8 +26,12 @@ function Footer({ cmsPreview }) {
     <footer
       className="mt-12 px-8 py-10"
       style={{
-        backgroundColor: getContentValue("footer_bg_color", "#ffffff"),
-        backgroundImage: getContentValue("footer_bg_image", "")
+        backgroundColor: isDarkMode
+          ? "#08111f"
+          : getContentValue("footer_bg_color", "#ffffff"),
+        backgroundImage: isDarkMode
+          ? "none"
+          : getContentValue("footer_bg_image", "")
           ? `url(${getCmsAssetUrl(getContentValue("footer_bg_image"))})`
           : "none",
         backgroundSize: "cover",
@@ -42,7 +48,11 @@ function Footer({ cmsPreview }) {
           >
             <h2
               className="text-xl font-bold"
-              style={{ color: getContentValue("footer_text_color", "#2563eb") }}
+              style={{
+                color: isDarkMode
+                  ? "#93c5fd"
+                  : getContentValue("footer_text_color", "#2563eb"),
+              }}
             >
               {getContentValue("footer_brand", "petal express")}
             </h2>
@@ -80,7 +90,9 @@ function Footer({ cmsPreview }) {
             >
               <p
                 style={{
-                  color: getContentValue("footer_subtext_color", "#4b5563"),
+                  color: isDarkMode
+                    ? "#94a3b8"
+                    : getContentValue("footer_subtext_color", "#4b5563"),
                 }}
               >
                 {getContentValue("footer_email", "hello@petalexpress.com")}
@@ -93,7 +105,9 @@ function Footer({ cmsPreview }) {
             >
               <p
                 style={{
-                  color: getContentValue("footer_subtext_color", "#4b5563"),
+                  color: isDarkMode
+                    ? "#94a3b8"
+                    : getContentValue("footer_subtext_color", "#4b5563"),
                 }}
               >
                 {getContentValue("footer_phone", "+63 912 345 6789")}
@@ -106,7 +120,11 @@ function Footer({ cmsPreview }) {
         <div>
           <h3
             className="mb-3 font-semibold"
-            style={{ color: getContentValue("footer_text_color", "#1f2937") }}
+            style={{
+              color: isDarkMode
+                ? "#f8fafc"
+                : getContentValue("footer_text_color", "#1f2937"),
+            }}
           >
             Company
           </h3>
@@ -145,7 +163,11 @@ function Footer({ cmsPreview }) {
         <div>
           <h3
             className="mb-3 font-semibold"
-            style={{ color: getContentValue("footer_text_color", "#1f2937") }}
+            style={{
+              color: isDarkMode
+                ? "#f8fafc"
+                : getContentValue("footer_text_color", "#1f2937"),
+            }}
           >
             Support
           </h3>
@@ -189,7 +211,11 @@ function Footer({ cmsPreview }) {
           >
             <h3
               className="mb-3 font-semibold"
-              style={{ color: getContentValue("footer_text_color", "#1f2937") }}
+              style={{
+                color: isDarkMode
+                  ? "#f8fafc"
+                  : getContentValue("footer_text_color", "#1f2937"),
+              }}
             >
               {getContentValue("footer_title", "Stay Updated")}
             </h3>
@@ -202,7 +228,9 @@ function Footer({ cmsPreview }) {
             <p
               className="mb-4 text-sm"
               style={{
-                color: getContentValue("footer_subtext_color", "#4b5563"),
+                color: isDarkMode
+                  ? "#94a3b8"
+                  : getContentValue("footer_subtext_color", "#4b5563"),
               }}
             >
               {getContentValue(

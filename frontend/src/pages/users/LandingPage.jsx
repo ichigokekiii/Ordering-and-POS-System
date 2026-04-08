@@ -177,11 +177,14 @@ function LandingPage({ cmsPreview }) {
                     </CmsEditableRegion>
                   </div>
 
-                  <div className="relative z-10 flex h-12 w-12 items-center justify-end overflow-hidden rounded-full bg-white transition-all duration-[600ms] ease-[cubic-bezier(0.5,1,0.89,1)] group-hover:w-full">
+                  <div
+                    className="relative z-10 flex h-12 w-12 items-center justify-end overflow-hidden rounded-full transition-all duration-[600ms] ease-[cubic-bezier(0.5,1,0.89,1)] group-hover:w-full"
+                    style={{ backgroundColor: "#ffffff" }}
+                  >
                     <div className="pointer-events-none absolute left-0 top-0 flex h-12 w-[192px] items-center justify-center pl-6 transition-transform duration-[600ms] ease-[cubic-bezier(0.5,1,0.89,1)] group-hover:-translate-x-4">
-                      <span className="text-sm font-semibold tracking-wide text-gray-900">{getContentValue("home_hero_button_text", "Shop Now")}</span>
+                      <span className="text-sm font-semibold tracking-wide text-[#111827]">{getContentValue("home_hero_button_text", "Shop Now")}</span>
                     </div>
-                    <div className="relative z-20 flex h-12 w-12 shrink-0 items-center justify-center text-gray-900">
+                    <div className="relative z-20 flex h-12 w-12 shrink-0 items-center justify-center text-[#111827]">
                       <svg className="h-5 w-5 transition-transform duration-[600ms] ease-out group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                       </svg>

@@ -1,10 +1,25 @@
-/* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/immutability */
-import React, { useState, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
+/* eslint-disable no-unused-vars */
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { 
+  ChevronDown, 
+  UserPlus, 
+  Search, 
+  Filter, 
+  SlidersHorizontal, 
+  MoreHorizontal, 
+  ShieldCheck, 
+  Lock, 
+  CheckCircle2, 
+  X,
+  Trash2,
+  ArchiveRestore,
+  Archive,
+  Loader2,
+  Pencil
+} from "lucide-react";
 import api from "../../services/api";
 
-// 1. Accept the 'user' prop passed from App.jsx
 function AdminUsersPage({ user }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,23 +31,17 @@ function AdminUsersPage({ user }) {
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState(null);
-  const [updateError, setUpdateError] = useState(null);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newUser, setNewUser] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-    password: "",
-    role: "customer",
+    first_name: "", last_name: "", email: "", password: "", role: "customer",
   });
 
   const [toast, setToast] = useState(null);
-  
-  // 2. Define permissions based on your backend logic
-  const isStaff = user?.role === "staff";
-  const isOwner = user?.role === "owner";
-  const canManageUsers = user?.role === "admin"; // Only admins can edit users based on backend middleware
+  const dropdownRef = useRef(null);
+  const sortRef = useRef(null);
+
+  const canManageUsers = user?.role === "admin";
 
   const [selectedUser, setSelectedUser] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -40,13 +49,8 @@ function AdminUsersPage({ user }) {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   const [editForm, setEditForm] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
-    phone_number: "",
-    first_name: "",
-    last_name: "",
-    status: ""
+    email: "", password: "", confirmPassword: "", phone_number: "",
+    first_name: "", last_name: "", status: ""
   });
 
   const [emailOtp, setEmailOtp] = useState("");
@@ -56,21 +60,20 @@ function AdminUsersPage({ user }) {
 
   useEffect(() => {
     fetchUsersFromDatabase();
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) setShowFilterMenu(false);
+      if (sortRef.current && !sortRef.current.contains(event.target)) setShowSortMenu(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const fetchUsersFromDatabase = () => {
     setLoading(true);
     api.get("/users")
-      .then((response) => {
-        setUsers(response.data);
-        setError(null);
-      })
-      .catch(() => {
-        setError("Failed to fetch users from database");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      .then((res) => { setUsers(res.data); setError(null); })
+      .catch(() => setError("Failed to fetch users"))
+      .finally(() => setLoading(false));
   };
 
   const formatRole = (role) => {
@@ -78,86 +81,40 @@ function AdminUsersPage({ user }) {
     if (r === "owner") return "Owner";
     if (r === "admin") return "Admin";
     if (r === "staff") return "Staff";
-    if (r === "customer" || r === "user") return "Customer";
-    return role || "";
+    return "Customer";
   };
 
-  const roleToBackend = (uiRole) => {
-    const r = (uiRole || "").toLowerCase();
-    if (r === "customer") return "user";
-    return r;
-  };
+  const roleToBackend = (uiRole) => uiRole.toLowerCase() === "customer" ? "user" : uiRole.toLowerCase();
 
   const handleRoleChange = (userId, selectedUiRole) => {
     setUpdatingUserId(userId);
-    setUpdateError(null);
-
     api.put(`/users/${userId}`, { role: roleToBackend(selectedUiRole) })
       .then((res) => {
-        setUsers((prev) =>
-          prev.map((u) => (u.id === userId ? res.data : u))
-        );
-      })
-      .catch(() => {
-        setUpdateError("Failed to update user role");
+        setUsers((prev) => prev.map((u) => (u.id === userId ? res.data : u)));
       })
       .finally(() => setUpdatingUserId(null));
   };
 
-  const getFilteredAndSortedUsers = () => {
-    let filteredUsers = [...users];
-
-    if (filterRole !== "all") {
-      filteredUsers = filteredUsers.filter((user) =>
-        formatRole(user.role).toLowerCase() === filterRole
-      );
-    }
-
+  const filteredUsers = useMemo(() => {
+    let result = [...users];
+    if (filterRole !== "all") result = result.filter((u) => formatRole(u.role).toLowerCase() === filterRole);
     if (filterStatus !== "all") {
-      if (filterStatus === "Locked") {
-        filteredUsers = filteredUsers.filter((user) => user.is_locked === true);
-      } else {
-        filteredUsers = filteredUsers.filter((user) => {
-          if (user.is_locked) return false; // locked accounts don't appear in Active/Inactive
-          const normalizedStatus = (user.status || "").toLowerCase();
-          return normalizedStatus === filterStatus.toLowerCase();
-        });
-      }
+      if (filterStatus === "Locked") result = result.filter((u) => u.is_locked);
+      else result = result.filter((u) => !u.is_locked && (u.status || "").toLowerCase() === filterStatus.toLowerCase());
     }
-
-    filteredUsers.sort((a, b) => {
-      let valueA = a[sortBy];
-      let valueB = b[sortBy];
-
-      if (sortBy === "id") {
-        return Number(valueA) - Number(valueB);
-      }
-      if (sortBy === "created_at") {
-        return new Date(valueB) - new Date(valueA);
-      }
-
-      if (typeof valueA === "string") {
-        return valueA.localeCompare(valueB);
-      }
-
-      return valueA - valueB;
+    return result.sort((a, b) => {
+      if (sortBy === "id") return Number(a.id) - Number(b.id);
+      if (sortBy === "created_at") return new Date(b.created_at) - new Date(a.created_at);
+      return (a[sortBy] || "").toString().localeCompare((b[sortBy] || "").toString());
     });
-
-    return filteredUsers;
-  };
+  }, [users, filterRole, filterStatus, sortBy]);
 
   const handleUnlockUser = (userId) => {
     api.put(`/users/${userId}`, { is_locked: false })
       .then((res) => {
-        setUsers((prev) =>
-          prev.map((u) => (u.id === userId ? res.data : u))
-        );
+        setUsers((prev) => prev.map((u) => (u.id === userId ? res.data : u)));
         setShowEditModal(false);
         setToast({ type: "success", message: "Account unlocked successfully" });
-        setTimeout(() => setToast(null), 4000);
-      })
-      .catch(() => {
-        setToast({ type: "error", message: "Failed to unlock account" });
         setTimeout(() => setToast(null), 4000);
       });
   };
@@ -172,33 +129,46 @@ function AdminUsersPage({ user }) {
         setTimeout(() => setToast(null), 4000);
       })
       .catch(() => {
-        setUpdateError("Failed to delete user");
+        setToast({ type: "error", message: "Failed to delete user" });
+        setTimeout(() => setToast(null), 4000);
       });
   };
 
   const openEditModal = (user) => {
     setSelectedUser(user);
     setEditForm({
-      email: user.email || "",
-      password: "",
-      confirmPassword: "",
-      phone_number: user.phone_number || "",
-      first_name: user.first_name || "",
-      last_name: user.last_name || "",
-      status: user.status || "Active"
+      email: user.email || "", phone_number: user.phone_number || "",
+      first_name: user.first_name || "", last_name: user.last_name || "",
+      status: user.status || "Active", password: "", confirmPassword: ""
     });
     setShowEditModal(true);
   };
 
+  const handleCreateUser = () => {
+    api.post("/users", { ...newUser, role: roleToBackend(newUser.role), status: "Active" })
+      .then((res) => {
+        setUsers((prev) => [...prev, res.data]);
+        setToast({ type: "success", message: "User created successfully" });
+        setShowCreateModal(false);
+        setNewUser({ first_name: "", last_name: "", email: "", password: "", role: "customer" });
+        setTimeout(() => setToast(null), 4000);
+      })
+      .catch((err) => {
+        setToast({
+          type: "error",
+          message: err.response?.data?.message || "Failed to create user",
+        });
+        setTimeout(() => setToast(null), 4000);
+      });
+  };
+
   const handleSaveChanges = () => {
-    // Validate phone number
     if (editForm.phone_number && !/^\d{11}$/.test(editForm.phone_number.trim())) {
       setToast({ type: "error", message: "Phone number must be exactly 11 digits" });
       setTimeout(() => setToast(null), 4000);
       return;
     }
 
-    // Validate names
     const namePattern = /^[A-Za-z\s\-']{2,50}$/;
     if (!editForm.first_name.trim() || !namePattern.test(editForm.first_name.trim())) {
       setToast({ type: "error", message: "First name must be 2-50 letters only" });
@@ -211,29 +181,22 @@ function AdminUsersPage({ user }) {
       return;
     }
 
-    // Check if email is being changed
     const emailChanged = editForm.email !== selectedUser.email;
-    // Check if password is being set
     const passwordChanged = editForm.password && editForm.password.trim() !== "";
 
     if (emailChanged && !emailOtpSent) {
-      // Need to send OTP for email change
       sendEmailOtp();
       return;
     }
-
     if (passwordChanged && !passwordOtpSent) {
-      // Need to send OTP for password change
       sendPasswordOtp();
       return;
     }
-
     if ((emailChanged && !emailOtp) || (passwordChanged && !passwordOtp)) {
       setToast({ type: "error", message: "Please enter the OTP codes" });
       setTimeout(() => setToast(null), 4000);
       return;
     }
-
     if (editForm.password && editForm.password !== editForm.confirmPassword) {
       setToast({ type: "error", message: "Passwords do not match" });
       setTimeout(() => setToast(null), 4000);
@@ -275,13 +238,10 @@ function AdminUsersPage({ user }) {
       status: editForm.status
     };
 
-    // Only include email if it changed and OTP is provided
     if (editForm.email !== selectedUser.email) {
       payload.email = editForm.email;
       payload.email_otp = emailOtp;
     }
-
-    // Only include password if it's being changed and OTP is provided
     if (editForm.password) {
       payload.password = editForm.password;
       payload.password_otp = passwordOtp;
@@ -289,19 +249,11 @@ function AdminUsersPage({ user }) {
 
     api.put(`/users/${selectedUser.id}`, payload)
       .then((res) => {
-        setUsers((prev) =>
-          prev.map((u) => (u.id === selectedUser.id ? res.data : u))
-        );
-
+        setUsers((prev) => prev.map((u) => (u.id === selectedUser.id ? res.data : u)));
         setShowConfirmSave(false);
         setShowEditModal(false);
-
-        // Reset OTP states
-        setEmailOtp("");
-        setEmailOtpSent(false);
-        setPasswordOtp("");
-        setPasswordOtpSent(false);
-
+        setEmailOtp(""); setEmailOtpSent(false);
+        setPasswordOtp(""); setPasswordOtpSent(false);
         setToast({ type: "success", message: "User updated successfully" });
         setTimeout(() => setToast(null), 4000);
       })
@@ -311,218 +263,205 @@ function AdminUsersPage({ user }) {
       });
   };
 
-  const handleCreateUser = () => {
-    const payload = {
-      first_name: newUser.first_name,
-      last_name: newUser.last_name,
-      email: newUser.email,
-      password: newUser.password,
-      role: roleToBackend(newUser.role),
-      status: "Active",
-    };
-
-    api.post("/users", payload)
-      .then((res) => {
-        setUsers((prev) => [...prev, res.data]);
-        setToast({ type: "success", message: "User created successfully" });
-        setNewUser({
-          first_name: "",
-          last_name: "",
-          email: "",
-          password: "",
-          role: "customer",
-        });
-        setShowCreateModal(false);
-        setTimeout(() => setToast(null), 4000);
-      })
-      .catch((err) => {
-        setToast({
-          type: "error",
-          message: err.response?.data?.message || "Failed to create user",
-        });
-        setTimeout(() => setToast(null), 4000);
-      });
+  // --- REUSABLE PILL ---
+  const StatusPill = ({ u }) => {
+    if (u.is_locked) return <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700 border border-rose-200">Locked</span>;
+    const active = (u.status || "").toLowerCase() === "active";
+    return (
+      <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${active ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-gray-100 text-gray-600 border-gray-200"}`}>
+        {u.status || "Inactive"}
+      </span>
+    );
   };
 
   return (
-    <div className="px-10 py-10">
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-black mb-6">Users</h1>
+    <div className="min-h-screen flex flex-col px-8 py-8 bg-white rounded-lg relative font-sans">
+      
+      {/* TOAST SYSTEM */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-[500] animate-in slide-in-from-right duration-300">
+          <div className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border backdrop-blur-md ${
+            toast.type === 'success' ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-rose-500 border-rose-400 text-white'
+          }`}>
+            <CheckCircle2 className="w-5 h-5" />
+            <span className="text-sm font-bold tracking-tight">{toast.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* HEADER AREA */}
+      <div className="mb-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="text-3xl font-playfair font-bold text-gray-900 tracking-tight">User Management</h1>
+          <p className="mt-1.5 max-w-2xl text-sm font-medium text-gray-500">Overview of all registered users, staff accounts, and system access levels.</p>
+        </div>
 
         {canManageUsers && (
           <button
             onClick={() => setShowCreateModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-base font-medium rounded-md transition"
+            className="flex items-center gap-2 rounded-xl bg-gray-900 border-2 border-gray-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm active:scale-95"
           >
-            + Add User
+            <UserPlus className="w-4 h-4" />
+            Add New User
           </button>
         )}
       </div>
 
-      <div className="rounded border p-6 shadow-sm bg-white">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-xl font-semibold text-gray-800">
-            Profiles list
-          </h2>
-
-          <div className="flex space-x-3">
-            {/* Sort Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setShowSortMenu(!showSortMenu)}
-                className="px-5 py-2 border rounded text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                Sort By <ChevronDown className="w-4 h-4" />
-              </button>
-
-              {showSortMenu && (
-                <div className="absolute right-0 mt-2 w-40 bg-white border rounded shadow-md z-10">
-                  <button
-                    onClick={() => { setSortBy("id"); setShowSortMenu(false); }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                  >
-                    ID
-                  </button>
-                  <button
-                    onClick={() => { setSortBy("first_name"); setShowSortMenu(false); }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                  >
-                    Name
-                  </button>
-                  <button
-                    onClick={() => { setSortBy("email"); setShowSortMenu(false); }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                  >
-                    Email
-                  </button>
-                  <button
-                    onClick={() => { setSortBy("role"); setShowSortMenu(false); }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                  >
-                    Role
-                  </button>
-                  <button
-                    onClick={() => { setSortBy("created_at"); setShowSortMenu(false); }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                  >
-                    Created Date
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Filter Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setShowFilterMenu(!showFilterMenu)}
-                className="px-5 py-2 border rounded text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                Filter By <ChevronDown className="w-4 h-4" />
-              </button>
-
-              {showFilterMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow-md z-10">
-                  <div className="px-4 py-3 border-b">
-                    <p className="text-xs font-semibold text-gray-600 mb-2">ROLE</p>
-                    <button onClick={() => setFilterRole("all")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">All</button>
-                    <button onClick={() => setFilterRole("admin")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">Admin</button>
-                    <button onClick={() => setFilterRole("staff")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">Staff</button>
-                    <button onClick={() => setFilterRole("customer")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">Customer</button>
-                    <button onClick={() => setFilterRole("owner")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">Owner</button>
-                  </div>
-                  <div className="px-4 py-3">
-                    <p className="text-xs font-semibold text-gray-600 mb-2">STATUS</p>
-                    <button onClick={() => setFilterStatus("all")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">All</button>
-                    <button onClick={() => setFilterStatus("Active")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">Active</button>
-                    <button onClick={() => setFilterStatus("Inactive")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">Inactive</button>
-                    <button
-                      onClick={() => setFilterStatus("Locked")}
-                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
-                    >
-                      Locked
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+      {/* SEARCH & FILTERS BAR */}
+      <div className="mb-6 flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+           <input 
+             type="text" 
+             placeholder="Search by name or email..." 
+             className="w-full bg-slate-50 border border-gray-100 rounded-2xl pl-11 pr-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#eaf2ff] transition-all"
+           />
         </div>
 
-        {!loading && !error && (
+<div className="flex gap-3">
+          {/* SORT DROPDOWN */}
+          <div className="relative" ref={sortRef}>
+            <button 
+              onClick={() => setShowSortMenu(!showSortMenu)}
+              className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 hover:border-gray-900 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-[#eaf2ff]"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              Sort
+              <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showSortMenu ? "rotate-180" : ""}`} />
+            </button>
+            {showSortMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 p-2 animate-in fade-in zoom-in duration-100">
+                {["id", "first_name", "email", "created_at"].map((key) => (
+                  <button key={key} onClick={() => { setSortBy(key); setShowSortMenu(false); }} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-[#eaf2ff] hover:text-[#4f6fa5] rounded-xl capitalize transition-colors">
+                    {key.replace('_', ' ')}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* FILTER DROPDOWN */}
+          <div className="relative" ref={dropdownRef}>
+            <button 
+              onClick={() => setShowFilterMenu(!showFilterMenu)}
+              className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 hover:border-gray-900 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-[#eaf2ff]"
+            >
+              <Filter className="w-4 h-4" />
+              Filter
+              <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showFilterMenu ? "rotate-180" : ""}`} />
+            </button>
+            {showFilterMenu && (
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 p-4 animate-in fade-in zoom-in duration-100">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Filter by Role</p>
+                <div className="space-y-1 mb-4">
+                  {["all", "admin", "staff", "customer"].map(r => (
+                    <button key={r} onClick={() => setFilterRole(r)} className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold capitalize transition-colors ${filterRole === r ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}>{r}</button>
+                  ))}
+                </div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Filter by Status</p>
+                <div className="space-y-1">
+                  {["all", "Active", "Inactive", "Locked"].map(s => (
+                    <button key={s} onClick={() => setFilterStatus(s)} className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-colors ${filterStatus === s ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}>{s}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* MAIN TABLE CONTAINER */}
+      <div className="flex-1 rounded-[1.5rem] border border-gray-100 bg-white shadow-sm overflow-hidden flex flex-col">
+        {loading ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-gray-400 py-40">
+             <Loader2 className="w-8 h-8 animate-spin text-[#4f6fa5]" />
+             <span className="text-xs font-bold uppercase tracking-widest">Loading Database...</span>
+          </div>
+        ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="min-w-full text-left border-collapse">
               <thead>
-                <tr className="text-gray-500 text-sm uppercase border-b">
-                  <th className="pb-4">ID</th>
-                  <th className="pb-4">Name</th>
-                  <th className="pb-4">Email</th>
-                  <th className="pb-4">Phone</th>
-                  <th className="pb-4">Role</th>
-                  <th className="pb-4">Status</th>
-                  <th className="pb-4">Created Date</th>
+                <tr className="border-b border-gray-50 bg-[#f8fafc]">
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">User Details</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Contact</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Access Level</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Status</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Registered</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody className="text-sm text-gray-700">
-                {getFilteredAndSortedUsers().map((user) => (
-                  <tr
-                    key={user.id}
-                    // 5. Prevent staff from clicking to edit
-                    className={`border-b transition ${canManageUsers ? "hover:bg-gray-50 cursor-pointer" : ""}`}
-                    onClick={() => canManageUsers && openEditModal(user)}
+              <tbody className="divide-y divide-gray-50">
+                {filteredUsers.map((u) => (
+                  <tr 
+                    key={u.id} 
+                    className={`group transition-colors ${canManageUsers ? "hover:bg-slate-50/80 cursor-pointer" : ""}`}
+                    onClick={() => canManageUsers && openEditModal(u)}
                   >
-                    <td className="py-5">{user.id}</td>
-                    <td className="py-5 font-medium">
-                      {user.first_name} {user.last_name}
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center text-[#4f6fa5] font-bold shrink-0">
+                          {u.first_name?.charAt(0)}
+                        </div>
+                        <div>
+                          {/* whitespace-nowrap prevents names from wrapping */}
+                          <p className="font-bold text-gray-900 tracking-tight whitespace-nowrap">{u.first_name} {u.last_name}</p>
+                          <p className="text-xs font-medium text-gray-400">ID: #{u.id}</p>
+                        </div>
+                      </div>
                     </td>
-                    <td className="py-5">{user.email}</td>
-                    <td className="py-5">{user.phone_number || "N/A"}</td>
-                    <td className="py-5">
-                      {/* 6. Lock Role dropdown for staff */}
-                      {!canManageUsers ? (
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                          {formatRole(user.role)}
-                        </span>
-                      ) : (
-                        <select
-                          onClick={(e) => e.stopPropagation()}
-                          value={formatRole(user.role).toLowerCase()}
-                          onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                          disabled={updatingUserId === user.id}
-                          className="px-3 py-1 border rounded text-sm bg-white"
-                        >
-                          <option value="customer">Customer</option>
-                          <option value="staff">Staff</option>
-                          <option value="admin">Admin</option>
-                          <option value="owner">Owner</option>
-                        </select>
-                      )}
+                    <td className="px-6 py-5">
+                      <p className="text-sm font-semibold text-gray-700 whitespace-nowrap">{u.email}</p>
+                      <p className="text-xs text-gray-400 whitespace-nowrap">{u.phone_number || "No Phone"}</p>
                     </td>
-                    <td className="py-5">
-                      {(() => {
-                        if (user.is_locked) {
-                          return (
-                            <span className="px-3 py-1 rounded-full text-xs bg-red-100 text-red-700 font-semibold">
-                              Locked
-                            </span>
-                          );
-                        }
-                        const normalizedStatus = (user.status || "").toLowerCase();
-                        const isActive = normalizedStatus === "active";
-                        return (
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              isActive
-                                ? "bg-green-100 text-green-800"
-                                : "bg-gray-100 text-gray-700"
-                            }`}
+                    <td className="px-6 py-5">
+                       {canManageUsers ? (
+                         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                            <select 
+                              value={formatRole(u.role).toLowerCase()} 
+                              onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                              className="bg-transparent border-none text-sm font-bold text-[#4f6fa5] focus:ring-0 p-0 cursor-pointer hover:underline"
+                            >
+                              <option value="customer">Customer</option>
+                              <option value="staff">Staff</option>
+                              <option value="admin">Admin</option>
+                              <option value="owner">Owner</option>
+                            </select>
+                         </div>
+                       ) : (
+                         <span className="text-sm font-bold text-gray-600">{formatRole(u.role)}</span>
+                       )}
+                    </td>
+                    <td className="px-6 py-5">
+                      <StatusPill u={u} />
+                    </td>
+                    <td className="px-6 py-5">
+                      <p className="text-sm font-bold text-gray-900 whitespace-nowrap">
+                        {new Date(u.created_at).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric'})}
+                      </p>
+                    </td>
+                    <td className="px-6 py-5">
+                      {canManageUsers ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); openEditModal(u); }}
+                            className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-2 text-xs font-bold text-white border-2 border-amber-500 hover:bg-transparent hover:text-amber-500 transition-all duration-300 shadow-sm"
                           >
-                            {isActive ? "Active" : "Inactive"}
-                          </span>
-                        );
-                      })()}
-                    </td>
-                    <td className="py-5">
-                      {new Date(user.created_at).toLocaleDateString("en-US")}
+                            <Pencil className="w-3.5 h-3.5" />
+                            Edit
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setSelectedUser(u); setShowConfirmDelete(true); }}
+                            className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-4 py-2 text-xs font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-500 transition-all duration-300 shadow-sm"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Delete
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-right">
+                          <span className="text-xs text-gray-400 italic">View Only</span>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -532,21 +471,11 @@ function AdminUsersPage({ user }) {
         )}
       </div>
 
-      {toast && (
-        <div className="fixed top-6 right-6 z-50">
-          <div className={`px-6 py-3 rounded-lg shadow-lg text-white text-sm font-medium ${
-            toast.type === "success" ? "bg-green-600" : "bg-red-600"
-          }`}>
-            {toast.message}
-          </div>
-        </div>
-      )}
-
-      {/* Add User Modal */}
+      {/* ADD USER MODAL */}
       {showCreateModal && canManageUsers && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-white rounded-3xl w-[90%] max-w-md shadow-xl p-8">
-            <h2 className="text-2xl font-bold mb-6">Add User</h2>
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[200]">
+          <div className="bg-white rounded-3xl w-[90%] max-w-md shadow-2xl border border-white/20 p-8">
+            <h2 className="text-2xl font-playfair font-bold mb-6 text-gray-900">Add New User</h2>
 
             <div className="space-y-4">
               <input
@@ -554,7 +483,7 @@ function AdminUsersPage({ user }) {
                 placeholder="First Name"
                 value={newUser.first_name}
                 onChange={(e) => setNewUser({ ...newUser, first_name: e.target.value })}
-                className="w-full border rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-600"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
               />
 
               <input
@@ -562,57 +491,57 @@ function AdminUsersPage({ user }) {
                 placeholder="Last Name"
                 value={newUser.last_name}
                 onChange={(e) => setNewUser({ ...newUser, last_name: e.target.value })}
-                className="w-full border rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-600"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
               />
 
               <input
                 type="email"
-                placeholder="Email"
+                placeholder="Email Address"
                 value={newUser.email}
                 onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                className="w-full border rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-600"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
               />
 
               <input
                 type="password"
-                placeholder="Password"
+                placeholder="Secure Password"
                 value={newUser.password}
                 onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                className="w-full border rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-600"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
               />
 
-              <div>
-                <p className="text-sm font-medium mb-3">Role</p>
+              <div className="pt-2">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">System Access Role</p>
                 <div className="space-y-2 text-sm">
-                  {["owner", "admin", "staff", "customer"].map((role) => (
-                    <label key={role} className="flex items-center gap-2">
+                  {["customer", "staff", "admin", "owner"].map((role) => (
+                    <label key={role} className="flex items-center gap-3 cursor-pointer">
                       <input
                         type="radio"
                         name="role"
                         value={role}
                         checked={newUser.role === role}
                         onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                        className="accent-blue-600"
+                        className="w-4 h-4 text-[#4f6fa5] bg-gray-100 border-gray-300 focus:ring-[#eaf2ff] focus:ring-2"
                       />
-                      {role.charAt(0).toUpperCase() + role.slice(1)}
+                      <span className="font-semibold text-gray-700 capitalize">{role}</span>
                     </label>
                   ))}
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-8 border-t pt-4">
+            <div className="flex justify-end gap-3 mt-8 pt-4">
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="px-5 py-2 border rounded-xl hover:bg-gray-100"
+                className="rounded-lg px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreateUser}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl"
+                className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
               >
-                Add
+                Create Account
               </button>
             </div>
           </div>
@@ -621,9 +550,14 @@ function AdminUsersPage({ user }) {
 
       {/* Edit User Modal */}
       {showEditModal && selectedUser && canManageUsers && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-white rounded-3xl w-[90%] max-w-lg shadow-xl p-8 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6">Edit User</h2>
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[200]">
+          <div className="bg-white rounded-3xl w-[90%] max-w-lg shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+               <h2 className="text-2xl font-playfair font-bold text-gray-900">Edit User Details</h2>
+               <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                  ID: #{selectedUser.id}
+               </span>
+            </div>
 
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -631,20 +565,16 @@ function AdminUsersPage({ user }) {
                   type="text"
                   placeholder="First Name"
                   value={editForm.first_name}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, first_name: e.target.value })
-                  }
-                  className="w-full border rounded-xl px-4 py-3 text-sm"
+                  onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
                 />
 
                 <input
                   type="text"
                   placeholder="Last Name"
                   value={editForm.last_name}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, last_name: e.target.value })
-                  }
-                  className="w-full border rounded-xl px-4 py-3 text-sm"
+                  onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
                 />
               </div>
 
@@ -652,42 +582,36 @@ function AdminUsersPage({ user }) {
                 type="tel"
                 placeholder="Phone Number (11 digits)"
                 value={editForm.phone_number}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, phone_number: e.target.value })
-                }
-                className="w-full border rounded-xl px-4 py-3 text-sm"
+                onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })}
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
               />
 
               <div>
-                <label className="block text-sm font-medium mb-2">Status</label>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Account Status</label>
                 <select
                   value={editForm.status}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, status: e.target.value })
-                  }
-                  className="w-full border rounded-xl px-4 py-3 text-sm"
+                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
                 >
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                 </select>
               </div>
 
-              <div className="border-t pt-4">
-                <h3 className="font-semibold mb-3">Change Email</h3>
+              <div className="border-t border-gray-100 pt-5 mt-2">
+                <h3 className="text-sm font-bold text-gray-900 mb-3">Update Email Address</h3>
                 <input
                   type="email"
                   placeholder="New Email"
                   value={editForm.email}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, email: e.target.value })
-                  }
-                  className="w-full border rounded-xl px-4 py-3 text-sm mb-2"
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all mb-3"
                 />
 
                 {editForm.email !== selectedUser.email && !emailOtpSent && (
                   <button
                     onClick={sendEmailOtp}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm"
+                    className="w-full rounded-xl bg-[#4f6fa5] px-4 py-3 text-sm font-bold text-white border-2 border-[#4f6fa5] hover:bg-transparent hover:text-[#4f6fa5] transition-all duration-300 shadow-sm"
                   >
                     Send OTP to New Email
                   </button>
@@ -696,40 +620,38 @@ function AdminUsersPage({ user }) {
                 {emailOtpSent && (
                   <input
                     type="text"
-                    placeholder="Enter Email OTP"
+                    placeholder="Enter 6-Digit Email OTP"
                     value={emailOtp}
                     onChange={(e) => setEmailOtp(e.target.value)}
-                    className="w-full border rounded-xl px-4 py-3 text-sm"
+                    className="w-full rounded-xl border-2 border-emerald-200 bg-emerald-50 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 transition-all font-mono font-bold tracking-widest text-center"
                   />
                 )}
               </div>
 
-              <div className="border-t pt-4">
-                <h3 className="font-semibold mb-3">Change Password</h3>
-                <input
-                  type="password"
-                  placeholder="New Password"
-                  value={editForm.password}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, password: e.target.value })
-                  }
-                  className="w-full border rounded-xl px-4 py-3 text-sm mb-2"
-                />
+              <div className="border-t border-gray-100 pt-5 mt-2">
+                <h3 className="text-sm font-bold text-gray-900 mb-3">Reset Security Password</h3>
+                <div className="grid grid-cols-2 gap-4 mb-3">
+                  <input
+                    type="password"
+                    placeholder="New Password"
+                    value={editForm.password}
+                    onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
+                  />
 
-                <input
-                  type="password"
-                  placeholder="Confirm New Password"
-                  value={editForm.confirmPassword}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, confirmPassword: e.target.value })
-                  }
-                  className="w-full border rounded-xl px-4 py-3 text-sm mb-2"
-                />
+                  <input
+                    type="password"
+                    placeholder="Confirm Password"
+                    value={editForm.confirmPassword}
+                    onChange={(e) => setEditForm({ ...editForm, confirmPassword: e.target.value })}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
+                  />
+                </div>
 
                 {editForm.password && !passwordOtpSent && (
                   <button
                     onClick={sendPasswordOtp}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm"
+                    className="w-full rounded-xl bg-[#4f6fa5] px-4 py-3 text-sm font-bold text-white border-2 border-[#4f6fa5] hover:bg-transparent hover:text-[#4f6fa5] transition-all duration-300 shadow-sm"
                   >
                     Send OTP to Current Email
                   </button>
@@ -738,56 +660,52 @@ function AdminUsersPage({ user }) {
                 {passwordOtpSent && (
                   <input
                     type="text"
-                    placeholder="Enter Password OTP"
+                    placeholder="Enter 6-Digit Password OTP"
                     value={passwordOtp}
                     onChange={(e) => setPasswordOtp(e.target.value)}
-                    className="w-full border rounded-xl px-4 py-3 text-sm"
+                    className="w-full rounded-xl border-2 border-emerald-200 bg-emerald-50 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 transition-all font-mono font-bold tracking-widest text-center"
                   />
                 )}
               </div>
             </div>
 
-
-            {/* Unlock banner if locked */}
             {selectedUser.is_locked && (
-              <div className="mt-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                <p className="font-semibold mb-2">🔒 This account is locked.</p>
+              <div className="mt-6 rounded-2xl bg-rose-50 border border-rose-100 p-5 flex flex-col items-center text-center">
+                <Lock className="w-8 h-8 text-rose-500 mb-2" />
+                <p className="font-bold text-rose-900 mb-1">Account Locked</p>
+                <p className="text-xs text-rose-700 mb-4">This user has exceeded the maximum number of failed login attempts.</p>
                 <button
                   onClick={() => handleUnlockUser(selectedUser.id)}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                  className="rounded-xl bg-rose-600 px-6 py-2.5 text-sm font-bold text-white border-2 border-rose-600 hover:bg-transparent hover:text-rose-600 transition-all duration-300 shadow-sm w-full"
                 >
-                  Unlock Account
+                  Unlock Account Access
                 </button>
               </div>
             )}
 
-            <div className="flex justify-between mt-8 border-t pt-4">
+            <div className="flex justify-between items-center mt-8 pt-4">
               <button
                 onClick={() => setShowConfirmDelete(true)}
-                className="text-red-600 hover:underline font-medium"
+                className="text-xs font-bold text-gray-400 hover:text-rose-600 uppercase tracking-widest transition-colors flex items-center gap-1.5"
               >
-                Delete User
+                <Trash2 className="w-4 h-4" /> Delete
               </button>
 
               <div className="flex gap-3">
                 <button
                   onClick={() => {
-                    setShowEditModal(false);
-                    setEmailOtp("");
-                    setEmailOtpSent(false);
-                    setPasswordOtp("");
-                    setPasswordOtpSent(false);
+                    setShowEditModal(false); setEmailOtp(""); setEmailOtpSent(false);
+                    setPasswordOtp(""); setPasswordOtpSent(false);
                   }}
-                  className="px-5 py-2 border rounded-xl hover:bg-gray-100"
+                  className="rounded-lg px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
                 >
                   Cancel
                 </button>
-
                 <button
                   onClick={handleSaveChanges}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl"
+                  className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
                 >
-                  Save Changes
+                  Save Profile
                 </button>
               </div>
             </div>
@@ -797,29 +715,19 @@ function AdminUsersPage({ user }) {
 
       {/* Confirm Save Modal */}
       {showConfirmSave && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-[90%] max-w-sm p-8 text-center animate-fade-in">
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">
-              Confirm Changes
-            </h3>
-
-            <p className="text-sm text-gray-600 mb-6">
-              Are you sure you want to save these changes?
-            </p>
-
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300]">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-500">
+               <ShieldCheck size={28} />
+            </div>
+            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">Confirm Updates</h3>
+            <p className="text-sm text-gray-500 mb-8 px-2">Are you sure you want to apply these security and profile changes?</p>
             <div className="flex justify-center gap-3">
-              <button
-                onClick={() => setShowConfirmSave(false)}
-                className="px-5 py-2 rounded-lg border text-gray-700 hover:bg-gray-100 transition"
-              >
+              <button onClick={() => setShowConfirmSave(false)} className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
                 Cancel
               </button>
-
-              <button
-                onClick={confirmSaveChanges}
-                className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
-              >
-                Yes, Save
+              <button onClick={confirmSaveChanges} className="rounded-lg bg-emerald-500 px-5 py-2 text-sm font-bold text-white border-2 border-emerald-500 hover:bg-transparent hover:text-emerald-600 transition-all duration-300 shadow-sm">
+                Yes, Save Changes
               </button>
             </div>
           </div>
@@ -828,31 +736,19 @@ function AdminUsersPage({ user }) {
 
       {/* Confirm Delete Modal */}
       {showConfirmDelete && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-[90%] max-w-sm p-8 text-center animate-fade-in">
-            <h3 className="text-lg font-semibold text-red-600 mb-3">
-              Delete User
-            </h3>
-
-            <p className="text-sm text-gray-600 mb-6">
-              This action will permanently remove this user account.
-              <br />
-              Are you sure you want to continue?
-            </p>
-
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300]">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 text-rose-500">
+               <Trash2 size={28} />
+            </div>
+            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">Delete User?</h3>
+            <p className="text-sm text-gray-500 mb-8 px-2">This action is irreversible and will permanently remove this account from the system.</p>
             <div className="flex justify-center gap-3">
-              <button
-                onClick={() => setShowConfirmDelete(false)}
-                className="px-5 py-2 rounded-lg border text-gray-700 hover:bg-gray-100 transition"
-              >
+              <button onClick={() => setShowConfirmDelete(false)} className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
                 Cancel
               </button>
-
-              <button
-                onClick={() => handleDeleteUser(selectedUser.id)}
-                className="px-5 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
-              >
-                Delete
+              <button onClick={() => handleDeleteUser(selectedUser.id)} className="rounded-lg bg-rose-500 px-5 py-2 text-sm font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-600 transition-all duration-300 shadow-sm">
+                Yes, Delete
               </button>
             </div>
           </div>

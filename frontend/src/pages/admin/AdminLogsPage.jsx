@@ -1,12 +1,35 @@
 /* eslint-disable no-unused-vars */
-import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Search } from "lucide-react";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { ChevronDown, Search, Filter, Loader2, CalendarClock } from "lucide-react";
 import api from "../../services/api";
 
 const formatRole = (role) => {
   if (!role) return "System";
   if (role === "user" || role === "customer") return "Customer";
   return role.charAt(0).toUpperCase() + role.slice(1);
+};
+
+// Reusable Log Type Pill
+const LogTypePill = ({ type }) => {
+  const t = (type || "activity").toLowerCase();
+  
+  let colorClass = "bg-gray-100 text-gray-600 border-gray-200"; // default
+  
+  if (t.includes("delete") || t.includes("remove") || t.includes("fail") || t.includes("error")) {
+    colorClass = "bg-rose-100 text-rose-700 border-rose-200";
+  } else if (t.includes("update") || t.includes("edit") || t.includes("modify")) {
+    colorClass = "bg-amber-100 text-amber-700 border-amber-200";
+  } else if (t.includes("create") || t.includes("add") || t.includes("success") || t.includes("login")) {
+    colorClass = "bg-emerald-100 text-emerald-700 border-emerald-200";
+  } else if (t.includes("view") || t.includes("read") || t.includes("export")) {
+    colorClass = "bg-blue-100 text-blue-700 border-blue-200";
+  }
+
+  return (
+    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${colorClass}`}>
+      {t}
+    </span>
+  );
 };
 
 function AdminLogsPage() {
@@ -19,11 +42,15 @@ function AdminLogsPage() {
     total: 0,
     per_page: 20,
   });
+  
   const [filterOptions, setFilterOptions] = useState({
     users: [],
     types: [],
   });
+  
   const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const dropdownRef = useRef(null);
+
   const [filters, setFilters] = useState({
     search: "",
     user_id: "",
@@ -32,6 +59,17 @@ function AdminLogsPage() {
     date_to: "",
     page: 1,
   });
+
+  // Handle clicking outside the filter dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowFilterMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const queryParams = useMemo(() => {
     const params = {
@@ -68,7 +106,7 @@ function AdminLogsPage() {
       setFilterOptions(response.data.filter_options || { users: [], types: [] });
     } catch (err) {
       console.error("Failed to fetch logs", err);
-      setError("Failed to load logs.");
+      setError("Failed to load logs. Please try again later.");
     } finally {
       setLoading(false);
     }
@@ -91,222 +129,262 @@ function AdminLogsPage() {
       date_to: "",
       page: 1,
     });
+    setShowFilterMenu(false);
   };
 
   return (
-    <div className="px-10 py-10">
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-black mb-6">Logs</h1>
+    <div className="min-h-screen flex flex-col px-8 py-8 bg-white rounded-lg relative font-sans">
+      
+      {/* HEADER AREA */}
+      <div className="mb-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="text-3xl font-playfair font-bold text-gray-900 tracking-tight">System Logs</h1>
+          <p className="mt-1.5 max-w-2xl text-sm font-medium text-gray-500">
+            Track and monitor all administrative actions, data changes, and user activities.
+          </p>
+        </div>
       </div>
 
+      {/* SEARCH & FILTERS BAR */}
+      <div className="mb-6 flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+           <input 
+             type="text" 
+             placeholder="Search logs by keyword or module..." 
+             value={filters.search}
+             onChange={(event) => handleFilterChange("search", event.target.value)}
+             className="w-full bg-slate-50 border border-gray-100 rounded-2xl pl-11 pr-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#eaf2ff] transition-all"
+           />
+        </div>
 
-      <div className="rounded border p-6 shadow-sm bg-white">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-xl font-semibold text-gray-800">
-            Logs list
-          </h2>
+        <div className="flex gap-3">
+          {/* FILTER DROPDOWN */}
+          <div className="relative" ref={dropdownRef}>
+            <button 
+              onClick={() => setShowFilterMenu(!showFilterMenu)}
+              className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 hover:border-gray-900 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-[#eaf2ff]"
+            >
+              <Filter className="w-4 h-4" />
+              Filter
+              <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showFilterMenu ? "rotate-180" : ""}`} />
+            </button>
 
-          <div className="flex space-x-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search"
-                value={filters.search}
-                onChange={(event) => handleFilterChange("search", event.target.value)}
-                className="w-64 rounded border py-2 pl-10 pr-3 text-sm"
-              />
-            </div>
+            {showFilterMenu && (
+              <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-100 rounded-3xl shadow-2xl z-50 p-5 animate-in fade-in zoom-in duration-100 max-h-[80vh] overflow-y-auto">
+                
+                {/* User Filter */}
+                <div className="mb-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Filter by User</p>
+                  <select 
+                    value={filters.user_id} 
+                    onChange={(e) => handleFilterChange("user_id", e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 focus:bg-white focus:border-[#4f6fa5] focus:ring-2 focus:ring-[#eaf2ff] transition-all"
+                  >
+                    <option value="">All Users</option>
+                    {filterOptions.users.map((user) => (
+                      <option key={user.id} value={user.id}>{user.name}</option>
+                    ))}
+                  </select>
+                </div>
 
-            <div className="relative">
-              <button
-                onClick={() => setShowFilterMenu(!showFilterMenu)}
-                className="px-5 py-2 border rounded text-sm hover:bg-gray-100 flex items-center gap-2"
-              >
-                Filter By <ChevronDown className="w-4 h-4" />
-              </button>
+                {/* Function/Type Filter */}
+                <div className="mb-4 border-t border-gray-50 pt-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Filter by Function</p>
+                  <select 
+                    value={filters.type} 
+                    onChange={(e) => handleFilterChange("type", e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 focus:bg-white focus:border-[#4f6fa5] focus:ring-2 focus:ring-[#eaf2ff] transition-all"
+                  >
+                    <option value="">All Functions</option>
+                    {filterOptions.types.map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
 
-              {showFilterMenu && (
-                <div className="absolute right-0 mt-2 w-56 bg-white border rounded shadow-md z-10">
-                  <div className="px-4 py-3 border-b">
-                    <p className="text-xs font-semibold text-gray-600 mb-2">USER</p>
-                    <div className="space-y-1">
-                      <button onClick={() => handleFilterChange("user_id", "")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">All</button>
-                      {filterOptions.users.map((user) => (
-                        <button
-                          key={user.id}
-                          onClick={() => handleFilterChange("user_id", user.id)}
-                          className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
-                        >
-                          {user.name}
-                        </button>
-                      ))}
+                {/* Date Filters */}
+                <div className="mb-5 border-t border-gray-50 pt-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Date Range</p>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <span className="text-[9px] text-gray-500 font-bold ml-1 mb-1 block">FROM</span>
+                      <input
+                        type="date"
+                        value={filters.date_from}
+                        onChange={(e) => handleFilterChange("date_from", e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs text-gray-700 focus:bg-white focus:border-[#4f6fa5] focus:ring-2 focus:ring-[#eaf2ff] transition-all"
+                      />
                     </div>
-                  </div>
-
-                  <div className="px-4 py-3 border-b">
-                    <p className="text-xs font-semibold text-gray-600 mb-2">FUNCTION</p>
-                    <div className="space-y-1">
-                      <button onClick={() => handleFilterChange("type", "")} className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100">All</button>
-                      {filterOptions.types.map((type) => (
-                        <button
-                          key={type}
-                          onClick={() => handleFilterChange("type", type)}
-                          className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100"
-                        >
-                          {type}
-                        </button>
-                      ))}
+                    <div className="flex-1">
+                      <span className="text-[9px] text-gray-500 font-bold ml-1 mb-1 block">TO</span>
+                      <input
+                        type="date"
+                        value={filters.date_to}
+                        onChange={(e) => handleFilterChange("date_to", e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs text-gray-700 focus:bg-white focus:border-[#4f6fa5] focus:ring-2 focus:ring-[#eaf2ff] transition-all"
+                      />
                     </div>
-                  </div>
-
-                  <div className="px-4 py-3 border-b">
-                    <p className="text-xs font-semibold text-gray-600 mb-2">DATE FROM</p>
-                    <input
-                      type="date"
-                      value={filters.date_from}
-                      onChange={(event) => handleFilterChange("date_from", event.target.value)}
-                      className="w-full rounded border px-3 py-2 text-sm"
-                    />
-                  </div>
-
-                  <div className="px-4 py-3">
-                    <p className="text-xs font-semibold text-gray-600 mb-2">DATE TO</p>
-                    <input
-                      type="date"
-                      value={filters.date_to}
-                      onChange={(event) => handleFilterChange("date_to", event.target.value)}
-                      className="w-full rounded border px-3 py-2 text-sm"
-                    />
-                    <button
-                      onClick={clearFilters}
-                      className="mt-3 w-full rounded border px-3 py-2 text-sm hover:bg-gray-100"
-                    >
-                      Clear
-                    </button>
                   </div>
                 </div>
-              )}
-            </div>
+
+                <button
+                  onClick={clearFilters}
+                  className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-600 hover:border-gray-900 hover:text-gray-900 transition-all shadow-sm"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            )}
           </div>
         </div>
+      </div>
 
-        {error && <div className="mb-4 text-sm text-red-600">{error}</div>}
+      {error && (
+        <div className="mb-6 rounded-2xl bg-rose-50 border border-rose-100 p-4 text-sm font-bold text-rose-600 text-center">
+          {error}
+        </div>
+      )}
 
-        <div className="overflow-x-auto">
-          <div>
-            {/* HEADER */}
-            <div className="grid grid-cols-[56px_1fr_1.5fr_1.2fr_1fr_auto] gap-3 px-2 pb-2 border-b text-xs font-semibold uppercase text-gray-500">
-              <div className="w-12">ID</div>
-              <div>User</div>
-              <div>Event</div>
-              <div>Date</div>
-              <div>Source</div>
-              <div>Status</div>
-            </div>
+      {/* MAIN TABLE CONTAINER (Fixed height, Scrollable Inner Viewport) */}
+      <div className="flex flex-col h-[650px] shrink-0 rounded-[1.5rem] border border-gray-100 bg-white shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-gray-400">
+             <Loader2 className="w-8 h-8 animate-spin text-[#4f6fa5]" />
+             <span className="text-xs font-bold uppercase tracking-widest">Loading Logs...</span>
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-gray-400">
+             <Search className="w-10 h-10 opacity-20 mb-2" />
+             <span className="text-sm font-bold text-gray-500">No logs found matching your criteria.</span>
+             <button onClick={clearFilters} className="text-xs font-bold text-[#4f6fa5] hover:underline mt-2">Clear Filters</button>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-auto relative">
+            <table className="min-w-full text-left border-collapse">
+              <thead className="sticky top-0 z-10 bg-[#f8fafc] shadow-sm">
+                <tr className="border-b border-gray-50">
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap w-16">ID</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap w-64">User</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Event Description</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Date & Time</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Source</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Action Type</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50 bg-white">
+                {logs.map((log) => (
+                  <tr key={log.log_id} className="group hover:bg-slate-50/80 transition-colors">
+                    
+                    {/* ID */}
+                    <td className="px-6 py-5">
+                      <span className="text-xs font-bold text-gray-400">#{log.log_id}</span>
+                    </td>
 
-            {/* ROWS */}
-            <div className="divide-y">
-              {loading ? (
-                <div className="py-10 text-center text-gray-400">Loading logs...</div>
-              ) : logs.length === 0 ? (
-                <div className="py-10 text-center text-gray-400">No logs yet</div>
-              ) : (
-                logs.map((log) => (
-                  <div key={log.log_id} className="grid grid-cols-[56px_1fr_1.5fr_1.2fr_1fr_auto] gap-3 items-center py-3 hover:bg-gray-50 px-2 rounded">
-                    <div className="w-[56px] text-xs font-medium text-gray-500">
-                      {log.log_id}
-                    </div>
                     {/* User */}
-                    <div>
-                      <p className="font-medium text-gray-900">{log.user_name || "System"}</p>
-                      <p className="text-xs text-gray-500">{formatRole(log.user_role)}</p>
-                    </div>
-
-                    {/* Event */}
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{log.event || "No event"}</p>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        <span className="px-2 py-0.5 text-[10px] rounded-full bg-blue-100 text-blue-700">
-                          {log.module || "General"}
-                        </span>
-                        {log.type && (
-                          <span className="px-2 py-0.5 text-[10px] rounded-full bg-purple-100 text-purple-700">
-                            {log.type}
-                          </span>
-                        )}
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-[#4f6fa5] font-bold shrink-0 text-xs">
+                          {log.user_name ? log.user_name.charAt(0).toUpperCase() : "S"}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900 tracking-tight whitespace-nowrap text-sm">{log.user_name || "System Automated"}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{formatRole(log.user_role)}</p>
+                        </div>
                       </div>
-                    </div>
+                    </td>
+
+                    {/* Event Details */}
+                    <td className="px-6 py-5">
+                      <p className="text-sm font-semibold text-gray-800 line-clamp-2 max-w-md">{log.event || "No description provided"}</p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className="px-2 py-0.5 text-[9px] rounded font-bold uppercase tracking-wider bg-gray-100 text-gray-500">
+                          Module: {log.module || "General"}
+                        </span>
+                      </div>
+                    </td>
 
                     {/* Date */}
-                    <div className="text-sm text-gray-600">
-                      {new Date(log.created_at).toLocaleString("en-US")}
-                    </div>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <CalendarClock className="w-3.5 h-3.5 text-gray-400" />
+                        <span className="text-xs font-bold whitespace-nowrap">
+                          {new Date(log.created_at).toLocaleString("en-US", { 
+                            month: 'short', day: 'numeric', year: 'numeric', 
+                            hour: 'numeric', minute: '2-digit', hour12: true 
+                          })}
+                        </span>
+                      </div>
+                    </td>
 
                     {/* Source */}
-                    <div>
-                      <span className="px-2 py-0.5 text-[10px] rounded-full bg-gray-100 text-gray-600">
-                        {log.source || "API"}
-                      </span>
-                    </div>
+                    <td className="px-6 py-5">
+                      <span className="text-xs font-semibold text-gray-500">{log.source || "Application"}</span>
+                    </td>
 
-                    {/* Status Badge */}
-                    <div>
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full ${
-                          log.type === "delete"
-                            ? "bg-red-100 text-red-700"
-                            : log.type === "update"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : "bg-green-100 text-green-700"
-                        }`}
-                      >
-                        {log.type || "activity"}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+                    {/* Action Type / Status */}
+                    <td className="px-6 py-5 text-right">
+                      <LogTypePill type={log.type} />
+                    </td>
+
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
+        )}
+      </div>
 
-        <div className="mt-8 flex flex-col items-center gap-4 border-t pt-6">
-          <p className="text-sm text-gray-500">
-            Page {meta.current_page} of {Math.max(meta.last_page, 1)}
+      {/* PAGINATION */}
+      {!loading && logs.length > 0 && (
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+            Page <span className="text-gray-900">{meta.current_page}</span> of <span className="text-gray-900">{Math.max(meta.last_page, 1)}</span>
           </p>
+
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleFilterChange("page", Math.max(meta.current_page - 1, 1))}
               disabled={meta.current_page <= 1}
-              className="px-4 py-2 text-sm border rounded hover:bg-gray-100 disabled:opacity-40"
+              className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:border-gray-900 transition-all shadow-sm disabled:opacity-40 disabled:hover:border-gray-200"
             >
               Previous
             </button>
 
-            {[...Array(Math.min(meta.last_page, 5))].map((_, i) => {
-              const page = i + 1;
-              return (
-                <button
-                  key={page}
-                  onClick={() => handleFilterChange("page", page)}
-                  className={`w-8 h-8 text-sm rounded ${meta.current_page === page ? "bg-gray-900 text-white" : "hover:bg-gray-100"}`}
-                >
-                  {page}
-                </button>
-              );
-            })}
+            <div className="hidden sm:flex gap-1">
+              {[...Array(Math.min(meta.last_page, 5))].map((_, i) => {
+                let pageNum = i + 1;
+                if (meta.last_page > 5 && meta.current_page > 3) {
+                  pageNum = meta.current_page - 2 + i;
+                  if (pageNum > meta.last_page) return null;
+                }
+
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handleFilterChange("page", pageNum)}
+                    className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${
+                      meta.current_page === pageNum 
+                        ? "bg-gray-900 border border-gray-900 text-white shadow-sm" 
+                        : "bg-white border border-gray-200 text-gray-700 hover:border-gray-900 hover:text-gray-900"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
 
             <button
               onClick={() => handleFilterChange("page", meta.current_page + 1)}
               disabled={meta.current_page >= meta.last_page}
-              className="px-4 py-2 text-sm border rounded hover:bg-gray-100 disabled:opacity-40"
+              className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:border-gray-900 transition-all shadow-sm disabled:opacity-40 disabled:hover:border-gray-200"
             >
               Next
             </button>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

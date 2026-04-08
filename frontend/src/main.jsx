@@ -11,25 +11,28 @@ import { LoadingProvider } from "./contexts/LoadingContext";
 import { NavbarProvider } from "./contexts/NavbarContext";
 import { OrderProvider } from "./contexts/OrderContext";
 import { ContentProvider } from "./contexts/ContentContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
-    <LoadingProvider>
-      <NavbarProvider>
-        <CartProvider>
-          <ProductProvider>
-            <ScheduleProvider>
-              <AuthProvider>
-                <OrderProvider>
-                  <ContentProvider>
-                    <App />
-                  </ContentProvider>
-                </OrderProvider>
-              </AuthProvider>
-            </ScheduleProvider>
-          </ProductProvider>
-        </CartProvider>
-      </NavbarProvider>
-    </LoadingProvider>
+    <ThemeProvider>
+      <LoadingProvider>
+        <NavbarProvider>
+          <CartProvider>
+            <ProductProvider>
+              <ScheduleProvider>
+                <AuthProvider>
+                  <OrderProvider>
+                    <ContentProvider>
+                      <App />
+                    </ContentProvider>
+                  </OrderProvider>
+                </AuthProvider>
+              </ScheduleProvider>
+            </ProductProvider>
+          </CartProvider>
+        </NavbarProvider>
+      </LoadingProvider>
+    </ThemeProvider>
   </BrowserRouter>,
 );

@@ -1,83 +1,70 @@
-import { useEffect, useState } from "react";
+/* eslint-disable react-hooks/exhaustive-deps */
+import { useEffect, useState, useRef } from "react";
 import api from "../../services/api";
-import { Pencil, Trash2, RefreshCw } from "lucide-react";
+import { 
+  Search, 
+  ChevronDown, 
+  Filter, 
+  SlidersHorizontal, 
+  Pencil, 
+  Trash2, 
+  CheckCircle2, 
+  X,
+  Loader2,
+  PackageSearch,
+  MapPin,
+  CreditCard
+} from "lucide-react";
 
-// (OrderCard component remains unchanged, as it serves as a fallback/mobile view)
-const OrderCard = ({ order, onEdit, onDelete, canEdit }) => (
-  <div className="rounded border p-4 shadow-sm bg-white">
-    <div className="mb-2">
-      <span
-        className={`px-2 py-1 text-xs font-bold rounded ${
-          order.order_status === "Pending"
-            ? "bg-yellow-100 text-yellow-700"
-            : order.order_status === "Processing"
-            ? "bg-blue-100 text-blue-700"
-            : order.order_status === "Shipped"
-            ? "bg-purple-100 text-purple-700"
-            : order.order_status === "Delivered"
-            ? "bg-green-100 text-green-700"
-            : "bg-red-100 text-red-700"
-        }`}
-      >
-        {order.order_status}
-      </span>
-    </div>
+// Reusable Status Pill
+const OrderStatusPill = ({ status }) => {
+  let colorClass = "bg-gray-100 text-gray-600 border-gray-200";
+  
+  if (status === "Pending") colorClass = "bg-amber-100 text-amber-700 border-amber-200";
+  else if (status === "Processing") colorClass = "bg-blue-100 text-blue-700 border-blue-200";
+  else if (status === "Shipped") colorClass = "bg-purple-100 text-purple-700 border-purple-200";
+  else if (status === "Delivered" || status === "Completed") colorClass = "bg-emerald-100 text-emerald-700 border-emerald-200";
+  else if (status === "Cancelled") colorClass = "bg-rose-100 text-rose-700 border-rose-200";
 
-    <h3 className="font-medium">Order: {order.order_id || order.id}</h3>
+  return (
+    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${colorClass}`}>
+      {status || "Unknown"}
+    </span>
+  );
+};
 
-    <p className="text-sm text-gray-600">User ID: {order.user_id}</p>
-    <p className="text-sm text-gray-600">Delivery: {order.delivery_method}</p>
-
-    <p className="text-gray-500">
-      {new Date(order.created_at).toLocaleDateString()}
-    </p>
-
-    <p className="text-[#3B5BDB] font-medium mt-1">
-      ₱{order.total_amount}
-    </p>
-
-    {canEdit && (
-      <div className="mt-4 flex gap-2">
-        <button
-          onClick={() => onEdit(order)}
-          className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-        >
-          Edit
-        </button>
-
-        <button
-          onClick={() => onDelete(order.order_id || order.id)}
-          className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
-        >
-          Delete
-        </button>
-      </div>
-    )}
-  </div>
-);
-
-// 1. Accept the user prop here
 function AdminOrdersPage({ user }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editingOrder, setEditingOrder] = useState(null);
+  
+  // Modal States
+  const [viewingOrder, setViewingOrder] = useState(null); // For Read Only view
+  const [editingOrder, setEditingOrder] = useState(null); // For Edit view
   const [status, setStatus] = useState("");
 
-  // 2. Define who is allowed to edit
+  // Toast State
+  const [toast, setToast] = useState(null);
+  const toastTimeoutRef = useRef(null);
+
   const canEdit = user?.role === "admin" || user?.role === "owner";
+
+  const showToast = (type, message) => {
+    setToast({ type, message });
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 3500);
+  };
 
   const fetchOrders = async () => {
     try {
       const res = await api.get("/orders");
-
-      // Support both raw array and wrapped response
-      const data = Array.isArray(res.data)
-        ? res.data
-        : res.data.orders ?? res.data.data ?? [];
-
-      setOrders(data);
+      const data = Array.isArray(res.data) ? res.data : res.data.orders ?? res.data.data ?? [];
+      
+      // Sort orders by created_at descending (newest first)
+      const sortedData = data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      setOrders(sortedData);
     } catch (err) {
       console.error("Failed to fetch orders:", err);
+      showToast("error", "Failed to load orders database.");
     } finally {
       setLoading(false);
     }
@@ -85,16 +72,19 @@ function AdminOrdersPage({ user }) {
 
   useEffect(() => {
     fetchOrders();
+    return () => clearTimeout(toastTimeoutRef.current);
   }, []);
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this order?")) return;
+    if (!window.confirm("Are you sure you want to permanently delete this order?")) return;
 
     try {
       await api.delete(`/orders/${id}`);
+      showToast("success", `Order #${id} deleted successfully.`);
       fetchOrders();
     } catch (err) {
       console.error("Delete failed:", err);
+      showToast("error", "Failed to delete order.");
     }
   };
 
@@ -102,342 +92,311 @@ function AdminOrdersPage({ user }) {
     if (!editingOrder) return;
 
     try {
-      await api.put(
-        `/orders/${editingOrder.order_id || editingOrder.id}`,
-        { order_status: status }
-      );
+      await api.put(`/orders/${editingOrder.order_id || editingOrder.id}`, { order_status: status });
 
-      // Update local state immediately for better UX
       setOrders((prev) =>
         prev.map((order) => {
           const id = order.order_id || order.id;
           const editingId = editingOrder.order_id || editingOrder.id;
-
-          return id === editingId
-            ? { ...order, order_status: status }
-            : order;
+          return id === editingId ? { ...order, order_status: status } : order;
         })
       );
 
       setEditingOrder(null);
       setStatus("");
+      showToast("success", "Order status updated!");
     } catch (err) {
       console.error("Update failed:", err.response?.data || err.message);
+      showToast("error", "Failed to update order status.");
     }
   };
 
+  // Helper to open the edit modal
+  const openEditModal = (order) => {
+    setEditingOrder(order);
+    setStatus(order.order_status);
+  };
+
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return "https://via.placeholder.com/150?text=No+Image";
+    return `${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:8000'}${imagePath}`;
+  };
+
   return (
-    <div className="px-10 py-10">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="min-h-screen flex flex-col px-8 py-8 bg-white rounded-lg relative font-sans">
+      
+      {/* TOAST SYSTEM */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-[500] animate-in slide-in-from-right duration-300">
+          <div className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border backdrop-blur-md ${
+            toast.type === 'success' ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-rose-500 border-rose-400 text-white'
+          }`}>
+            {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <X className="w-5 h-5" />}
+            <span className="text-sm font-bold tracking-tight">{toast.message}</span>
+            <button onClick={() => setToast(null)} className="ml-2 opacity-70 hover:opacity-100 transition-opacity"><X className="w-4 h-4" /></button>
+          </div>
+        </div>
+      )}
+
+      {/* HEADER AREA */}
+      <div className="mb-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="text-3xl font-playfair font-bold text-gray-900 tracking-tight">Orders</h1>
+          <p className="mt-1.5 max-w-2xl text-sm font-medium text-gray-500">
+            Manage customer orders, track delivery statuses, and oversee transactions.
+          </p>
+        </div>
+
         <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-semibold text-black">Orders</h1>
-          {/* 3. Show a badge so staff knows they are in view-only mode */}
           {!canEdit && (
-            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
-              View-Only Mode
+            <span className="rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-blue-600 border border-blue-100">
+              View-Only Access
             </span>
           )}
         </div>
       </div>
 
-      <div className="space-y-6">
+      {/* MAIN TABLE CONTAINER */}
+      <div className="flex-1 rounded-[1.5rem] border border-gray-100 bg-white shadow-sm overflow-hidden flex flex-col">
         {loading ? (
-          <div className="text-gray-500">Loading orders...</div>
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-gray-400 py-40">
+             <Loader2 className="w-8 h-8 animate-spin text-[#4f6fa5]" />
+             <span className="text-xs font-bold uppercase tracking-widest">Loading Orders...</span>
+          </div>
         ) : orders.length === 0 ? (
-          <p className="py-6 text-center text-gray-400">No orders yet</p>
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-gray-400 py-40">
+             <PackageSearch className="w-10 h-10 opacity-20 mb-2" />
+             <span className="text-sm font-bold text-gray-500">No orders have been placed yet.</span>
+          </div>
         ) : (
-          <div className="rounded border p-6 shadow-sm bg-white">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-xl font-semibold text-gray-800">
-                Orders list
-              </h2>
-            </div>
-
+          <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="text-gray-500 text-sm uppercase border-b">
-                  <th className="pb-4">Order ID</th>
-                  <th className="pb-4">User</th>
-                  <th className="pb-4">Delivery</th>
-                  <th className="pb-4">Total</th>
-                  <th className="pb-4">Status</th>
-                  <th className="pb-4">Created Date</th>
-                  {/* Hide Actions column for staff */}
-                  {canEdit && <th className="pb-4">Actions</th>}
+                <tr className="border-b border-gray-50 bg-[#f8fafc]">
+                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap w-32">Order ID</th>
+                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Customer / User ID</th>
+                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Delivery</th>
+                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Date Placed</th>
+                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Status</th>
+                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Total</th>
+                  {canEdit && <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Actions</th>}
                 </tr>
               </thead>
-
-              <tbody className="text-sm text-gray-700">
-                {orders.map((order) => (
-                  <tr
-                    key={order.order_id || order.id}
-                    className="hover:bg-gray-50 border-b cursor-pointer transition"
-                    onClick={() => {
-                      setEditingOrder(order);
-                      setStatus(order.order_status);
-                    }}
-                  >
-                    <td className="py-5 font-medium">
-                      {order.order_id || order.id}
-                    </td>
-
-                    <td className="py-5">{order.user_id}</td>
-
-                    <td className="py-5 capitalize">
-                      {order.delivery_method}
-                    </td>
-
-                    <td className="py-5 text-[#3B5BDB] font-medium">
-                      ₱{order.total_amount}
-                    </td>
-
-                    <td className="py-5">
-                      <span
-                        className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                          order.order_status === "Pending"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : order.order_status === "Processing"
-                            ? "bg-blue-100 text-blue-700"
-                            : order.order_status === "Shipped"
-                            ? "bg-purple-100 text-purple-700"
-                            : order.order_status === "Delivered"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {order.order_status}
-                      </span>
-                    </td>
-
-                    <td className="py-5">
-                      {new Date(order.created_at).toLocaleDateString()}
-                    </td>
-
-                    {/* Hide Delete button for staff */}
-                    {canEdit && (
-                      <td className="py-5">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation(); // Prevents the modal from opening when clicking delete
-                            handleDelete(order.order_id || order.id);
-                          }}
-                          className="px-3 py-1 border rounded text-red-600 hover:bg-red-50 transition"
-                        >
-                          Delete
-                        </button>
+              <tbody className="divide-y divide-gray-50">
+                {orders.map((order) => {
+                  const orderId = order.order_id || order.id;
+                  return (
+                    <tr 
+                      key={orderId} 
+                      onClick={() => canEdit ? openEditModal(order) : setViewingOrder(order)}
+                      className="group hover:bg-slate-50/80 transition-colors cursor-pointer"
+                    >
+                      <td className="px-5 py-5">
+                        <span className="text-sm font-bold text-gray-900 whitespace-nowrap">#{orderId}</span>
                       </td>
-                    )}
-                  </tr>
-                ))}
+                      
+                      <td className="px-5 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-[#4f6fa5] font-bold shrink-0 text-xs">
+                            {order.user?.first_name ? order.user.first_name.charAt(0) : "U"}
+                          </div>
+                          {/* min-w-0 allows the text to truncate properly instead of stretching the table */}
+                          <div className="min-w-0 max-w-[180px] lg:max-w-[240px]">
+                            <p className="font-bold text-gray-900 tracking-tight truncate text-sm">
+                              {order.user?.first_name ? `${order.user.first_name} ${order.user.last_name}` : `User ID: ${order.user_id}`}
+                            </p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 truncate">
+                              {order.user?.email || "No Email provided"}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-5 py-5">
+                        <p className="text-sm font-semibold text-gray-700 capitalize whitespace-nowrap">{order.delivery_method}</p>
+                      </td>
+
+                      <td className="px-5 py-5">
+                        <p className="text-sm font-semibold text-gray-600 whitespace-nowrap">
+                          {new Date(order.created_at).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric'})}
+                        </p>
+                      </td>
+
+                      <td className="px-5 py-5">
+                        <OrderStatusPill status={order.order_status} />
+                      </td>
+
+                      <td className="px-5 py-5">
+                        <p className="text-sm font-bold text-[#4f6fa5] whitespace-nowrap">₱{order.total_amount}</p>
+                      </td>
+
+                      {canEdit && (
+                        <td className="px-5 py-5">
+                          <div className="flex items-center justify-end gap-2">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); openEditModal(order); }}
+                              className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white border-2 border-amber-500 hover:bg-transparent hover:text-amber-500 transition-all duration-300 shadow-sm"
+                            >
+                              <Pencil className="w-3.5 h-3.5" /> Edit
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleDelete(orderId); }}
+                              className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-xs font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-500 transition-all duration-300 shadow-sm"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Delete
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* --- ORDER DETAILS MODAL --- */}
-      {editingOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-[640px] max-h-[85vh] overflow-y-auto shadow-xl border border-gray-100">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">
-                Order Details
-              </h2>
-              {!canEdit && (
-                <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
-                  Read Only
-                </span>
+      {/* --- COMBINED ORDER DETAILS & EDIT MODAL --- */}
+      {(editingOrder || viewingOrder) && (() => {
+        const activeOrder = editingOrder || viewingOrder;
+        const isEditingMode = !!editingOrder;
+        const orderId = activeOrder.order_id || activeOrder.id;
+
+        return (
+          <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+            <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto">
+              
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5] mb-3 inline-block">
+                    Order #{orderId}
+                  </span>
+                  <h2 className="text-2xl font-playfair font-bold text-gray-900">
+                    {isEditingMode ? "Manage Order Status" : "Order Details"}
+                  </h2>
+                </div>
+                {!isEditingMode && (
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-gray-500">Read Only</span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                {/* Order Meta */}
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-1.5"><PackageSearch className="w-3.5 h-3.5"/> Overview</h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between"><span className="text-gray-500">Date Placed</span><span className="font-semibold text-gray-900">{new Date(activeOrder.created_at).toLocaleDateString()}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">Delivery</span><span className="font-semibold text-gray-900 capitalize">{activeOrder.delivery_method}</span></div>
+                    <div className="flex justify-between items-center"><span className="text-gray-500">Current Status</span><OrderStatusPill status={activeOrder.order_status} /></div>
+                  </div>
+                </div>
+
+                {/* Customer Meta */}
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5"/> Customer</h3>
+                  <div className="space-y-3 text-sm">
+                    <p className="font-semibold text-gray-900">{activeOrder.user?.first_name ? `${activeOrder.user.first_name} ${activeOrder.user.last_name}` : "Guest/Unknown"}</p>
+                    <p className="text-gray-600 truncate">{activeOrder.user?.email || "No email"}</p>
+                    <p className="text-gray-600">{activeOrder.user?.phone_number || "No phone"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Special Message Block */}
+              {activeOrder.special_message && (
+                <div className="mb-6 rounded-2xl border border-amber-100 bg-amber-50 p-5">
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-amber-600 mb-2">Included Card Message</h3>
+                  <p className="text-sm font-playfair italic text-gray-800">"{activeOrder.special_message}"</p>
+                </div>
               )}
-            </div>
 
-            {/* Order Info */}
-            <div className="mb-6 rounded-lg border p-4 bg-gray-50">
-              <h3 className="text-sm font-semibold text-gray-800 mb-2">Order Info</h3>
+              {/* Delivery Address Block */}
+              {activeOrder.address && (
+                 <div className="mb-6 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                   <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2 block">Delivery Address</h3>
+                   <p className="text-sm font-medium text-gray-700">{activeOrder.address}</p>
+                 </div>
+              )}
 
-              <div className="space-y-1 text-sm text-gray-700">
-                <p>
-                  <span className="font-medium">Order ID:</span>{" "}
-                  {editingOrder.order_id || editingOrder.id}
-                </p>
-
-                <p>
-                  <span className="font-medium">Order Date:</span>{" "}
-                  {editingOrder.created_at
-                    ? new Date(editingOrder.created_at).toLocaleString()
-                    : "N/A"}
-                </p>
-
-                <p>
-                  <span className="font-medium">Delivery Method:</span>{" "}
-                  {editingOrder.delivery_method}
-                </p>
-
-                {editingOrder.special_message && (
-                  <p>
-                    <span className="font-medium">Card Message:</span>{" "}
-                    {editingOrder.special_message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* User Info */}
-            <div className="mb-6 rounded-lg border p-4 bg-gray-50">
-              <h3 className="text-sm font-semibold text-gray-800 mb-2">Customer Info</h3>
-
-              <div className="space-y-1 text-sm text-gray-700">
-                <p>
-                  <span className="font-medium">Name:</span>{" "}
-                  {editingOrder.user?.first_name
-                    ? `${editingOrder.user.first_name} ${editingOrder.user.last_name}`
-                    : "N/A"}
-                </p>
-
-                <p>
-                  <span className="font-medium">Email:</span>{" "}
-                  {editingOrder.user?.email || "N/A"}
-                </p>
-
-                <p>
-                  <span className="font-medium">Phone:</span>{" "}
-                  {editingOrder.user?.phone_number || "N/A"}
-                </p>
-
-                {editingOrder.address && (
-                  <p>
-                    <span className="font-medium">Delivery Address:</span>{" "}
-                    {editingOrder.address}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Ordered Products */}
-            {editingOrder.order_items && editingOrder.order_items.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-sm font-semibold text-gray-800 mb-2">
-                  Product Info
-                </h3>
-
-                <div className="border rounded-lg divide-y bg-white">
-                  {editingOrder.order_items.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 text-sm gap-4 hover:bg-gray-50 transition">
-                      <div className="flex items-center gap-3">
-                        
-                        {/* Product Image */}
-                        {item.product?.image && (
-                          <img
-                            src={`${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:8000'}${item.product.image}`}
-                            alt={item.product?.name || item.product_name}
-                            className="w-12 h-12 object-cover rounded border"
-                          />
-                        )}
-
-                        <div>
-                          <p className="font-medium">
-                            {item.product?.name || item.product_name}
-                          </p>
-
-                          {/* Product ID */}
-                          {item.product_id && (
-                            <p className="text-xs text-gray-500">
-                              Product ID: {item.product_id}
-                            </p>
-                          )}
-
-                          {item.special_message && (
-                            <p className="text-xs text-gray-500">
-                              Message: {item.special_message}
-                            </p>
-                          )}
-
-                          <p className="text-xs text-gray-500">
-                            Quantity: {item.quantity}
-                          </p>
-
-                          <p className="text-xs text-gray-500">
-                            Subtotal: ₱{item.quantity * item.price_at_purchase}
-                          </p>
+              {/* Ordered Items List */}
+              {activeOrder.order_items && activeOrder.order_items.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 ml-1 block">Line Items</h3>
+                  <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm divide-y divide-gray-50">
+                    {activeOrder.order_items.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden shrink-0">
+                            {item.product?.image ? (
+                              <img src={getImageUrl(item.product.image)} alt={item.product?.name || item.product_name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold">Img</div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-gray-900 tracking-tight">{item.product?.name || item.product_name}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-0.5">Qty: {item.quantity} x ₱{item.price_at_purchase}</p>
+                            {item.special_message && <p className="text-xs text-amber-600 italic mt-1 font-playfair">Note: "{item.special_message}"</p>}
+                          </div>
+                        </div>
+                        <div className="text-right pl-4">
+                          <p className="text-sm font-bold text-[#4f6fa5]">₱{item.quantity * item.price_at_purchase}</p>
                         </div>
                       </div>
-
-                      <div className="text-right">
-                        <p className="font-medium text-[#3B5BDB]">
-                          ₱{item.price_at_purchase}
-                        </p>
-                      </div>
+                    ))}
+                    
+                    {/* Total Footer inside the list */}
+                    <div className="bg-gray-50 p-4 flex justify-between items-center">
+                      <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Order Total</span>
+                      <span className="text-lg font-bold text-gray-900">₱{activeOrder.total_amount}</span>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Order Total */}
-            <div className="mb-4 border-t pt-4 flex justify-between items-center">
-              <span className="text-sm font-semibold text-gray-700">Order Total</span>
-              <span className="text-lg font-bold text-[#3B5BDB]">
-                ₱{editingOrder.total_amount}
-              </span>
-            </div>
-
-            {/* 4. Conditional Rendering based on permissions */}
-            {canEdit ? (
-              <>
-                <p className="text-sm font-semibold text-gray-800 mb-2 border-t pt-4">
-                  Update Order Status
-                </p>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className={`w-full border rounded-lg px-3 py-2 mb-4 font-medium ${
-                    status === "Pending"
-                      ? "bg-yellow-50 text-yellow-700 border-yellow-200"
-                      : status === "Processing"
-                      ? "bg-blue-50 text-blue-700 border-blue-200"
-                      : status === "Shipped"
-                      ? "bg-purple-50 text-purple-700 border-purple-200"
-                      : status === "Delivered"
-                      ? "bg-green-50 text-green-700 border-green-200"
-                      : "bg-red-50 text-red-700 border-red-200"
-                  }`}
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Processing">Processing</option>
-                  <option value="Shipped">Shipped</option>
-                  <option value="Delivered">Delivered</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
-
-                <div className="flex justify-end gap-3 pt-2 border-t mt-4">
-                  <button
-                    onClick={() => setEditingOrder(null)}
-                    className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+              {/* Status Update Control (Only visible if Editing) */}
+              {isEditingMode && (
+                <div className="pt-2 border-t border-gray-100">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Update Fulfillment Status</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-900 focus:border-[#4f6fa5] focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all shadow-sm"
                   >
-                    Cancel
-                  </button>
+                    <option value="Pending">Pending (Awaiting review)</option>
+                    <option value="Processing">Processing (Arrangement being created)</option>
+                    <option value="Shipped">Shipped (Out for delivery)</option>
+                    <option value="Delivered">Delivered (Order fulfilled)</option>
+                    <option value="Cancelled">Cancelled (Order voided)</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Modal Actions */}
+              <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
+                <button
+                  onClick={() => { setEditingOrder(null); setViewingOrder(null); }}
+                  className="rounded-lg px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
+                >
+                  {isEditingMode ? "Cancel" : "Close Window"}
+                </button>
+                
+                {isEditingMode && (
                   <button
                     onClick={handleUpdateStatus}
-                    className="px-4 py-2 bg-[#3B5BDB] hover:bg-[#2f4ac7] transition text-white rounded-lg"
+                    className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
                   >
-                    Save Changes
+                    Save Status Changes
                   </button>
-                </div>
-              </>
-            ) : (
-              // View-Only Button for Staff
-              <div className="flex justify-end pt-4 border-t mt-4">
-                <button
-                  onClick={() => setEditingOrder(null)}
-                  className="px-6 py-2 bg-gray-100 text-gray-700 font-semibold border rounded-lg hover:bg-gray-200 transition"
-                >
-                  Close Details
-                </button>
+                )}
               </div>
-            )}
-            
+
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
     </div>
   );
 }

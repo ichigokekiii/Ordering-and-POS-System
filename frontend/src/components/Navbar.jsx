@@ -1,9 +1,9 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { Link, useNavigate } from "react-router-dom";
 import { User } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useNavbar } from "../contexts/NavbarContext";
 import { useContents } from "../contexts/ContentContext";
+import { useTheme } from "../contexts/ThemeContext";
 import CmsEditableRegion from "./admin/CmsEditableRegion";
 import {
   getCmsField,
@@ -14,6 +14,7 @@ import {
 function Navbar({ cmsPreview }) {
   const navigate = useNavigate();
   const { currentUser, logoutUser } = useNavbar();
+  const { isDarkMode, toggleTheme } = useTheme();
 
   const contentContext = useContents();
   const contents = contentContext?.contents || [];
@@ -28,31 +29,6 @@ function Navbar({ cmsPreview }) {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
-
-  // Theme state
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  useEffect(() => {
-    if (localStorage.getItem("theme") === "dark") {
-      setIsDarkMode(true);
-      document.documentElement.classList.add("dark");
-    } else {
-      setIsDarkMode(false);
-      document.documentElement.classList.remove("dark");
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    if (isDarkMode) {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-      setIsDarkMode(false);
-    } else {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-      setIsDarkMode(true);
-    }
-  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -85,8 +61,12 @@ function Navbar({ cmsPreview }) {
         cmsPreview?.enabled ? "relative z-30" : "sticky top-0 z-[120]"
       } w-full border-b border-gray-200 backdrop-blur-md`}
       style={{
-        backgroundColor: getContentValue("navbar_bg_color", "#ffffffee"),
-        backgroundImage: getContentValue("navbar_bg_image", "")
+        backgroundColor: isDarkMode
+          ? "rgba(8, 17, 31, 0.94)"
+          : getContentValue("navbar_bg_color", "#ffffffee"),
+        backgroundImage: isDarkMode
+          ? "none"
+          : getContentValue("navbar_bg_image", "")
           ? `url(${getCmsAssetUrl(getContentValue("navbar_bg_image"))})`
           : "none",
         backgroundSize: "cover",
@@ -105,7 +85,11 @@ function Navbar({ cmsPreview }) {
             className="inline-block"
           >
             <span
-              style={{ color: getContentValue("navbar_text_color", "#2563eb") }}
+              style={{
+                color: isDarkMode
+                  ? "#93c5fd"
+                  : getContentValue("navbar_text_color", "#2563eb"),
+              }}
             >
               {getContentValue("navbar_brand", "petal express")}
             </span>
@@ -119,7 +103,11 @@ function Navbar({ cmsPreview }) {
         >
           <ul
             className="flex items-center gap-8 text-sm"
-            style={{ color: getContentValue("navbar_text_color", "#374151") }}
+            style={{
+              color: isDarkMode
+                ? "#e2e8f0"
+                : getContentValue("navbar_text_color", "#374151"),
+            }}
           >
             <li className="hover:text-[#4f6fa5]">
               <Link to="/" onClick={preventPreviewNavigation}>

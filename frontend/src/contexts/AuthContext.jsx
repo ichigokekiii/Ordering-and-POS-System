@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useState, useEffect, useContext } from "react";
+import api from "../services/api"; // Make sure to import your api instance
 
 export const AuthContext = createContext();
 
@@ -32,14 +33,31 @@ export function AuthProvider({ children }) {
 
     setUser(normalizedUser);
     localStorage.setItem("user", JSON.stringify(normalizedUser));
+    
+    // Note: Ensure your login component is also doing localStorage.setItem("token", ...)
+    // after a successful login!
 
     window.dispatchEvent(new Event("userUpdated"));
   };
 
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-    window.dispatchEvent(new Event("userUpdated"));
+  // Changed to async to safely notify the backend before clearing storage
+  const handleLogout = async () => {
+    try {
+      // Securely invalidate the session/token on the backend
+      await api.post("/logout");
+    } catch (err) {
+      console.error("Server logout failed", err);
+    } finally {
+      // ALWAYS clear frontend state, even if the backend request fails
+      setUser(null);
+      localStorage.removeItem("user");
+      localStorage.removeItem("token"); // <-- THIS WAS THE MISSING PIECE!
+      
+      // Optional: Clear any stored cart data for security
+      window.sessionStorage.removeItem("staff-pos-cart"); 
+
+      window.dispatchEvent(new Event("userUpdated"));
+    }
   };
 
   return (

@@ -47,7 +47,7 @@ function AdminSchedulePage({ user }) {
     setStatusModal({ isOpen: true, type, message });
   };
 
-const handleImageChange = (e) => {
+  const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -119,6 +119,13 @@ const handleImageChange = (e) => {
       newErrors.schedule_description = ["This field is required"];
     } else if (htmlRegex.test(scheduleDescription)) {
       newErrors.schedule_description = ["Description cannot contain HTML tags."];
+    }
+
+    // Validate Image (Required on create, or if a size error is already present)
+    if (errors.image) {
+      newErrors.image = errors.image; // Preserve the 5MB / invalid type error
+    } else if (!editingSchedule && !image) {
+      newErrors.image = ["Cover image is required."];
     }
 
     // If there are errors, set them and stop submission
@@ -226,6 +233,11 @@ const handleImageChange = (e) => {
         </div>
 
         <div className="flex items-center gap-4">
+          {!canEdit && (
+            <span className="rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-blue-600 border border-blue-100">
+              View-Only Access
+            </span>
+          )}
           {canEdit && (
             <button
               onClick={() => {
@@ -557,7 +569,7 @@ const handleImageChange = (e) => {
                 </div>
               </div>
 
-<div className="pt-2 border-t border-gray-100">
+              <div className="pt-2 border-t border-gray-100">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Cover Image</label>
                 {editingSchedule?.image && !image && (
                   <div className="mb-3 h-24 w-full rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
@@ -568,19 +580,19 @@ const handleImageChange = (e) => {
                   type="file"
                   accept={ADMIN_IMAGE_ACCEPT}
                   onChange={handleImageChange}
-                  className="w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-4 file:py-2.5 file:text-xs file:font-bold file:text-gray-600 hover:file:bg-gray-200 transition-all cursor-pointer"
+                  className={`w-full text-sm file:mr-4 file:rounded-full file:border-0 ${errors.image ? 'file:bg-rose-100 file:text-rose-600' : 'file:bg-gray-100 file:text-gray-600'} file:px-4 file:py-2.5 file:text-xs file:font-bold hover:file:bg-gray-200 transition-all cursor-pointer`}
                 />
-                <p className="mt-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                  JPG, JPEG, PNG, or GIF only. Max 5MB.
-                </p>
-                {!image && editingSchedule && (
-                  <p className="mt-2 text-[10px] font-bold text-amber-500 uppercase tracking-wider">
-                    Note: Current image will be kept if no new file is chosen.
+                
+                {/* Inline Validation Error for Image */}
+                {errors.image && (
+                  <p className="text-rose-500 text-[10px] font-bold mt-2 uppercase tracking-wide">
+                    {errors.image[0]}
                   </p>
                 )}
-                {errors.image && (
-                  <p className="mt-2 text-xs text-rose-500">
-                    {errors.image[0]}
+
+                {!image && editingSchedule && !errors.image && (
+                  <p className="mt-2 text-[10px] font-bold text-amber-500 uppercase tracking-wider">
+                    Note: Current image will be kept if no new file is chosen.
                   </p>
                 )}
               </div>

@@ -66,9 +66,9 @@ const FieldError = ({ error }) =>
   error ? <p className="mt-1.5 text-[10px] font-bold text-rose-500 uppercase tracking-wide">{error}</p> : null;
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
-const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png|gif)$/i;
-const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,.gif,image/jpeg,image/png,image/gif";
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
+const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png)$/i;
+const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,image/jpeg,image/png";
 
 const asBoolean = (value) => value === 1 || value === true || value === "1";
 
@@ -221,7 +221,7 @@ function AdminProductPage({ user }) {
     const hasValidExtension = ALLOWED_IMAGE_NAME_REGEX.test(file.name || "");
 
     if (!hasValidMimeType || !hasValidExtension) {
-      setErrors(prev => ({ ...prev, image: "Only JPG, JPEG, PNG, and GIF files are allowed." }));
+      setErrors(prev => ({ ...prev, image: "Only JPG, JPEG, and PNG files are allowed." }));
       setImage(null);
       e.target.value = "";
       return;
@@ -827,7 +827,7 @@ function AdminProductPage({ user }) {
                     className="w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-gray-600 hover:file:bg-gray-200 transition-all cursor-pointer"
                   />
                   <p className="mt-2 text-[9px] font-bold text-gray-400 uppercase tracking-wider leading-tight">
-                    JPG, JPEG, PNG, or GIF only. Max 5MB.
+                    JPG, JPEG, or PNG only. Max 5MB.
                   </p>
                   {!image && isEditing && (
                     <p className="mt-2 text-[9px] font-bold text-amber-500 uppercase tracking-wider leading-tight">

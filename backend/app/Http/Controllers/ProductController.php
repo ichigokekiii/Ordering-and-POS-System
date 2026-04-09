@@ -19,7 +19,7 @@ class ProductController extends Controller
     {
         $request->validate([
             'name'                  => 'required|string',
-            'image'                 => 'required|image|mimes:jpg,jpeg,png,gif|max:5120',
+            'image'                 => 'required|image|mimes:jpg,jpeg,png|max:5120',
             'description'           => 'required|string',
             'category'              => 'required|string',
             'type'                  => 'nullable|string',
@@ -29,7 +29,7 @@ class ProductController extends Controller
             'required_main_count'   => 'nullable|integer|min:0',
             'required_filler_count' => 'nullable|integer|min:0',
         ], [
-            'image.mimes' => 'Only JPG, JPEG, PNG, and GIF files are allowed.',
+            'image.mimes' => 'Only JPG, JPEG, and PNG files are allowed.',
             'image.max' => 'Image must be 5MB or smaller.',
         ]);
 
@@ -69,7 +69,7 @@ class ProductController extends Controller
     {
         $request->validate([
             'name'                  => 'sometimes|required|string',
-            'image'                 => 'sometimes|image|mimes:jpg,jpeg,png,gif|max:5120',
+            'image'                 => 'sometimes|image|mimes:jpg,jpeg,png|max:5120',
             'description'           => 'sometimes|required|string',
             'category'              => 'sometimes|required|string',
             'type'                  => 'nullable|string',
@@ -79,7 +79,7 @@ class ProductController extends Controller
             'required_main_count'   => 'nullable|integer|min:0',
             'required_filler_count' => 'nullable|integer|min:0',
         ], [
-            'image.mimes' => 'Only JPG, JPEG, PNG, and GIF files are allowed.',
+            'image.mimes' => 'Only JPG, JPEG, and PNG files are allowed.',
             'image.max' => 'Image must be 5MB or smaller.',
         ]);
 

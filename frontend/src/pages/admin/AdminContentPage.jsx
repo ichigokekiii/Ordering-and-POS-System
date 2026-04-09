@@ -18,9 +18,9 @@ import {
 } from "../../utils/adminAccess";
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
-const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png|gif)$/i;
-const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,.gif,image/jpeg,image/png,image/gif";
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
+const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png)$/i;
+const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,image/jpeg,image/png";
 
 // ISOLATED PREVIEWS
 function PreviewScene({ activePage, cmsPreview }) {
@@ -517,7 +517,7 @@ function AdminContentPage({ user }) {
                   const hasValidExtension = ALLOWED_IMAGE_NAME_REGEX.test(imageFile.name || "");
 
                   if (!hasValidMimeType || !hasValidExtension) {
-                    showModalAlert("error", "Only JPG, JPEG, PNG, and GIF files are allowed.");
+                    showModalAlert("error", "Only JPG, JPEG, and PNG files are allowed.");
                     return;
                   }
 
@@ -576,7 +576,7 @@ function AdminContentPage({ user }) {
                   <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Upload New Image</label>
                   <input type="file" name="content_image" disabled={!canManageContent} className="w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-gray-700 hover:file:bg-gray-200 transition-all disabled:cursor-not-allowed disabled:opacity-60" accept={ADMIN_IMAGE_ACCEPT} />
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                    JPG, JPEG, PNG, or GIF only. Max 5MB.
+                    {editingContent ? "Optional on edit. JPG, JPEG, or PNG only. Max 5MB." : "Required for new image content. JPG, JPEG, or PNG only. Max 5MB."}
                   </p>
                 </div>
               )}

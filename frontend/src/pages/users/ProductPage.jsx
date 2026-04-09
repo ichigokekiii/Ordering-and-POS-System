@@ -69,7 +69,7 @@ function ProductPage({ cmsPreview }) {
   return (
     <div className="bg-[#fcfaf9] text-gray-900 min-h-screen font-sans pb-24">
       
-      {/* 1. HERO HEADER (UPDATED WITH BLURRED IMAGE) */}
+      {/* 1. HERO HEADER */}
       <section className="relative isolate overflow-hidden border-b border-gray-100 pt-20 pb-16">
         <CmsEditableRegion
           cmsPreview={cmsPreview}
@@ -78,14 +78,14 @@ function ProductPage({ cmsPreview }) {
           overlayClassName="rounded-none"
         >
           <div className="absolute inset-0">
-             {/* The image itself is blurred and scaled up slightly to prevent white edges */}
-            <img
-              src={heroImage}
-              alt="Showcase hero background"
-              className="h-full w-full object-cover blur-sm scale-105"
-            />
-             {/* A gradient overlay helps text readability while letting the color bleed through */}
-            <div className="absolute inset-0 bg-white/70" />
+             {/* Keep the image softly blurred without washing out its colors */}
+             <img
+               src={heroImage}
+               alt="Showcase hero background"
+              className="h-full w-full object-cover blur-[1px] scale-[1.02]"
+             />
+             {/* A light veil keeps text readable without turning the image white */}
+            <div className="absolute inset-0 bg-white/25" />
           </div>
         </CmsEditableRegion>
 
@@ -101,7 +101,7 @@ function ProductPage({ cmsPreview }) {
                 {getContentValue("products_hero_label", "The Collection")}
               </p>
             </CmsEditableRegion>
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-playfair font-bold text-gray-900 leading-[1.05] drop-shadow-sm">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-playfair font-bold text-[#111827] leading-[1.05] drop-shadow-sm">
               <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("products", "products_hero_title_intro")} className="inline-block w-fit pointer-events-auto">
                 <span>{getContentValue("products_hero_title_intro", "Blooms for")}</span>
               </CmsEditableRegion>
@@ -113,7 +113,7 @@ function ProductPage({ cmsPreview }) {
               </CmsEditableRegion>
             </h1>
             <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("products", "products_hero_description")} className="mt-8 inline-block max-w-lg pointer-events-auto">
-              <p className="text-gray-800 font-medium leading-relaxed text-base md:text-lg drop-shadow-sm">
+              <p className="text-[#1f2937] font-medium leading-relaxed text-base md:text-lg drop-shadow-sm">
                 {getContentValue("products_hero_description", "Discover our carefully curated selection of fresh, sustainably sourced floral arrangements designed for you!")}
               </p>
             </CmsEditableRegion>

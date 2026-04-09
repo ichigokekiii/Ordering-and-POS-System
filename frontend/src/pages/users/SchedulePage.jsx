@@ -236,7 +236,7 @@ const getOrderLabel = (schedule) => {
   return (
     <div className="bg-[#fcfaf9] text-gray-900 min-h-screen font-sans pb-24">
       
-       {/* 1. HERO HEADER (UPDATED WITH BLURRED IMAGE) */}
+       {/* 1. HERO HEADER */}
       <section className="relative isolate overflow-hidden border-b border-gray-100 pt-20 pb-16">
         <CmsEditableRegion
           cmsPreview={cmsPreview}
@@ -245,14 +245,14 @@ const getOrderLabel = (schedule) => {
           overlayClassName="rounded-none"
         >
           <div className="absolute inset-0">
-            {/* The image itself is now blurred and scaled up slightly to prevent white edges */}
+            {/* Keep the image softly blurred without washing out its colors */}
             <img
               src={heroImage}
               alt="Schedule hero background"
-              className="h-full w-full object-cover blur-sm scale-105"
+              className="h-full w-full object-cover blur-[1px] scale-[1.02]"
             />
-            {/* A gradient overlay helps text readability while letting the color bleed through */}
-            <div className="absolute inset-0 bg-white/70" />
+            {/* A light veil keeps text readable without turning the image white */}
+            <div className="absolute inset-0 bg-white/25" />
           </div>
         </CmsEditableRegion>
 
@@ -268,7 +268,7 @@ const getOrderLabel = (schedule) => {
                 {getContentValue("schedule_hero_label", "Pop-up Experience")}
               </p>
             </CmsEditableRegion>
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-playfair font-bold text-gray-900 leading-[1.05] drop-shadow-sm">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-playfair font-bold text-[#111827] leading-[1.05] drop-shadow-sm">
               <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("schedule", "schedule_hero_title_intro")} className="inline-block w-fit pointer-events-auto">
                 <span>{getContentValue("schedule_hero_title_intro", "Experience the")}</span>
               </CmsEditableRegion>
@@ -280,7 +280,7 @@ const getOrderLabel = (schedule) => {
               </CmsEditableRegion>
             </h1>
             <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("schedule", "schedule_hero_description")} className="mt-8 inline-block max-w-lg pointer-events-auto">
-              <p className="text-gray-800 font-medium leading-relaxed text-base md:text-lg drop-shadow-sm">
+              <p className="text-[#1f2937] font-medium leading-relaxed text-base md:text-lg drop-shadow-sm">
                 {getContentValue("schedule_hero_description", "Check out our latest pop-up schedules and live events. Find an experience near you and reserve your spot!")}
               </p>
             </CmsEditableRegion>

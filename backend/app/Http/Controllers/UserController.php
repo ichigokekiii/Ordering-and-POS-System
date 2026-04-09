@@ -14,6 +14,12 @@ use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
+    private function canViewUsers(): bool
+    {
+        return Auth::check()
+            && in_array(Auth::user()->role, ['admin', 'owner', 'staff'], true);
+    }
+
     private function normalizeUserInput(Request $request): void
     {
         $normalizedInput = [];
@@ -42,8 +48,8 @@ class UserController extends Controller
     // Get all users
     public function index()
     {
-        // Only admin and owner can view users
-        if (!Auth::check() || !in_array(Auth::user()->role, ['admin', 'owner'])) {
+        // Staff keep read-only access here; mutating routes remain admin-only.
+        if (!$this->canViewUsers()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -168,8 +174,7 @@ public function store(Request $request)
     // Get one user
     public function show($id)
     {
-        // Only admin and owner can view user details
-        if (!Auth::check() || !in_array(Auth::user()->role, ['admin', 'owner'])) {
+        if (!$this->canViewUsers()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 

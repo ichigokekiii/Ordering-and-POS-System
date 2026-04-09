@@ -17,7 +17,8 @@ import {
   X,
   Loader2,
   PackageSearch,
-  MapPin
+  MapPin,
+  CreditCard
 } from "lucide-react";
 
 // --- REUSABLE PILLS ---
@@ -69,6 +70,7 @@ function AdminOrdersPage({ user }) {
 
   const [viewingOrder, setViewingOrder] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
+  const [viewingPayment, setViewingPayment] = useState(null);
   const [status, setStatus] = useState("");
 
   const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', message: '' });
@@ -536,6 +538,25 @@ function AdminOrdersPage({ user }) {
                 </div>
               )}
 
+              {/* VIEW PAYMENT BUTTON */}
+              {activeOrder.payment && (
+                <button
+                  onClick={() => setViewingPayment(activeOrder.payment)}
+                  className="mb-6 w-full flex items-center justify-between rounded-2xl border border-[#4f6fa5]/20 bg-[#eaf2ff] px-5 py-4 hover:bg-[#dceeff] transition-colors group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-[#4f6fa5]/10 flex items-center justify-center">
+                      <CreditCard className="w-4 h-4 text-[#4f6fa5]" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs font-bold uppercase tracking-widest text-[#4f6fa5]">Payment Record</p>
+                    </div>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-[#4f6fa5] -rotate-90 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              )}
+
+
               {activeOrder.order_items && activeOrder.order_items.length > 0 && (
                 <div className="mb-8">
                   <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 ml-1 block">Line Items</h3>
@@ -610,6 +631,84 @@ function AdminOrdersPage({ user }) {
           </div>
         );
       })()}
+
+      {/* PAYMENT DETAILS MODAL */}
+{viewingPayment && (
+  <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[500] p-4">
+    <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+      
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5] mb-3 inline-block">
+            {viewingPayment.payment_id}
+          </span>
+          <h2 className="text-2xl font-playfair font-bold text-gray-900">Payment Details</h2>
+        </div>
+        <button
+          onClick={() => setViewingPayment(null)}
+          className="rounded-full p-2 hover:bg-gray-100 transition-colors text-gray-400"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Payment Info */}
+      <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5 mb-6 space-y-3 text-sm">
+        <div className="flex justify-between">
+          <span className="text-gray-500 font-medium">Payment Method</span>
+          <span className="font-bold text-gray-900 capitalize">{viewingPayment.payment_method}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500 font-medium">Reference Number</span>
+          <span className="font-bold text-gray-900 font-mono tracking-wider">{viewingPayment.reference_number}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500 font-medium">Payment Date</span>
+          <span className="font-bold text-gray-900">
+            {new Date(viewingPayment.payment_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </span>
+        </div>
+        
+        {viewingPayment.confirmed_by && (
+          <div className="flex justify-between">
+            <span className="text-gray-500 font-medium">Confirmed By</span>
+            <span className="font-bold text-gray-900">User #{viewingPayment.confirmed_by}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Reference Image */}
+      {viewingPayment.reference_image_path && (
+        <div>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Proof of Payment</h3>
+          <div className="rounded-2xl border border-gray-100 overflow-hidden bg-gray-50 shadow-sm">
+            <img
+              src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8000'}${viewingPayment.reference_image_path}`}
+              alt="Payment reference"
+              className="w-full object-contain max-h-72"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+            <div className="hidden items-center justify-center h-32 text-gray-400 text-sm font-semibold">
+              Image could not be loaded
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-end mt-8 pt-4 border-t border-gray-100">
+        <button
+          onClick={() => setViewingPayment(null)}
+          className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* CONFIRM DELETE MODAL */}
       {deleteConfirm.isOpen && (

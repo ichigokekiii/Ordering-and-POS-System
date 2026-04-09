@@ -51,6 +51,8 @@ function CheckoutPage() {
   // Payment inputs
   const [paymentMethod, setPaymentMethod] = useState("");
   const [referenceCode, setReferenceCode] = useState("");
+  const [isManualPayment, setIsManualPayment] = useState(false);
+const [manualPaymentMethod, setManualPaymentMethod] = useState("");
 
   // Validation errors
   const [errors, setErrors] = useState({ image: "", terms: "" });
@@ -489,34 +491,111 @@ function CheckoutPage() {
                 </div>
 
                 <div>
-                  <div className="flex justify-between mb-2">
-                    <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400">Payment Method *</label>
-                  </div>
-                  <div className="relative">
-                    <select
-                      value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className={`w-full appearance-none rounded-xl border px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-1 ${
-                        errors.paymentMethod
-                          ? "border-red-400 focus:border-red-400 focus:ring-red-400"
-                          : "border-gray-200 bg-white focus:border-[#4f6fa5] focus:ring-[#4f6fa5]"
-                      } ${!paymentMethod ? "text-gray-400" : "text-gray-700"}`}
-                    >
-                      <option value="" disabled>Select Provider</option>
-                      <option value="GCash">GCash</option>
-                      <option value="Maya">Maya</option>
-                      <option value="BPI">BPI</option>
-                      <option value="BDO">BDO</option>
-                      <option value="Other">Other Bank Transfer</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
-                  {errors.paymentMethod && <p className="mt-1 text-xs text-red-500 font-semibold">{errors.paymentMethod}</p>}
-                </div>
+  <div className="flex justify-between mb-2">
+    <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400">Payment Method *</label>
+    <button
+      type="button"
+      onClick={() => {
+        setIsManualPayment(prev => !prev);
+        setPaymentMethod("");
+        setManualPaymentMethod("");
+        setErrors(prev => ({ ...prev, paymentMethod: "" }));
+      }}
+      className="text-[10px] text-[#4f6fa5] font-bold uppercase tracking-widest hover:underline transition"
+    >
+      {isManualPayment ? "← Use dropdown instead" : "Type manually instead"}
+    </button>
+  </div>
+
+  {!isManualPayment ? (
+    <div className="relative">
+      <select
+        value={paymentMethod}
+        onChange={(e) => {
+          const val = e.target.value;
+          if (val === "Other") {
+            setIsManualPayment(true);
+            setPaymentMethod("");
+          } else {
+            setPaymentMethod(val);
+          }
+          setErrors(prev => ({ ...prev, paymentMethod: "" }));
+        }}
+        className={`w-full appearance-none rounded-xl border px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-1 ${
+          errors.paymentMethod
+            ? "border-red-400 focus:border-red-400 focus:ring-red-400"
+            : "border-gray-200 bg-white focus:border-[#4f6fa5] focus:ring-[#4f6fa5]"
+        } ${!paymentMethod ? "text-gray-400" : "text-gray-700"}`}
+      >
+        <option value="" disabled>Select Provider</option>
+
+        <optgroup label="E-Wallets">
+          <option value="GCash">GCash</option>
+          <option value="Maya">Maya (PayMaya)</option>
+          <option value="ShopeePay">ShopeePay</option>
+          <option value="GrabPay">GrabPay</option>
+        </optgroup>
+
+        <optgroup label="Universal Banks">
+          <option value="BPI">BPI (Bank of the Philippine Islands)</option>
+          <option value="BDO">BDO (Banco de Oro)</option>
+          <option value="Metrobank">Metrobank</option>
+          <option value="UnionBank">UnionBank</option>
+          <option value="PNB">PNB (Philippine National Bank)</option>
+          <option value="Security Bank">Security Bank</option>
+          <option value="RCBC">RCBC</option>
+          <option value="Chinabank">China Bank</option>
+          <option value="EastWest Bank">EastWest Bank</option>
+          <option value="PSBank">PSBank</option>
+        </optgroup>
+
+        <optgroup label="Rural & Digital Banks">
+          <option value="Tonik">Tonik Bank</option>
+          <option value="GoTyme">GoTyme Bank</option>
+          <option value="SeaBank">SeaBank</option>
+          <option value="CIMB">CIMB Bank</option>
+          <option value="Landbank">Landbank</option>
+          <option value="DBP">DBP (Development Bank of the Philippines)</option>
+        </optgroup>
+
+        <optgroup label="Other">
+          <option value="Other">Other — type manually →</option>
+        </optgroup>
+      </select>
+      <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+    </div>
+  ) : (
+    <div>
+      <input
+        type="text"
+        value={manualPaymentMethod}
+        onChange={(e) => {
+          setManualPaymentMethod(e.target.value);
+          setPaymentMethod(e.target.value);
+          setErrors(prev => ({ ...prev, paymentMethod: "" }));
+        }}
+        placeholder="e.g. Palawan Express, Cebuana, etc."
+        maxLength={50}
+        className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-1 ${
+          errors.paymentMethod
+            ? "border-red-400 focus:border-red-400 focus:ring-red-400"
+            : "border-gray-200 bg-white focus:border-[#4f6fa5] focus:ring-[#4f6fa5]"
+        }`}
+      />
+      <p className="mt-1.5 text-[10px] text-gray-400 font-medium">
+        Type your bank, remittance center, or payment provider name.
+      </p>
+    </div>
+  )}
+
+  {errors.paymentMethod && (
+    <p className="mt-1 text-xs text-red-500 font-semibold">{errors.paymentMethod}</p>
+  )}
+</div>
 
                 <div>
                   <div className="flex justify-between mb-2">

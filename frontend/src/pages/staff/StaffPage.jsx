@@ -532,19 +532,6 @@ function StaffPage({ children, customCategories }) {
         onLogout={handleLogout}
       />
 
-      {/* FLOATING LOGOUT BUTTON (If sidebar is closed) */}
-      <button
-        onClick={handleLogout}
-        className={`fixed bottom-6 left-6 z-[40] flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-sm transition-all duration-300 shadow-lg active:scale-95 ${
-          dm
-            ? "bg-gray-800 text-rose-400 hover:bg-gray-700 border border-gray-700 hover:border-rose-500/50 shadow-black/20"
-            : "bg-white text-rose-500 border border-gray-200 hover:bg-rose-50 hover:border-rose-200 shadow-gray-200/50"
-        } ${isSidebarOpen ? "translate-x-64 opacity-0 pointer-events-none" : "translate-x-0 opacity-100"}`}
-      >
-        <LogOut className="w-4 h-4" />
-        Log Out
-      </button>
-
       {/* LEFT SIDE (BUILDER) */}
       {/* DYNAMIC CONTENT (Premade / Custom) */}
       <div className={`flex-1 flex flex-col overflow-hidden min-h-0 transition-[margin] duration-200 ease-out ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>

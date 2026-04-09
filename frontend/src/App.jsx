@@ -14,7 +14,7 @@ import AdminLayout from "./components/AdminLayout";
 import Footer from "./components/Footer";
 import OrderLayout from "./components/OrderLayout";
 import AdminQuickActions from "./components/AdminQuickActions";
-import { hasAdminDashboardAccess } from "./utils/adminAccess";
+import { getPostLoginPath, hasAdminDashboardAccess } from "./utils/adminAccess";
 
 // USER PAGES
 import LandingPage from "./pages/users/LandingPage";
@@ -57,14 +57,13 @@ function App() {
   useEffect(() => {
     if (!user || didHandleInitialRoleRedirect.current) return;
 
-    if ((user.role === "admin" || user.role === "owner") && location.pathname === "/") {
-      navigate("/admin");
-      didHandleInitialRoleRedirect.current = true;
-      return;
-    }
+    if (location.pathname === "/") {
+      const postLoginPath = getPostLoginPath(user);
 
-    if (user.role === "staff" && location.pathname === "/") {
-      navigate("/admin");
+      if (postLoginPath !== "/") {
+        navigate(postLoginPath);
+      }
+
       didHandleInitialRoleRedirect.current = true;
       return;
     }

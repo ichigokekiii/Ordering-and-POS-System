@@ -114,12 +114,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
     // ====================================================================
-    // STAFF "READ-ONLY" ADMIN ACCESS
-    // Staff are allowed to view this data, but the modifying routes 
-    // are safely locked in the admin group below.
+    // STAFF ADMIN ACCESS
+    // Staff can view admin data and update order progress. Other
+    // modifying routes stay locked in the admin group below.
     // ====================================================================
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{id}', [OrderController::class, 'show']);
+    Route::put('/orders/{id}', [OrderController::class, 'update']);
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/{id}', [UserController::class, 'show']);
     Route::get('/logs', [LogController::class, 'index']);
@@ -139,8 +140,7 @@ Route::middleware('auth:sanctum')->group(function () {
 */
 Route::middleware(['auth:sanctum', 'admin.owner'])->group(function () {
 
-    // Admin Order Management (Only updating and deleting)
-    Route::put('/orders/{id}', [OrderController::class, 'update']);
+    // Admin Order Management
     Route::delete('/orders/{id}', [OrderController::class, 'destroy']);
 
     // Product & Schedule Management (Create, Update, Delete)

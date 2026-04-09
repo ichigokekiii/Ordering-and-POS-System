@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class PosItem extends Model
 {
-    protected $fillable = ['pos_id', 'product_id', 'catalog_product_id', 'product_name', 'price', 'quantity'];
+    protected $fillable = ['pos_id', 'product_id', 'source_product_id', 'product_name', 'price', 'quantity'];
 
     public function transaction()
     {
@@ -15,6 +15,6 @@ class PosItem extends Model
 
     public function product()
     {
-        return $this->belongsTo(Products::class, 'catalog_product_id');
+        return $this->belongsTo(Products::class, 'source_product_id');
     }
 }

@@ -102,6 +102,10 @@
     background-color: #111c33 !important;
   }
 
+  .dark .bg-gray-50\/70 {
+    background-color: rgba(17, 28, 51, 0.74) !important;
+  }
+
   .dark .bg-gray-100 {
     background-color: #182338 !important;
   }
@@ -276,6 +280,10 @@
 
   .dark .bg-red-50 {
     background-color: rgba(127, 29, 29, 0.22) !important;
+  }
+
+  .dark .bg-red-50\/70 {
+    background-color: rgba(127, 29, 29, 0.28) !important;
   }
 
   .dark .border-red-200 {

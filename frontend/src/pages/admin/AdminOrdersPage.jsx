@@ -88,7 +88,9 @@ function AdminOrdersPage({ user }) {
   const sortRef = useRef(null);
   const filterRef = useRef(null);
 
-  const canEdit = user?.role === "admin" || user?.role === "owner";
+  const userRole = (user?.role || "").toLowerCase();
+  const canUpdateOrderStatus = ["admin", "owner", "staff"].includes(userRole);
+  const canDeleteOrders = userRole === "admin" || userRole === "owner";
 
   const showModalAlert = (type, message) => setStatusModal({ isOpen: true, type, message });
 
@@ -375,7 +377,7 @@ function AdminOrdersPage({ user }) {
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Date Placed</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Status</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap text-right">Total</th>
-                  {canEdit && <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Actions</th>}
+                  {(canUpdateOrderStatus || canDeleteOrders) && <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -386,7 +388,7 @@ function AdminOrdersPage({ user }) {
                   return (
                     <tr
                       key={orderId}
-                      onClick={() => canEdit ? openEditModal(order) : setViewingOrder(order)}
+                      onClick={() => canUpdateOrderStatus ? openEditModal(order) : setViewingOrder(order)}
                       className="group hover:bg-slate-50/80 transition-colors cursor-pointer relative"
                     >
                       {/* Priority Edge Accent Bar */}
@@ -451,21 +453,25 @@ function AdminOrdersPage({ user }) {
                       </td>
 
                       {/* Actions */}
-                      {canEdit && (
+                      {(canUpdateOrderStatus || canDeleteOrders) && (
                         <td className="px-5 py-5">
                           <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); openEditModal(order); }}
-                              className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white border-2 border-amber-500 hover:bg-transparent hover:text-amber-500 transition-all duration-300 shadow-sm"
-                            >
-                              <Pencil className="w-3.5 h-3.5" /> Edit
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); promptDelete(orderId); }}
-                              className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-xs font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-500 transition-all duration-300 shadow-sm"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" /> Delete
-                            </button>
+                            {canUpdateOrderStatus && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); openEditModal(order); }}
+                                className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white border-2 border-amber-500 hover:bg-transparent hover:text-amber-500 transition-all duration-300 shadow-sm"
+                              >
+                                <Pencil className="w-3.5 h-3.5" /> Status
+                              </button>
+                            )}
+                            {canDeleteOrders && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); promptDelete(orderId); }}
+                                className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-xs font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-500 transition-all duration-300 shadow-sm"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" /> Delete
+                              </button>
+                            )}
                           </div>
                         </td>
                       )}

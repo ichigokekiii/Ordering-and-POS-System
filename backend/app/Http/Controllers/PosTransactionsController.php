@@ -29,7 +29,7 @@ class PosTransactionsController extends Controller
 
                     $posTransaction->items()->create([
                         'product_id' => $productId,
-                        'catalog_product_id' => ProductService::resolveCatalogId($productId, $productName),
+                        'source_product_id' => ProductService::resolveCatalogId($productId, $productName),
                         'product_name' => $productName,
                         'price' => $item['price'] ?? 0,
                         'quantity' => $item['qty'] ?? $item['quantity'] ?? 0,
@@ -84,7 +84,7 @@ class PosTransactionsController extends Controller
             $productGroupExpression = "COALESCE(NULLIF(products.type, ''), NULLIF(products.category, ''), pos_items.product_name)";
 
             $salesByType = PosTransactions::join('pos_items', 'pos_transactions.id', '=', 'pos_items.pos_id')
-                ->leftJoin('products', 'pos_items.catalog_product_id', '=', 'products.id')
+                ->leftJoin('products', 'pos_items.source_product_id', '=', 'products.id')
                 ->select(
                     DB::raw($productGroupExpression . ' as product_group'),
                     DB::raw('SUM(pos_items.price * pos_items.quantity) as total_sales')

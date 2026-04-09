@@ -202,6 +202,10 @@ class OrderController extends Controller
     public function update(Request $request, $id)
     {
         try {
+            if (!in_array(strtolower((string) optional($request->user())->role), ['admin', 'owner', 'staff'], true)) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
             $request->validate([
                 'order_status' => 'nullable|string',
                 'status'       => 'nullable|string'

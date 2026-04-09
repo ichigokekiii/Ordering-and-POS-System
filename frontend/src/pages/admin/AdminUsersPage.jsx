@@ -19,6 +19,52 @@ import {
   Pencil
 } from "lucide-react";
 import api from "../../services/api";
+import { canManageUsersAdmin } from "../../utils/adminAccess";
+import TermsAndConditionsModal from "../../components/TermsAndConditionsModal";
+import TermsConsentField from "../../components/TermsConsentField";
+import { resolveTermsScopeFromRole } from "../../utils/termsAndConditions";
+
+const NAME_MAX_LENGTH = 50;
+const EMAIL_MAX_LENGTH = 255;
+const PHONE_MAX_LENGTH = 11;
+const PASSWORD_MIN_LENGTH = 6;
+const NAME_PATTERN = /^[A-Za-z]+(?:[A-Za-z\s'-]*[A-Za-z])?$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const sanitizePhoneNumber = (value) => value.replace(/\D/g, "").slice(0, PHONE_MAX_LENGTH);
+const limitTextLength = (value, maxLength) => value.slice(0, maxLength);
+
+const validateNameField = (value, label) => {
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) return `${label} is required`;
+  if (normalizedValue.length < 2 || normalizedValue.length > NAME_MAX_LENGTH) {
+    return `${label} must be between 2 and ${NAME_MAX_LENGTH} characters`;
+  }
+  if (!NAME_PATTERN.test(normalizedValue)) {
+    return `${label} can only contain letters, spaces, apostrophes, and hyphens`;
+  }
+
+  return "";
+};
+
+const validateEmailField = (value) => {
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) return "Email address is required";
+  if (normalizedValue.length > EMAIL_MAX_LENGTH) {
+    return `Email address must not exceed ${EMAIL_MAX_LENGTH} characters`;
+  }
+  if (!EMAIL_PATTERN.test(normalizedValue)) {
+    return "Please enter a valid email address";
+  }
+
+  return "";
+};
+
+const validatePhoneNumber = (value) => (
+  /^\d{11}$/.test(value.trim()) ? "" : "Phone number must be exactly 11 digits"
+);
 
 function AdminUsersPage({ user }) {
   const [users, setUsers] = useState([]);
@@ -34,13 +80,21 @@ function AdminUsersPage({ user }) {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newUser, setNewUser] = useState({
-    first_name: "", last_name: "", email: "", password: "", phone_number: "", role: "customer",
+    first_name: "", last_name: "", email: "", password: "", confirmPassword: "", phone_number: "", role: "customer",
   });
+  const [showCreateTerms, setShowCreateTerms] = useState(false);
+  const [createTermsAcknowledged, setCreateTermsAcknowledged] = useState(false);
+  const [createTermsAccepted, setCreateTermsAccepted] = useState(false);
+  const [createTermsError, setCreateTermsError] = useState("");
 
   const dropdownRef = useRef(null);
   const sortRef = useRef(null);
 
-  const canManageUsers = user?.role === "admin";
+  const canManageUsers = canManageUsersAdmin(user);
+  const createTermsScope = useMemo(
+    () => resolveTermsScopeFromRole(user?.role),
+    [user?.role]
+  );
 
   const [selectedUser, setSelectedUser] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -70,9 +124,73 @@ function AdminUsersPage({ user }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    setCreateTermsAcknowledged(false);
+    setCreateTermsAccepted(false);
+    setCreateTermsError("");
+  }, [createTermsScope]);
+
   // Helper to trigger status modal
   const showModalAlert = (type, message) => {
     setStatusModal({ isOpen: true, type, message });
+  };
+
+  const resetCreateForm = () => {
+    setNewUser({
+      first_name: "",
+      last_name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      phone_number: "",
+      role: "customer",
+    });
+    setCreateTermsAcknowledged(false);
+    setCreateTermsAccepted(false);
+    setCreateTermsError("");
+  };
+
+  const handleNewUserFieldChange = (field, value) => {
+    let nextValue = value;
+
+    if (field === "first_name" || field === "last_name") {
+      nextValue = limitTextLength(value, NAME_MAX_LENGTH);
+    }
+
+    if (field === "email") {
+      nextValue = limitTextLength(value, EMAIL_MAX_LENGTH);
+    }
+
+    if (field === "phone_number") {
+      nextValue = sanitizePhoneNumber(value);
+    }
+
+    setNewUser((prev) => ({ ...prev, [field]: nextValue }));
+  };
+
+  const handleEditFieldChange = (field, value) => {
+    let nextValue = value;
+
+    if (field === "first_name" || field === "last_name") {
+      nextValue = limitTextLength(value, NAME_MAX_LENGTH);
+    }
+
+    if (field === "email") {
+      nextValue = limitTextLength(value, EMAIL_MAX_LENGTH);
+      setEmailOtp("");
+      setEmailOtpSent(false);
+    }
+
+    if (field === "phone_number") {
+      nextValue = sanitizePhoneNumber(value);
+    }
+
+    if (field === "password") {
+      setPasswordOtp("");
+      setPasswordOtpSent(false);
+    }
+
+    setEditForm((prev) => ({ ...prev, [field]: nextValue }));
   };
 
   const fetchUsersFromDatabase = () => {
@@ -145,22 +263,64 @@ function AdminUsersPage({ user }) {
       first_name: user.first_name || "", last_name: user.last_name || "",
       status: user.status || "Active", password: "", confirmPassword: ""
     });
+    setEmailOtp("");
+    setEmailOtpSent(false);
+    setPasswordOtp("");
+    setPasswordOtpSent(false);
     setShowEditModal(true);
   };
 
   const handleCreateUser = () => {
-    // Frontend validation before hitting the backend
-    if (!/^\d{11}$/.test(newUser.phone_number.trim())) {
-      showModalAlert("error", "Phone number must be exactly 11 digits");
+    if (!createTermsAcknowledged || !createTermsAccepted) {
+      setCreateTermsError("Please review and accept the applicable Terms & Conditions before creating this account.");
       return;
     }
 
-    api.post("/users", { ...newUser, role: roleToBackend(newUser.role), status: "Active" })
+    const normalizedNewUser = {
+      ...newUser,
+      first_name: newUser.first_name.trim(),
+      last_name: newUser.last_name.trim(),
+      email: newUser.email.trim(),
+      phone_number: sanitizePhoneNumber(newUser.phone_number),
+    };
+
+    const createValidationError =
+      validateNameField(normalizedNewUser.first_name, "First name") ||
+      validateNameField(normalizedNewUser.last_name, "Last name") ||
+      validateEmailField(normalizedNewUser.email) ||
+      validatePhoneNumber(normalizedNewUser.phone_number);
+
+    if (createValidationError) {
+      showModalAlert("error", createValidationError);
+      return;
+    }
+
+    if (!normalizedNewUser.password || normalizedNewUser.password.length < PASSWORD_MIN_LENGTH) {
+      showModalAlert("error", `Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
+      return;
+    }
+
+    if (normalizedNewUser.password !== normalizedNewUser.confirmPassword) {
+      showModalAlert("error", "Passwords do not match");
+      return;
+    }
+
+    api.post("/users", {
+      first_name: normalizedNewUser.first_name,
+      last_name: normalizedNewUser.last_name,
+      email: normalizedNewUser.email,
+      password: normalizedNewUser.password,
+      phone_number: normalizedNewUser.phone_number,
+      role: roleToBackend(normalizedNewUser.role),
+      status: "Active",
+      terms_accepted: true,
+      terms_scope: createTermsScope,
+    })
       .then((res) => {
         setUsers((prev) => [...prev, res.data.user || res.data]);
         showModalAlert("success", "User created successfully");
         setShowCreateModal(false);
-        setNewUser({ first_name: "", last_name: "", email: "", password: "", phone_number: "", role: "customer" });
+        resetCreateForm();
       })
       .catch((err) => {
         showModalAlert("error", err.response?.data?.error || err.response?.data?.message || "Failed to create user");
@@ -168,23 +328,36 @@ function AdminUsersPage({ user }) {
   };
 
   const handleSaveChanges = () => {
-    if (editForm.phone_number && !/^\d{11}$/.test(editForm.phone_number.trim())) {
-      showModalAlert("error", "Phone number must be exactly 11 digits");
+    const normalizedEditForm = {
+      ...editForm,
+      first_name: editForm.first_name.trim(),
+      last_name: editForm.last_name.trim(),
+      email: editForm.email.trim(),
+      phone_number: sanitizePhoneNumber(editForm.phone_number),
+    };
+
+    const editValidationError =
+      validateNameField(normalizedEditForm.first_name, "First name") ||
+      validateNameField(normalizedEditForm.last_name, "Last name") ||
+      validateEmailField(normalizedEditForm.email) ||
+      validatePhoneNumber(normalizedEditForm.phone_number);
+
+    if (editValidationError) {
+      showModalAlert("error", editValidationError);
       return;
     }
 
-    const namePattern = /^[A-Za-z\s\-']{2,50}$/;
-    if (!editForm.first_name.trim() || !namePattern.test(editForm.first_name.trim())) {
-      showModalAlert("error", "First name must be 2-50 letters only");
-      return;
-    }
-    if (!editForm.last_name.trim() || !namePattern.test(editForm.last_name.trim())) {
-      showModalAlert("error", "Last name must be 2-50 letters only");
-      return;
-    }
+    const emailChanged = normalizedEditForm.email !== selectedUser.email;
+    const passwordChanged = normalizedEditForm.password !== "";
 
-    const emailChanged = editForm.email !== selectedUser.email;
-    const passwordChanged = editForm.password && editForm.password.trim() !== "";
+    if (passwordChanged && normalizedEditForm.password.length < PASSWORD_MIN_LENGTH) {
+      showModalAlert("error", `Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
+      return;
+    }
+    if (passwordChanged && normalizedEditForm.password !== normalizedEditForm.confirmPassword) {
+      showModalAlert("error", "Passwords do not match");
+      return;
+    }
 
     if (emailChanged && !emailOtpSent) {
       sendEmailOtp();
@@ -198,17 +371,21 @@ function AdminUsersPage({ user }) {
       showModalAlert("error", "Please enter the OTP codes");
       return;
     }
-    if (editForm.password && editForm.password !== editForm.confirmPassword) {
-      showModalAlert("error", "Passwords do not match");
-      return;
-    }
 
     setShowConfirmSave(true);
   };
 
   const sendEmailOtp = async () => {
+    const normalizedEmail = editForm.email.trim();
+    const emailValidationError = validateEmailField(normalizedEmail);
+
+    if (emailValidationError) {
+      showModalAlert("error", emailValidationError);
+      return;
+    }
+
     try {
-      await api.post(`/users/${selectedUser.id}/email-otp`, { email: editForm.email });
+      await api.post(`/users/${selectedUser.id}/email-otp`, { email: normalizedEmail });
       setEmailOtpSent(true);
       showModalAlert("success", "OTP sent to new email address");
     } catch (err) {
@@ -217,6 +394,16 @@ function AdminUsersPage({ user }) {
   };
 
   const sendPasswordOtp = async () => {
+    if (editForm.password.length < PASSWORD_MIN_LENGTH) {
+      showModalAlert("error", `Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
+      return;
+    }
+
+    if (editForm.password !== editForm.confirmPassword) {
+      showModalAlert("error", "Passwords do not match");
+      return;
+    }
+
     try {
       await api.post(`/users/${selectedUser.id}/password-otp`);
       setPasswordOtpSent(true);
@@ -227,23 +414,31 @@ function AdminUsersPage({ user }) {
   };
 
   const confirmSaveChanges = () => {
-    const payload = {
-      first_name: editForm.first_name,
-      last_name: editForm.last_name,
-      status: editForm.status
+    const normalizedEditForm = {
+      ...editForm,
+      first_name: editForm.first_name.trim(),
+      last_name: editForm.last_name.trim(),
+      email: editForm.email.trim(),
+      phone_number: sanitizePhoneNumber(editForm.phone_number),
     };
 
-    if (editForm.phone_number && editForm.phone_number.trim() !== "") {
-      payload.phone_number = editForm.phone_number.trim();
+    const payload = {
+      first_name: normalizedEditForm.first_name,
+      last_name: normalizedEditForm.last_name,
+      status: normalizedEditForm.status
+    };
+
+    if (normalizedEditForm.phone_number !== "") {
+      payload.phone_number = normalizedEditForm.phone_number;
     }
 
-    if (editForm.email !== selectedUser.email) {
-      payload.email = editForm.email;
-      payload.email_otp = emailOtp;
+    if (normalizedEditForm.email !== selectedUser.email) {
+      payload.email = normalizedEditForm.email;
+      payload.email_otp = emailOtp.trim();
     }
-    if (editForm.password) {
-      payload.password = editForm.password;
-      payload.password_otp = passwordOtp;
+    if (normalizedEditForm.password) {
+      payload.password = normalizedEditForm.password;
+      payload.password_otp = passwordOtp.trim();
     }
 
     api.put(`/users/${selectedUser.id}`, payload)
@@ -281,15 +476,17 @@ function AdminUsersPage({ user }) {
           <p className="mt-1.5 max-w-2xl text-sm font-medium text-gray-500">Overview of all registered users, staff accounts, and system access levels.</p>
         </div>
 
-        {canManageUsers && (
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 rounded-xl bg-gray-900 border-2 border-gray-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm active:scale-95"
-          >
-            <UserPlus className="w-4 h-4" />
-            Add New User
-          </button>
-        )}
+        <div className="flex items-center gap-4">
+          {canManageUsers && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 rounded-xl bg-gray-900 border-2 border-gray-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm active:scale-95"
+            >
+              <UserPlus className="w-4 h-4" />
+              Add New User
+            </button>
+          )}
+        </div>
       </div>
 
       {/* SEARCH & FILTERS BAR */}
@@ -369,18 +566,20 @@ function AdminUsersPage({ user }) {
                 <tr className="border-b border-gray-50 bg-[#f8fafc]">
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">User Details</th>
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Contact</th>
-                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Access Level</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Role</th>
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Status</th>
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Registered</th>
-                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Actions</th>
+                  {canManageUsers && (
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredUsers.map((u) => (
                   <tr 
                     key={u.id} 
-                    className={`group transition-colors ${canManageUsers ? "hover:bg-slate-50/80 cursor-pointer" : ""}`}
-                    onClick={() => canManageUsers && openEditModal(u)}
+                    className="group cursor-pointer transition-colors hover:bg-slate-50/80"
+                    onClick={() => openEditModal(u)}
                   >
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-4">
@@ -423,8 +622,8 @@ function AdminUsersPage({ user }) {
                         {new Date(u.created_at).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric'})}
                       </p>
                     </td>
-                    <td className="px-6 py-5">
-                      {canManageUsers ? (
+                    {canManageUsers && (
+                      <td className="px-6 py-5">
                         <div className="flex items-center justify-end gap-2">
                           <button 
                             onClick={(e) => { e.stopPropagation(); openEditModal(u); }}
@@ -441,12 +640,8 @@ function AdminUsersPage({ user }) {
                             Delete
                           </button>
                         </div>
-                      ) : (
-                        <div className="text-right">
-                          <span className="text-xs text-gray-400 italic">View Only</span>
-                        </div>
-                      )}
-                    </td>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -458,7 +653,7 @@ function AdminUsersPage({ user }) {
       {/* ADD USER MODAL */}
       {showCreateModal && canManageUsers && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[200]">
-          <div className="bg-white rounded-3xl w-[90%] max-w-md shadow-2xl border border-white/20 p-8 animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-3xl w-[90%] max-w-lg shadow-2xl border border-white/20 p-8 animate-in zoom-in-95 duration-200">
             <h2 className="text-2xl font-playfair font-bold mb-6 text-gray-900">Add New User</h2>
 
             <div className="space-y-4">
@@ -466,7 +661,8 @@ function AdminUsersPage({ user }) {
                 type="text"
                 placeholder="First Name"
                 value={newUser.first_name}
-                onChange={(e) => setNewUser({ ...newUser, first_name: e.target.value })}
+                onChange={(e) => handleNewUserFieldChange("first_name", e.target.value)}
+                maxLength={NAME_MAX_LENGTH}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
               />
 
@@ -474,7 +670,8 @@ function AdminUsersPage({ user }) {
                 type="text"
                 placeholder="Last Name"
                 value={newUser.last_name}
-                onChange={(e) => setNewUser({ ...newUser, last_name: e.target.value })}
+                onChange={(e) => handleNewUserFieldChange("last_name", e.target.value)}
+                maxLength={NAME_MAX_LENGTH}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
               />
 
@@ -482,7 +679,8 @@ function AdminUsersPage({ user }) {
                 type="email"
                 placeholder="Email Address"
                 value={newUser.email}
-                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                onChange={(e) => handleNewUserFieldChange("email", e.target.value)}
+                maxLength={EMAIL_MAX_LENGTH}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
               />
 
@@ -490,17 +688,28 @@ function AdminUsersPage({ user }) {
                 type="tel"
                 placeholder="Phone Number (11 digits)"
                 value={newUser.phone_number}
-                onChange={(e) => setNewUser({ ...newUser, phone_number: e.target.value })}
+                onChange={(e) => handleNewUserFieldChange("phone_number", e.target.value)}
+                maxLength={PHONE_MAX_LENGTH}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
               />
 
-              <input
-                type="password"
-                placeholder="Secure Password"
-                value={newUser.password}
-                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="password"
+                  placeholder="New Password"
+                  value={newUser.password}
+                  onChange={(e) => handleNewUserFieldChange("password", e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
+                />
+
+                <input
+                  type="password"
+                  placeholder="Confirm Password"
+                  value={newUser.confirmPassword}
+                  onChange={(e) => handleNewUserFieldChange("confirmPassword", e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
+                />
+              </div>
 
               <div className="pt-2">
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">System Access Role</p>
@@ -520,18 +729,34 @@ function AdminUsersPage({ user }) {
                   ))}
                 </div>
               </div>
+
+              <TermsConsentField
+                scope={createTermsScope}
+                checked={createTermsAccepted}
+                acknowledged={createTermsAcknowledged}
+                onToggle={(checked) => {
+                  setCreateTermsAccepted(checked);
+                  setCreateTermsError("");
+                }}
+                onOpen={() => setShowCreateTerms(true)}
+                error={createTermsError}
+              />
             </div>
 
             <div className="flex justify-end gap-3 mt-8 pt-4">
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  setShowCreateModal(false);
+                  resetCreateForm();
+                }}
                 className="rounded-lg px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreateUser}
-                className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+                disabled={!createTermsAccepted}
+                className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-200 disabled:text-gray-400"
               >
                 Create Account
               </button>
@@ -540,24 +765,37 @@ function AdminUsersPage({ user }) {
         </div>
       )}
 
+      <TermsAndConditionsModal
+        open={showCreateTerms}
+        scope={createTermsScope}
+        onClose={() => setShowCreateTerms(false)}
+        onAcknowledge={() => {
+          setCreateTermsAcknowledged(true);
+          setCreateTermsAccepted(true);
+          setCreateTermsError("");
+          setShowCreateTerms(false);
+        }}
+      />
+
       {/* Edit User Modal */}
-      {showEditModal && selectedUser && canManageUsers && (
+      {showEditModal && selectedUser && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[200]">
           <div className="bg-white rounded-3xl w-[90%] max-w-lg shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-6">
-               <h2 className="text-2xl font-playfair font-bold text-gray-900">Edit User Details</h2>
+               <h2 className="text-2xl font-playfair font-bold text-gray-900">{canManageUsers ? "Edit User Details" : "User Details"}</h2>
                <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-gray-500">
                  ID: #{selectedUser.id}
                </span>
             </div>
 
-            <div className="space-y-4">
+            <fieldset disabled={!canManageUsers} className="space-y-4 disabled:opacity-100">
               <div className="grid grid-cols-2 gap-4">
                 <input
                   type="text"
                   placeholder="First Name"
                   value={editForm.first_name}
-                  onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                  onChange={(e) => handleEditFieldChange("first_name", e.target.value)}
+                  maxLength={NAME_MAX_LENGTH}
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
                 />
 
@@ -565,7 +803,8 @@ function AdminUsersPage({ user }) {
                   type="text"
                   placeholder="Last Name"
                   value={editForm.last_name}
-                  onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                  onChange={(e) => handleEditFieldChange("last_name", e.target.value)}
+                  maxLength={NAME_MAX_LENGTH}
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
                 />
               </div>
@@ -574,7 +813,8 @@ function AdminUsersPage({ user }) {
                 type="tel"
                 placeholder="Phone Number (11 digits)"
                 value={editForm.phone_number}
-                onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })}
+                onChange={(e) => handleEditFieldChange("phone_number", e.target.value)}
+                maxLength={PHONE_MAX_LENGTH}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
               />
 
@@ -596,7 +836,8 @@ function AdminUsersPage({ user }) {
                   type="email"
                   placeholder="New Email"
                   value={editForm.email}
-                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  onChange={(e) => handleEditFieldChange("email", e.target.value)}
+                  maxLength={EMAIL_MAX_LENGTH}
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all mb-3"
                 />
 
@@ -627,7 +868,7 @@ function AdminUsersPage({ user }) {
                     type="password"
                     placeholder="New Password"
                     value={editForm.password}
-                    onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                    onChange={(e) => handleEditFieldChange("password", e.target.value)}
                     className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
                   />
 
@@ -635,7 +876,7 @@ function AdminUsersPage({ user }) {
                     type="password"
                     placeholder="Confirm Password"
                     value={editForm.confirmPassword}
-                    onChange={(e) => setEditForm({ ...editForm, confirmPassword: e.target.value })}
+                    onChange={(e) => handleEditFieldChange("confirmPassword", e.target.value)}
                     className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
                   />
                 </div>
@@ -659,9 +900,9 @@ function AdminUsersPage({ user }) {
                   />
                 )}
               </div>
-            </div>
+            </fieldset>
 
-            {selectedUser.is_locked && (
+            {selectedUser.is_locked && canManageUsers && (
               <div className="mt-6 rounded-2xl bg-rose-50 border border-rose-100 p-5 flex flex-col items-center text-center">
                 <Lock className="w-8 h-8 text-rose-500 mb-2" />
                 <p className="font-bold text-rose-900 mb-1">Account Locked</p>
@@ -676,12 +917,16 @@ function AdminUsersPage({ user }) {
             )}
 
             <div className="flex justify-between items-center mt-8 pt-4">
-              <button
-                onClick={() => setShowConfirmDelete(true)}
-                className="text-xs font-bold text-gray-400 hover:text-rose-600 uppercase tracking-widest transition-colors flex items-center gap-1.5"
-              >
-                <Trash2 className="w-4 h-4" /> Delete
-              </button>
+              <div>
+                {canManageUsers && (
+                  <button
+                    onClick={() => setShowConfirmDelete(true)}
+                    className="text-xs font-bold text-gray-400 hover:text-rose-600 uppercase tracking-widest transition-colors flex items-center gap-1.5"
+                  >
+                    <Trash2 className="w-4 h-4" /> Delete
+                  </button>
+                )}
+              </div>
 
               <div className="flex gap-3">
                 <button
@@ -691,14 +936,16 @@ function AdminUsersPage({ user }) {
                   }}
                   className="rounded-lg px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
                 >
-                  Cancel
+                  {canManageUsers ? "Cancel" : "Close"}
                 </button>
-                <button
-                  onClick={handleSaveChanges}
-                  className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
-                >
-                  Save Profile
-                </button>
+                {canManageUsers && (
+                  <button
+                    onClick={handleSaveChanges}
+                    className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+                  >
+                    Save Profile
+                  </button>
+                )}
               </div>
             </div>
           </div>

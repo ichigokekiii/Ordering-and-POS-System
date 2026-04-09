@@ -3,10 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useCart } from "../../contexts/CartContext";
 import api from "../../services/api";
 import { useSchedules } from "../../contexts/ScheduleContext";
+import TermsAndConditionsModal from "../../components/TermsAndConditionsModal";
+import TermsConsentField from "../../components/TermsConsentField";
 import {
   formatCustomSelection,
   getCustomOrderSummary,
 } from "../../utils/customOrderSummary";
+import { resolveTermsScopeFromRole } from "../../utils/termsAndConditions";
 
 function CheckoutPage() {
   const navigate = useNavigate();
@@ -23,6 +26,9 @@ function CheckoutPage() {
 
   const [showTerms, setShowTerms] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [termsAcknowledged, setTermsAcknowledged] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [userRole, setUserRole] = useState("");
 
   // ── Success modal (same pattern as VerifyOtpPage) ──
   const [modalMessage, setModalMessage] = useState("");
@@ -47,9 +53,10 @@ function CheckoutPage() {
   const [referenceCode, setReferenceCode] = useState("");
 
   // Validation errors
-  const [errors, setErrors] = useState({ image: "" });
+  const [errors, setErrors] = useState({ image: "", terms: "" });
 
   const GRAND_TOTAL = totalPrice;
+  const termsScope = resolveTermsScopeFromRole(userRole);
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("user") || "{}");
@@ -58,7 +65,14 @@ function CheckoutPage() {
     setUserEmail(stored.email || "");
     setUserPhone(stored.phone_number || "");
     setUserId(stored.id || null);
+    setUserRole(stored.role || "");
   }, []);
+
+  useEffect(() => {
+    setTermsAcknowledged(false);
+    setTermsAccepted(false);
+    setErrors((prev) => ({ ...prev, terms: "" }));
+  }, [termsScope]);
 
   // Fetch saved addresses from profile
   useEffect(() => {
@@ -106,6 +120,10 @@ function CheckoutPage() {
       newErrors.referenceCode = "Reference code is required.";
     } else if (!/^[a-zA-Z0-9]{4,30}$/.test(referenceCode)) {
       newErrors.referenceCode = "Reference code must be 4–30 alphanumeric characters.";
+    }
+
+    if (!termsAcknowledged || !termsAccepted) {
+      newErrors.terms = "Please review and accept the required Terms & Conditions before confirming your order.";
     }
 
     setErrors(newErrors);
@@ -210,6 +228,8 @@ function CheckoutPage() {
       formData.append("reference_image",  freshFile);
       formData.append("total_amount",     GRAND_TOTAL);
       formData.append("special_message",  "");
+      formData.append("terms_accepted",   "true");
+      formData.append("terms_scope",      termsScope);
 
       const res = await api.post("/orders", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -648,132 +668,51 @@ function CheckoutPage() {
                 <span className="text-3xl font-playfair font-bold text-[#4f6fa5]">₱{GRAND_TOTAL.toLocaleString()}</span>
               </div>
 
+              <div className="mb-6">
+                <TermsConsentField
+                  scope={termsScope}
+                  checked={termsAccepted}
+                  acknowledged={termsAcknowledged}
+                  onToggle={(checked) => {
+                    setTermsAccepted(checked);
+                    setErrors((prev) => ({ ...prev, terms: "" }));
+                  }}
+                  onOpen={() => setShowTerms(true)}
+                  error={errors.terms}
+                />
+              </div>
+
               <button
                 type="submit"
-                disabled={!paymentProof || isSubmitting}
+                disabled={!paymentProof || isSubmitting || !termsAccepted}
                 className={`w-full rounded-2xl py-4 text-xs font-bold tracking-widest uppercase text-white shadow-md transition-all active:scale-95
-                  ${paymentProof && !isSubmitting
+                  ${paymentProof && !isSubmitting && termsAccepted
                     ? "bg-gray-900 hover:bg-[#4f6fa5] hover:shadow-lg"
                     : "cursor-not-allowed bg-gray-200 text-gray-400 shadow-none border border-gray-200"
                   }`}
               >
-                {isSubmitting ? "Processing..." : paymentProof ? "Confirm Order" : "Upload proof to continue"}
+                {isSubmitting ? "Processing..." : paymentProof ? (termsAccepted ? "Confirm Order" : "Accept terms to continue") : "Upload proof to continue"}
               </button>
 
               <p className="mt-5 text-center text-[10px] uppercase tracking-widest font-bold text-gray-400">
-                By placing this order, you agree to our{" "}
-                <button
-                  type="button"
-                  onClick={() => setShowTerms(true)}
-                  className="underline text-[#4f6fa5] hover:text-[#4f6fa5]/80 transition"
-                >
-                  Terms of Service
-                </button>
+                Review the applicable terms before placing your order.
               </p>
             </div>
           </div>
         </form>
       </div>
 
-      {/* ── Terms Modal ── */}
-      {showTerms && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl max-h-[85vh] flex flex-col border border-gray-100">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
-              <h2 className="text-2xl font-playfair font-bold text-gray-900">Terms & Conditions</h2>
-              <button
-                type="button"
-                onClick={() => setShowTerms(false)}
-                className="text-gray-400 hover:text-[#4f6fa5] transition flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 hover:bg-[#4f6fa5]/10"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="overflow-y-auto pr-4 text-sm text-gray-600 space-y-6 nice-scrollbar">
-
-              <div>
-                <h3 className="font-semibold text-gray-800 text-base mb-1">Customer Terms & Conditions</h3>
-                <p className="text-xs text-gray-400 mb-3">
-                  These terms and conditions act as the legal agreement for all external users accessing the Petal Express PH web platform.
-                </p>
-                <div className="space-y-3">
-                  <div>
-                    <p className="font-semibold text-gray-700">1. Introduction & Acceptance of Terms</p>
-                    <p>Customers acknowledge that by using the service, they agree to abide by the specified usage and purchasing policies.</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-700">2. Ordering and Payment Protocols</p>
-                    <p>Orders are only confirmed upon validation of payment proof (screenshot and reference number).</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-700">3. Cancellation and Modification</p>
-                    <p>Cancellation requests are prohibited within the 3-day window preceding a scheduled event.</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-700">4. Account Security and Responsibilities</p>
-                    <p>Users are responsible for their account credentials. The system enforces security protocols including account lockout procedures after failed login attempts.</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-700">5. Electronic Communications</p>
-                    <p>Customers grant consent for the system to use the Email API for order receipts, event notifications, and OTP verification during registration and reset flows.</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-700">6. Product Customization Disclaimer</p>
-                    <p>Custom orders involve manual creation and final results may vary based on flower and filler availability.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-200 my-2" />
-
-              <div>
-                <h3 className="font-semibold text-gray-800 text-base mb-1">Internal Operations Terms & Conditions</h3>
-                <p className="text-xs text-gray-400 mb-3">
-                  This document governs the behavior and responsibilities of personnel with administrative system access.
-                </p>
-                <div className="space-y-3">
-                  <div>
-                    <p className="font-semibold text-gray-700">1. Role-Based Access Control (RBAC)</p>
-                    <p>IT and Owners maintain full CRUD capabilities, while Staff roles are limited to operational viewing and POS order processing.</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-700">2. Administrative Security & Auth</p>
-                    <p>Secure login practices are mandatory, including MFA (OTP) and strict limits on failed login attempts to prevent account hijacking.</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-700">3. POS and Inventory Integrity</p>
-                    <p>Staff must maintain accurate stock availability. Failure to properly process orders may result in discrepancies between the POS and inventory.</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-700">4. CMS and Content Governance</p>
-                    <p>IT and Owner actors must perform regular audits on published content. Unauthorized or erroneous changes must be corrected immediately to prevent misinformation.</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-700">5. Schedule and Fulfillment Management</p>
-                    <p>Staff must monitor event schedules accurately to ensure customers are correctly notified of pop-up dates and delivery timelines.</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-700">6. Data Confidentiality</p>
-                    <p>Sharing of administrative credentials is prohibited. Customer data collected during registration and checkout must be protected at all times.</p>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            <div className="mt-8 flex justify-end pt-4 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={() => setShowTerms(false)}
-                className="rounded-full bg-gray-900 px-8 py-3 text-xs font-bold uppercase tracking-widest text-white hover:bg-[#4f6fa5] transition"
-              >
-                I Understand
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <TermsAndConditionsModal
+        open={showTerms}
+        scope={termsScope}
+        onClose={() => setShowTerms(false)}
+        onAcknowledge={() => {
+          setTermsAcknowledged(true);
+          setTermsAccepted(true);
+          setErrors((prev) => ({ ...prev, terms: "" }));
+          setShowTerms(false);
+        }}
+      />
 
       {/* ── QR Zoom Modal ── */}
       {showQRModal && (

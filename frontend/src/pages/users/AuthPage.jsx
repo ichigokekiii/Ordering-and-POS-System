@@ -5,6 +5,9 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import api from "../../services/api";
+import TermsAndConditionsModal from "../../components/TermsAndConditionsModal";
+import TermsConsentField from "../../components/TermsConsentField";
+import { TERMS_SCOPE } from "../../utils/termsAndConditions";
 
 // CMS IMPORTS
 import { useContents } from "../../contexts/ContentContext";
@@ -44,6 +47,10 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
   const [regPhone, setRegPhone] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
+  const [showTerms, setShowTerms] = useState(false);
+  const [regTermsAcknowledged, setRegTermsAcknowledged] = useState(false);
+  const [regTermsAccepted, setRegTermsAccepted] = useState(false);
+  const [regTermsError, setRegTermsError] = useState("");
   const [regError, setRegError] = useState("");
   const [regLoading, setRegLoading] = useState(false);
 
@@ -132,6 +139,7 @@ const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     if (cmsPreview?.enabled) return;
     setRegError("");
+    setRegTermsError("");
 
     // 1. Validate Names (No Symbols or Numbers)
     const nameRegex = /^[A-Za-z\s\-']+$/;
@@ -157,6 +165,11 @@ const handleRegisterSubmit = async (e) => {
       return;
     }
 
+    if (!regTermsAcknowledged || !regTermsAccepted) {
+      setRegTermsError("Please review and accept the Customer Terms & Conditions before continuing.");
+      return;
+    }
+
     setRegLoading(true);
 
     try {
@@ -166,6 +179,8 @@ const handleRegisterSubmit = async (e) => {
         email: regEmail,
         password: regPassword,
         phone_number: regPhone,
+        terms_accepted: true,
+        terms_scope: TERMS_SCOPE.CUSTOMER,
       });
 
       navigate("/verify-otp", { state: { email: regEmail, from: 'register' } });
@@ -240,8 +255,20 @@ const handleRegisterSubmit = async (e) => {
                 required
               />
 
+              <TermsConsentField
+                scope={TERMS_SCOPE.CUSTOMER}
+                checked={regTermsAccepted}
+                acknowledged={regTermsAcknowledged}
+                onToggle={(checked) => {
+                  setRegTermsAccepted(checked);
+                  setRegTermsError("");
+                }}
+                onOpen={() => setShowTerms(true)}
+                error={regTermsError}
+              />
+
               <button
-                disabled={regLoading}
+                disabled={regLoading || !regTermsAccepted}
                 className="w-full mt-2 rounded-lg bg-[#4f6fa5] py-3 text-white font-semibold transition-all hover:bg-[#3f5b89] hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {regLoading && <Loader2 className="h-5 w-5 animate-spin" />}
@@ -394,6 +421,18 @@ const handleRegisterSubmit = async (e) => {
         </motion.div>
 
       </div>
+
+      <TermsAndConditionsModal
+        open={showTerms}
+        scope={TERMS_SCOPE.CUSTOMER}
+        onClose={() => setShowTerms(false)}
+        onAcknowledge={() => {
+          setRegTermsAcknowledged(true);
+          setRegTermsAccepted(true);
+          setRegTermsError("");
+          setShowTerms(false);
+        }}
+      />
     </div>
   );
 }

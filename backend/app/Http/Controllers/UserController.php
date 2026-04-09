@@ -14,6 +14,31 @@ use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
+    private function normalizeUserInput(Request $request): void
+    {
+        $normalizedInput = [];
+
+        if ($request->has('first_name')) {
+            $normalizedInput['first_name'] = trim((string) $request->input('first_name'));
+        }
+
+        if ($request->has('last_name')) {
+            $normalizedInput['last_name'] = trim((string) $request->input('last_name'));
+        }
+
+        if ($request->has('email')) {
+            $normalizedInput['email'] = trim((string) $request->input('email'));
+        }
+
+        if ($request->has('phone_number')) {
+            $normalizedInput['phone_number'] = preg_replace('/\D+/', '', (string) $request->input('phone_number'));
+        }
+
+        if (!empty($normalizedInput)) {
+            $request->merge($normalizedInput);
+        }
+    }
+
     // Get all users
     public function index()
     {
@@ -29,16 +54,21 @@ class UserController extends Controller
     // Public Registration (with OTP)
 public function register(Request $request)
     {
+        $this->normalizeUserInput($request);
+
         $validator = Validator::make($request->all(), [
             'first_name'   => ['required', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
             'last_name'    => ['required', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
             'email'        => 'required|string|email|max:255|unique:users,email',
             'password'     => 'required|string|min:6',
             'phone_number' => ['required', 'string', 'regex:/^\d{11}$/'],
+            'terms_accepted' => 'accepted',
+            'terms_scope'    => 'required|string|in:customer',
         ], [
             'first_name.regex'   => 'First name can only contain letters and spaces.',
             'last_name.regex'    => 'Last name can only contain letters and spaces.',
             'phone_number.regex' => 'Phone number must be exactly 11 digits.',
+            'terms_accepted.accepted' => 'Please review and accept the Customer Terms & Conditions.',
         ]);
 
         if ($validator->fails()) {
@@ -81,22 +111,37 @@ public function store(Request $request)
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
+        $this->normalizeUserInput($request);
+
         $validator = Validator::make($request->all(), [
             'first_name'   => ['required', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
             'last_name'    => ['required', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
             'email'        => 'required|string|email|max:255|unique:users,email',
             'password'     => 'required|string|min:6',
             'phone_number' => ['required', 'string', 'regex:/^\d{11}$/'],
-            'role'         => 'nullable|string|in:user,admin,owner',
-            'status'       => 'nullable|string'
+            'role'         => 'nullable|string|in:user,staff,admin,owner',
+            'status'       => 'nullable|string',
+            'terms_accepted' => 'accepted',
+            'terms_scope'    => 'required|string|in:customer,internal',
         ], [
             'first_name.regex'   => 'First name can only contain letters and spaces.',
             'last_name.regex'    => 'Last name can only contain letters and spaces.',
             'phone_number.regex' => 'Phone number must be exactly 11 digits.',
+            'terms_accepted.accepted' => 'Please review and accept the applicable Terms & Conditions.',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()->first()], 400);
+        }
+
+        $expectedTermsScope = in_array(Auth::user()->role, ['admin', 'owner', 'staff'], true)
+            ? 'internal'
+            : 'customer';
+
+        if ($request->input('terms_scope') !== $expectedTermsScope) {
+            return response()->json([
+                'error' => 'The selected terms do not match the assigned role.'
+            ], 400);
         }
 
         $user = new User();
@@ -154,6 +199,8 @@ public function store(Request $request)
         if (!$user) {
             return response()->json(['error' => 'User not found'], 404);
         }
+
+        $this->normalizeUserInput($request);
 
         // Validate incoming data safely
         $validator = Validator::make($request->all(), [

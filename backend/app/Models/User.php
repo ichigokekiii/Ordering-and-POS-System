@@ -19,6 +19,7 @@ class User extends Authenticatable
         'first_name',
         'last_name',
         'phone_number',
+        'profile_picture',
         'failed_attempt_count',
         'last_failed_attempt_at',
         'is_locked',

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useSchedules } from "../../contexts/ScheduleContext";
 import { CalendarPlus, MapPin, CalendarClock, Pencil, Archive, ArchiveRestore, CheckCircle2, X } from "lucide-react";
+import { canManageAdminDashboard } from "../../utils/adminAccess";
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
@@ -16,7 +17,7 @@ function AdminSchedulePage({ user }) {
     updateSchedule,
   } = useSchedules();
 
-  const canEdit = user?.role === "admin" || user?.role === "owner";
+  const canEdit = canManageAdminDashboard(user);
 
   const [showModal, setShowModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
@@ -87,6 +88,7 @@ const handleImageChange = (e) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canEdit) return;
     
     // --- FRONTEND VALIDATION ---
     const newErrors = {};
@@ -224,11 +226,6 @@ const handleImageChange = (e) => {
         </div>
 
         <div className="flex items-center gap-4">
-          {!canEdit && (
-            <span className="rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-blue-600 border border-blue-100">
-              View-Only Access
-            </span>
-          )}
           {canEdit && (
             <button
               onClick={() => {
@@ -263,8 +260,8 @@ const handleImageChange = (e) => {
             {liveSchedules.map((schedule) => (
               <div 
                 key={schedule.id} 
-                onClick={() => canEdit && handleEdit(schedule)}
-                className={`flex flex-col bg-white rounded-[1.5rem] border border-gray-200 shadow-sm hover:shadow-lg hover:border-[#4f6fa5] transition-all overflow-hidden group ${canEdit ? 'cursor-pointer' : ''}`}
+                onClick={() => handleEdit(schedule)}
+                className="flex cursor-pointer flex-col bg-white rounded-[1.5rem] border border-gray-200 shadow-sm hover:shadow-lg hover:border-[#4f6fa5] transition-all overflow-hidden group"
               >
                 <div className="h-48 bg-gray-100 border-b border-gray-100 relative overflow-hidden">
                   <img src={getImageUrl(schedule.image)} alt={schedule.schedule_name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
@@ -331,8 +328,8 @@ const handleImageChange = (e) => {
             {inactiveSchedules.map((schedule) => (
               <div 
                 key={schedule.id} 
-                onClick={() => canEdit && handleEdit(schedule)}
-                className={`flex flex-col bg-white rounded-[1.5rem] border border-gray-200 shadow-sm hover:shadow-lg hover:border-[#4f6fa5] transition-all overflow-hidden group ${canEdit ? 'cursor-pointer' : ''}`}
+                onClick={() => handleEdit(schedule)}
+                className="flex cursor-pointer flex-col bg-white rounded-[1.5rem] border border-gray-200 shadow-sm hover:shadow-lg hover:border-[#4f6fa5] transition-all overflow-hidden group"
               >
                 <div className="h-48 bg-gray-100 border-b border-gray-100 relative overflow-hidden">
                   <img src={getImageUrl(schedule.image)} alt={schedule.schedule_name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 grayscale-[0.1]" />
@@ -380,63 +377,64 @@ const handleImageChange = (e) => {
         )}
       </div>
 
-      {/* ARCHIVED SCHEDULES SECTION */}
-      <div>
-        <div className="mb-6 flex items-end justify-between border-b border-gray-100 pb-4">
-          <h3 className="text-2xl font-playfair font-bold text-gray-400">Archived Events</h3>
-          {archivedSchedules.length > 0 && (
-            <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-              {archivedSchedules.length} Hidden
-            </span>
+      {canEdit && (
+        <div>
+          <div className="mb-6 flex items-end justify-between border-b border-gray-100 pb-4">
+            <h3 className="text-2xl font-playfair font-bold text-gray-400">Archived Events</h3>
+            {archivedSchedules.length > 0 && (
+              <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                {archivedSchedules.length} Hidden
+              </span>
+            )}
+          </div>
+
+          {archivedSchedules.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-gray-400 border-2 border-dashed border-gray-100 rounded-[2rem]">
+              <Archive size={48} className="mb-4 opacity-20" />
+              <p className="text-sm font-bold text-gray-500">No archived schedules found.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 opacity-75 hover:opacity-100 transition-opacity">
+              {archivedSchedules.map((schedule) => (
+                <div 
+                  key={schedule.id} 
+                  onClick={() => handleEdit(schedule)}
+                  className="flex cursor-pointer flex-col bg-gray-50 rounded-[1.5rem] border border-gray-200 overflow-hidden hover:shadow-md transition-all"
+                >
+                  <div className="h-32 bg-gray-200 border-b border-gray-200 relative overflow-hidden grayscale">
+                    <img src={getImageUrl(schedule.image)} alt={schedule.schedule_name} className="w-full h-full object-cover" />
+                  </div>
+
+                  <div className="p-5 flex flex-col flex-1">
+                    <h3 className="text-base font-playfair font-bold text-gray-600 mb-1 truncate">{schedule.schedule_name}</h3>
+                    <p className="text-xs text-gray-400 truncate mb-4">{schedule.location} • {new Date(schedule.event_date).toLocaleDateString("en-US", { month: 'short', day: 'numeric'})}</p>
+                    
+                    {canEdit && (
+                      <div className="mt-auto flex items-center justify-between pt-4 border-t border-gray-200">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleEdit(schedule); }}
+                          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-gray-500 hover:bg-gray-200 hover:text-gray-900 transition-colors"
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> Edit
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); promptToggleArchive(schedule); }}
+                          className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-1.5 text-xs font-bold text-white border-2 border-emerald-500 hover:bg-transparent hover:text-emerald-600 transition-all duration-300 shadow-sm"
+                        >
+                          <ArchiveRestore className="w-3.5 h-3.5" /> Restore
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
-
-        {archivedSchedules.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-gray-400 border-2 border-dashed border-gray-100 rounded-[2rem]">
-            <Archive size={48} className="mb-4 opacity-20" />
-            <p className="text-sm font-bold text-gray-500">No archived schedules found.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 opacity-75 hover:opacity-100 transition-opacity">
-            {archivedSchedules.map((schedule) => (
-              <div 
-                key={schedule.id} 
-                onClick={() => canEdit && handleEdit(schedule)}
-                className={`flex flex-col bg-gray-50 rounded-[1.5rem] border border-gray-200 overflow-hidden hover:shadow-md transition-all ${canEdit ? 'cursor-pointer' : ''}`}
-              >
-                <div className="h-32 bg-gray-200 border-b border-gray-200 relative overflow-hidden grayscale">
-                  <img src={getImageUrl(schedule.image)} alt={schedule.schedule_name} className="w-full h-full object-cover" />
-                </div>
-
-                <div className="p-5 flex flex-col flex-1">
-                  <h3 className="text-base font-playfair font-bold text-gray-600 mb-1 truncate">{schedule.schedule_name}</h3>
-                  <p className="text-xs text-gray-400 truncate mb-4">{schedule.location} • {new Date(schedule.event_date).toLocaleDateString("en-US", { month: 'short', day: 'numeric'})}</p>
-                  
-                  {canEdit && (
-                    <div className="mt-auto flex items-center justify-between pt-4 border-t border-gray-200">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleEdit(schedule); }}
-                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-gray-500 hover:bg-gray-200 hover:text-gray-900 transition-colors"
-                      >
-                        <Pencil className="w-3.5 h-3.5" /> Edit
-                      </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); promptToggleArchive(schedule); }}
-                        className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-1.5 text-xs font-bold text-white border-2 border-emerald-500 hover:bg-transparent hover:text-emerald-600 transition-all duration-300 shadow-sm"
-                      >
-                        <ArchiveRestore className="w-3.5 h-3.5" /> Restore
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* ADD/EDIT MODAL */}
-      {showModal && canEdit && (
+      {showModal && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[200]">
           <div className="bg-white rounded-[2rem] w-[90%] max-w-lg shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             
@@ -445,12 +443,12 @@ const handleImageChange = (e) => {
                 Event Management
               </span>
               <h2 className="text-2xl font-playfair font-bold text-gray-900">
-                {editingSchedule ? "Edit Schedule Details" : "Create New Event"}
+                {canEdit ? (editingSchedule ? "Edit Schedule Details" : "Create New Event") : "View Schedule Details"}
               </h2>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-              
+              <fieldset disabled={!canEdit} className="space-y-5 disabled:opacity-100">
               <div className="flex gap-4 items-end">
                 <div className="flex-1">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Event Name</label>
@@ -587,20 +585,24 @@ const handleImageChange = (e) => {
                 )}
               </div>
 
+              </fieldset>
+
               <div className="flex justify-end gap-3 mt-8 pt-4">
                 <button
                   type="button"
                   onClick={resetForm}
                   className="rounded-lg px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
                 >
-                  Cancel
+                  {canEdit ? "Cancel" : "Close"}
                 </button>
-                <button
-                  type="submit"
-                  className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
-                >
-                  {editingSchedule ? "Save Changes" : "Publish Event"}
-                </button>
+                {canEdit && (
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+                  >
+                    {editingSchedule ? "Save Changes" : "Publish Event"}
+                  </button>
+                )}
               </div>
             </form>
 

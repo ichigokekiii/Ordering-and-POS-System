@@ -202,13 +202,20 @@ class OrderController extends Controller
     public function update(Request $request, $id)
     {
         try {
-            if (!in_array(strtolower((string) optional($request->user())->role), ['admin', 'owner', 'staff'], true)) {
+            $actorRole = strtolower((string) optional($request->user())->role);
+
+            if (!in_array($actorRole, ['admin', 'owner', 'staff'], true)) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            if ($request->has('isArchived') && !in_array($actorRole, ['admin', 'owner'], true)) {
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
             $request->validate([
                 'order_status' => 'nullable|string',
-                'status'       => 'nullable|string'
+                'status'       => 'nullable|string',
+                'isArchived'   => 'sometimes|boolean',
             ]);
 
             $order = Order::where('order_id', $id)->firstOrFail();
@@ -216,17 +223,24 @@ class OrderController extends Controller
 
             $status = $request->input('status') ?? $request->input('order_status');
 
-            if (!$status) {
+            if (!$status && !$request->has('isArchived')) {
                 return response()->json([
                     'message' => 'Failed to update order',
-                    'error'   => 'The status field is required.'
+                    'error'   => 'A status or archive value is required.'
                 ], 400);
             }
 
-            $order->order_status = $status;
+            if ($status) {
+                $order->order_status = $status;
+            }
+
+            if ($request->has('isArchived')) {
+                $order->isArchived = $request->boolean('isArchived');
+            }
+
             $order->save();
 
-            if (in_array(strtolower($status), ['delivered', 'completed'], true) && !in_array($previousStatus, ['delivered', 'completed'], true)) {
+            if ($status && in_array(strtolower($status), ['delivered', 'completed'], true) && !in_array($previousStatus, ['delivered', 'completed'], true)) {
                 User::query()
                     ->whereKey($order->user_id)
                     ->update(['consecutive_cancellations' => 0]);
@@ -236,29 +250,31 @@ class OrderController extends Controller
             $order->load(['user', 'payment', 'schedule', 'orderItems.product']);
             $this->normalizeOrderForResponse($order);
 
-            // ── Send status update email ──────────────────────────────────
-            try {
-                if ($order->user && $order->user->email) {
-                    $items = $order->orderItems->map(fn($item) => [
-                        'product_name'      => $item->product->name ?? $item->product_name,
-                        'quantity'          => $item->quantity,
-                        'price_at_purchase' => $item->price_at_purchase,
-                        'special_message'   => $item->special_message ?? null,
-                    ])->toArray();
+            if ($status) {
+                // ── Send status update email ──────────────────────────────
+                try {
+                    if ($order->user && $order->user->email) {
+                        $items = $order->orderItems->map(fn($item) => [
+                            'product_name'      => $item->product->name ?? $item->product_name,
+                            'quantity'          => $item->quantity,
+                            'price_at_purchase' => $item->price_at_purchase,
+                            'special_message'   => $item->special_message ?? null,
+                        ])->toArray();
 
-                    Mail::to($order->user->email)->send(new OrderStatusUpdated(
-                        orderId:        $order->order_id,
-                        newStatus:      $status,
-                        totalAmount:    (float) $order->total_amount,
-                        deliveryMethod: $order->delivery_method,
-                        userName:       trim(($order->user->first_name ?? '') . ' ' . ($order->user->last_name ?? '')),
-                        userEmail:      $order->user->email,
-                        items:          $items,
-                    ));
+                        Mail::to($order->user->email)->send(new OrderStatusUpdated(
+                            orderId:        $order->order_id,
+                            newStatus:      $status,
+                            totalAmount:    (float) $order->total_amount,
+                            deliveryMethod: $order->delivery_method,
+                            userName:       trim(($order->user->first_name ?? '') . ' ' . ($order->user->last_name ?? '')),
+                            userEmail:      $order->user->email,
+                            items:          $items,
+                        ));
+                    }
+                } catch (\Throwable $e) {
+                    // Never let mail failure break the status update
+                    Log::warning("Status update email failed for order {$id}: " . $e->getMessage());
                 }
-            } catch (\Throwable $e) {
-                // Never let mail failure break the status update
-                Log::warning("Status update email failed for order {$id}: " . $e->getMessage());
             }
 
             return response()->json($order);
@@ -274,8 +290,18 @@ class OrderController extends Controller
     public function destroy($id)
     {
         try {
+            if (strtolower((string) optional(request()->user())->role) !== 'admin') {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
             // Find order using the custom primary key
             $order = Order::where('order_id', $id)->firstOrFail();
+
+            if (!$order->isArchived) {
+                return response()->json([
+                    'message' => 'Archive this order before deleting it.',
+                ], 409);
+            }
 
             $order->delete();
 

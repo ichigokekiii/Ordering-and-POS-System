@@ -142,6 +142,7 @@ Route::middleware(['auth:sanctum', 'admin.owner'])->group(function () {
 
     // Admin Order Management
     Route::delete('/orders/{id}', [OrderController::class, 'destroy']);
+    Route::put('/users/{id}', [UserController::class, 'update']);
 
     // Product & Schedule Management (Create, Update, Delete)
     Route::apiResource('products', ProductController::class)->except(['index', 'show']);
@@ -151,7 +152,6 @@ Route::middleware(['auth:sanctum', 'admin.owner'])->group(function () {
     // Restricted Admin-Only Actions
     Route::middleware('admin.only')->group(function () {
         Route::post('/users', [UserController::class, 'store']);
-        Route::put('/users/{id}', [UserController::class, 'update']);
         Route::delete('/users/{id}', [UserController::class, 'destroy']);
 
         // OTP endpoints for admin user management

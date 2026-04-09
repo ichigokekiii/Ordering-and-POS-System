@@ -47,6 +47,8 @@ class DynamicScheduleOrderingTest extends TestCase
             'reference_image' => UploadedFile::fake()->image('proof.jpg'),
             'total_amount' => 1200,
             'special_message' => '',
+            'terms_accepted' => true,
+            'terms_scope' => 'customer',
         ]);
 
         $response->assertCreated();
@@ -88,6 +90,8 @@ class DynamicScheduleOrderingTest extends TestCase
             'reference_image' => UploadedFile::fake()->image('proof.jpg'),
             'total_amount' => 1200,
             'special_message' => '',
+            'terms_accepted' => true,
+            'terms_scope' => 'customer',
         ]);
 
         $response->assertStatus(422)

@@ -463,7 +463,7 @@ function AdminProductPage({ user }) {
         <div>
           <h1 className="text-3xl font-playfair font-bold text-gray-900 tracking-tight">Product Management</h1>
           <p className="mt-1.5 max-w-2xl text-sm font-medium text-gray-500">
-            Manage your custom builder components and curated premade collections.
+            Manage your custom bouquets and premade collections.
           </p>
         </div>
 
@@ -668,7 +668,7 @@ function AdminProductPage({ user }) {
               {activeSection === "custom" && (
                 <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5 space-y-5">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3 block">Structural Category</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3 block">Custom Products</label>
                     <div className="flex gap-6">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -684,7 +684,7 @@ function AdminProductPage({ user }) {
                           }}
                           className="w-4 h-4 text-[#4f6fa5] bg-white border-gray-300 focus:ring-[#eaf2ff] focus:ring-2"
                         />
-                        <span className="text-sm font-semibold text-gray-700">Bouquets Wrapper</span>
+                        <span className="text-sm font-semibold text-gray-700">Custom Bouquets</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -699,14 +699,14 @@ function AdminProductPage({ user }) {
                           }}
                           className="w-4 h-4 text-[#4f6fa5] bg-white border-gray-300 focus:ring-[#eaf2ff] focus:ring-2"
                         />
-                        <span className="text-sm font-semibold text-gray-700">Flora & Additional</span>
+                        <span className="text-sm font-semibold text-gray-700">Mains & Fillers</span>
                       </label>
                     </div>
                   </div>
 
                   {category === "Additional" && (
                     <div className="pt-4 border-t border-gray-200">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3 block">Flora Type</label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3 block">Flower Type</label>
                       <div className="flex gap-6">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input

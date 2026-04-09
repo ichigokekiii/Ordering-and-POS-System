@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Products;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Schedule extends Model
 {
     use HasFactory;
+
+    protected static ?bool $hasOrderableProductsCache = null;
 
     protected $fillable = [
         'schedule_name',
@@ -21,6 +25,7 @@ class Schedule extends Model
     ];
 
     protected $casts = [
+        'event_date' => 'datetime',
         'isAvailable' => 'boolean',
         'isArchived' => 'boolean',
     ];
@@ -28,32 +33,35 @@ class Schedule extends Model
     protected $appends = ['is_orderable'];
 
     public function getIsOrderableAttribute(): bool
-{
-    \Log::info('getIsOrderableAttribute called', [
-        'id' => $this->id,
-        'isAvailable' => $this->isAvailable,
-        'isArchived' => $this->isArchived,
-    ]);
+    {
+        if (!$this->isAvailable || $this->isArchived) {
+            return false;
+        }
 
-    if (!$this->isAvailable) return false;
-    if ($this->isArchived) return false;
+        $eventDate = $this->event_date instanceof Carbon
+            ? $this->event_date
+            : Carbon::parse($this->event_date);
 
-    $exists = \DB::table('products')
-                 ->where('isAvailable', 1)
-                 ->where('isArchived', 0)
-                 ->exists();
+        if ($eventDate->isPast() && !$eventDate->isToday()) {
+            return false;
+        }
 
-    \Log::info('products check', ['exists' => $exists]);
+        if (static::$hasOrderableProductsCache === null) {
+            static::$hasOrderableProductsCache = DB::table('products')
+                ->where('isAvailable', true)
+                ->where('isArchived', false)
+                ->exists();
+        }
 
-    return $exists;
-}
+        return static::$hasOrderableProductsCache;
+    }
 
-    public function bookings()
+    public function bookings(): HasMany
     {
         return $this->hasMany(ScheduleBooking::class);
     }
 
-    public function orders()
+    public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
     }

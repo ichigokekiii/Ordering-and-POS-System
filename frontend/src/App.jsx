@@ -41,6 +41,7 @@ import AdminSchedulePage from "./pages/admin/AdminSchedulePage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminContentPage from "./pages/admin/AdminContentPage";
 import AdminLogsPage from "./pages/admin/AdminLogsPage";
+import AdminFeedbacksPage from "./pages/admin/AdminFeedbacksPage";
 
 
 
@@ -168,6 +169,11 @@ function App() {
             path="/admin/logs"
             element={renderAdminPage(<AdminLogsPage />)}
           />
+
+          <Route
+  path="/admin/feedbacks"
+  element={renderAdminPage(<AdminFeedbacksPage user={user} />)}
+/>
         </>
 
         <Route

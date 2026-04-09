@@ -18,6 +18,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContentController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\OrderCancellationController;
+use App\Http\Controllers\FeedbackController;
 
 /*
 |--------------------------------------------------------------------------
@@ -107,6 +109,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Order tracking for logged-in users
     Route::get('/orders/user/{user_id}', [OrderController::class, 'userOrders']);
     Route::post('/order-items', [OrderItemController::class, 'store']);
+    Route::post('/orders/{orderId}/cancel', [OrderCancellationController::class, 'cancel']);
+
 
     // ====================================================================
     // STAFF "READ-ONLY" ADMIN ACCESS

@@ -9,6 +9,7 @@ import {
   FileText, 
   Users, 
   ScrollText, 
+  MessageSquare,
   LogOut 
 } from "lucide-react";
 
@@ -73,6 +74,11 @@ function AdminSidebar({ onLogout }) {
           <NavLink to="/admin/logs" className={({ isActive }) => (isActive ? activeClass : baseClass)}>
             <ScrollText className="h-5 w-5" />
             Logs
+          </NavLink>
+
+          <NavLink to="/admin/feedbacks" className={({ isActive }) => (isActive ? activeClass : baseClass)}>
+            <MessageSquare className="h-5 w-5" />
+            Feedback
           </NavLink>
         </ul>
       </nav>

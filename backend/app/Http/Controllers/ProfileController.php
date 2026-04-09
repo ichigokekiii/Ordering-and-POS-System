@@ -10,6 +10,7 @@ use App\Mail\SendOtpMail;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use App\Models\User;
+use App\Models\Schedule;
 
 class ProfileController extends Controller
 {
@@ -17,36 +18,50 @@ class ProfileController extends Controller
      * Get authenticated user's profile with addresses
      */
 public function profile()
-    {
-        /** @var User $user */
-        $user = Auth::user();
+{
+    /** @var User $user */
+    $user = Auth::user();
 
-        if (!$user) {
-            return response()->json([
-                'message' => 'Unauthenticated'
-            ], 401);
-        }
-
-        // Load addresses and orders (sorted newest first)
-        $user->load([
-            'addresses', 
-            'orders' => function($query) {
-                $query->orderBy('created_at', 'desc');
-            }
-        ]);
-
+    if (!$user) {
         return response()->json([
-            'id' => $user->id,
-            'first_name' => $user->first_name,
-            'last_name' => $user->last_name,
-            'email' => $user->email,
-            'phone_number' => $user->phone_number,
-            'role' => $user->role,
-            'addresses' => $user->addresses,
-            'orders' => $user->orders // <-- Added orders to the API response
-        ]);
+            'message' => 'Unauthenticated'
+        ], 401);
     }
 
+    // Load addresses and orders (sorted newest first)
+    $user->load([
+        'addresses',
+        'orders' => function($query) {
+            $query->orderBy('created_at', 'desc');
+        }
+    ]);
+
+    // Attach event_date to each order by finding the matching schedule
+    $orders = $user->orders->map(function ($order) {
+    $orderDate = Carbon::parse($order->order_date);
+
+    // Find the nearest schedule on or after the order_date
+    $schedule = Schedule::where('event_date', '>=', $orderDate)
+        ->orderBy('event_date', 'asc')
+        ->first();
+
+    $orderArray = $order->toArray();
+    $orderArray['event_date'] = $schedule?->event_date;
+
+    return $orderArray;
+});
+
+    return response()->json([
+        'id'           => $user->id,
+        'first_name'   => $user->first_name,
+        'last_name'    => $user->last_name,
+        'email'        => $user->email,
+        'phone_number' => $user->phone_number,
+        'role'         => $user->role,
+        'addresses'    => $user->addresses,
+        'orders'       => $orders, // now includes event_date on each order
+    ]);
+}
     /**
      * Request OTP when user wants to change email
      */

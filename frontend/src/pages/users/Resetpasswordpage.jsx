@@ -52,6 +52,7 @@ function ResetPasswordPage({ cmsPreview }) {
         password: newPassword,
         password_confirmation: confirmPassword,
       });
+      localStorage.removeItem("pendingUser");
       navigate("/login", { state: { passwordReset: true } });
     } catch (err) {
       setError(

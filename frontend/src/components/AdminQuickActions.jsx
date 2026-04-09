@@ -229,6 +229,17 @@ function AdminQuickActions({ user }) {
 
   const isLeftHalf = position.x < window.innerWidth / 2;
   const isTopHalf = position.y < window.innerHeight / 2;
+  const quickActionButtonStyle = currentDarkMode
+    ? {
+        backgroundColor: "#ffffff",
+        borderColor: "#cbd5e1",
+        color: "#0f172a",
+      }
+    : {
+        backgroundColor: "#0f172a",
+        borderColor: "#0f172a",
+        color: "#ffffff",
+      };
 
   return (
     <div
@@ -281,7 +292,8 @@ function AdminQuickActions({ user }) {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onClick={toggleMenu}
-        className="pointer-events-auto flex h-full w-full items-center justify-center rounded-full bg-[#4f6fa5] text-white shadow-[0_18px_40px_rgba(79,111,165,0.35)] transition-colors hover:bg-[#3f5b89] dark:bg-sky-500 dark:hover:bg-sky-400 cursor-grab active:cursor-grabbing"
+        className="pointer-events-auto flex h-full w-full items-center justify-center rounded-full border transition-colors cursor-grab active:cursor-grabbing"
+        style={quickActionButtonStyle}
         aria-label={isOpen ? "Close quick actions" : "Open quick actions"}
       >
         <Plus className={`h-6 w-6 transition-transform duration-300 ${isOpen ? "rotate-45" : "rotate-0"}`} />

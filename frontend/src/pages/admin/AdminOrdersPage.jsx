@@ -6,6 +6,7 @@ import {
   getOrderStatusPillClasses,
   normalizeOrderStatus,
 } from "../../utils/orderStatus";
+import { sanitizeSearchTerm } from "../../utils/formValidation";
 import { 
   Search, 
   ChevronDown, 
@@ -85,7 +86,7 @@ function AdminOrdersPage({ user }) {
   const [status, setStatus] = useState("");
 
   const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', message: '' });
-  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, orderId: null });
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, itemId: null, recordType: "preorder" });
   const [archiveConfirm, setArchiveConfirm] = useState({ isOpen: false, item: null, recordType: "preorder" });
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -275,7 +276,7 @@ function AdminOrdersPage({ user }) {
   const activeRecords = activeView === "preorder" ? filteredOrders : filteredPosTransactions;
   const totalRecords = activeView === "preorder" ? orders.length : posTransactions.length;
 
-  const promptDelete = (id) => setDeleteConfirm({ isOpen: true, orderId: id });
+  const promptDelete = (id, recordType = "preorder") => setDeleteConfirm({ isOpen: true, itemId: id, recordType });
   const promptToggleArchive = (item, recordType = "preorder") => setArchiveConfirm({ isOpen: true, item, recordType });
 
   const handleViewChange = (nextView) => {
@@ -328,16 +329,34 @@ function AdminOrdersPage({ user }) {
   };
 
   const confirmDelete = async () => {
-    if (!deleteConfirm.orderId) return;
+    if (!deleteConfirm.itemId) return;
+
+    const isPosRecord = deleteConfirm.recordType === "pos";
+
     try {
-      await api.delete(`/orders/${deleteConfirm.orderId}`);
-      setDeleteConfirm({ isOpen: false, orderId: null });
-      showModalAlert("success", `Order #${deleteConfirm.orderId} deleted successfully.`);
-      fetchOrders();
+      if (isPosRecord) {
+        await api.delete(`/pos-transactions/${deleteConfirm.itemId}`);
+        setPosTransactions((prev) => prev.filter((transaction) => transaction.id !== deleteConfirm.itemId));
+        if (viewingPosTransaction?.id === deleteConfirm.itemId) {
+          setViewingPosTransaction(null);
+        }
+      } else {
+        await api.delete(`/orders/${deleteConfirm.itemId}`);
+        setOrders((prev) => prev.filter((order) => (order.order_id || order.id) !== deleteConfirm.itemId));
+        if ((viewingOrder?.order_id || viewingOrder?.id) === deleteConfirm.itemId) {
+          setViewingOrder(null);
+        }
+        if ((editingOrder?.order_id || editingOrder?.id) === deleteConfirm.itemId) {
+          setEditingOrder(null);
+        }
+      }
+
+      setDeleteConfirm({ isOpen: false, itemId: null, recordType: "preorder" });
+      showModalAlert("success", `${isPosRecord ? "POS transaction" : "Order"} #${deleteConfirm.itemId} deleted successfully.`);
     } catch (err) {
       console.error("Delete failed:", err);
-      setDeleteConfirm({ isOpen: false, orderId: null });
-      showModalAlert("error", "Failed to delete order.");
+      setDeleteConfirm({ isOpen: false, itemId: null, recordType: "preorder" });
+      showModalAlert("error", `Failed to delete ${isPosRecord ? "POS transaction" : "order"}.`);
     }
   };
 
@@ -480,7 +499,8 @@ function AdminOrdersPage({ user }) {
               ? "Search by order ID, customer name, or email..."
               : "Search by transaction ID, item name, or payment method..."}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => setSearchQuery(sanitizeSearchTerm(e.target.value))}
+            maxLength={100}
             className="w-full bg-slate-50 border border-gray-100 rounded-2xl pl-11 pr-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#eaf2ff] transition-all"
           />
         </div>
@@ -773,7 +793,7 @@ function AdminOrdersPage({ user }) {
                               )}
                               {canDeleteOrders && isArchivedOrder && (
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); promptDelete(orderId); }}
+                                  onClick={(e) => { e.stopPropagation(); promptDelete(orderId, "preorder"); }}
                                   className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-xs font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-500 transition-all duration-300 shadow-sm"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" /> Delete
@@ -877,6 +897,14 @@ function AdminOrdersPage({ user }) {
                                 {isArchivedTransaction ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
                                 {isArchivedTransaction ? "Restore" : "Archive"}
                               </button>
+                              {canDeleteOrders && isArchivedTransaction && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); promptDelete(transaction.id, "pos"); }}
+                                  className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-xs font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-500 transition-all duration-300 shadow-sm"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                                </button>
+                              )}
                             </div>
                           </td>
                         )}
@@ -1020,21 +1048,45 @@ function AdminOrdersPage({ user }) {
                 </div>
               )}
 
-              <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
-                <button
-                  onClick={() => { setEditingOrder(null); setViewingOrder(null); }}
-                  className="rounded-lg px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
-                >
-                  {isEditingMode ? "Cancel" : "Close Window"}
-                </button>
-                {isEditingMode && (
+              <div className="mt-8 pt-4 border-t border-gray-100 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  {canArchiveOrders && (
+                    <button
+                      onClick={() => promptToggleArchive(activeOrder, "preorder")}
+                      className={`rounded-lg px-5 py-2.5 text-sm font-bold text-white border-2 transition-all duration-300 shadow-sm ${
+                        activeOrder.isArchived
+                          ? "bg-emerald-500 border-emerald-500 hover:bg-transparent hover:text-emerald-600"
+                          : "bg-amber-500 border-amber-500 hover:bg-transparent hover:text-amber-500"
+                      }`}
+                    >
+                      {activeOrder.isArchived ? "Restore" : "Archive"}
+                    </button>
+                  )}
+                  {canDeleteOrders && activeOrder.isArchived && (
+                    <button
+                      onClick={() => promptDelete(orderId, "preorder")}
+                      className="rounded-lg bg-rose-500 px-5 py-2.5 text-sm font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-600 transition-all duration-300 shadow-sm"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
                   <button
-                    onClick={handleUpdateStatus}
-                    className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+                    onClick={() => { setEditingOrder(null); setViewingOrder(null); }}
+                    className="rounded-lg px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
                   >
-                    Save Status Changes
+                    {isEditingMode ? "Cancel" : "Close Window"}
                   </button>
-                )}
+                  {isEditingMode && (
+                    <button
+                      onClick={handleUpdateStatus}
+                      className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+                    >
+                      Save Status Changes
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1160,13 +1212,37 @@ function AdminOrdersPage({ user }) {
                 </div>
               </div>
 
-              <div className="flex justify-end pt-4 border-t border-gray-100">
-                <button
-                  onClick={() => setViewingPosTransaction(null)}
-                  className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
-                >
-                  Close
-                </button>
+              <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  {canArchiveOrders && (
+                    <button
+                      onClick={() => promptToggleArchive(viewingPosTransaction, "pos")}
+                      className={`rounded-lg px-5 py-2.5 text-sm font-bold text-white border-2 transition-all duration-300 shadow-sm ${
+                        viewingPosTransaction.isArchived
+                          ? "bg-emerald-500 border-emerald-500 hover:bg-transparent hover:text-emerald-600"
+                          : "bg-amber-500 border-amber-500 hover:bg-transparent hover:text-amber-500"
+                      }`}
+                    >
+                      {viewingPosTransaction.isArchived ? "Restore" : "Archive"}
+                    </button>
+                  )}
+                  {canDeleteOrders && viewingPosTransaction.isArchived && (
+                    <button
+                      onClick={() => promptDelete(viewingPosTransaction.id, "pos")}
+                      className="rounded-lg bg-rose-500 px-5 py-2.5 text-sm font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-600 transition-all duration-300 shadow-sm"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setViewingPosTransaction(null)}
+                    className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1253,19 +1329,39 @@ function AdminOrdersPage({ user }) {
 
       {/* CONFIRM DELETE MODAL */}
       {deleteConfirm.isOpen && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
-          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 text-rose-500">
-              <Trash2 size={28} />
+        (() => {
+          const isPosRecord = deleteConfirm.recordType === "pos";
+
+          return (
+            <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
+              <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 text-rose-500">
+                  <Trash2 size={28} />
+                </div>
+                <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
+                  Delete {isPosRecord ? "POS Transaction" : "Order"}?
+                </h3>
+                <p className="text-sm text-gray-500 mb-8 px-2">
+                  Are you sure you want to permanently delete {isPosRecord ? "POS transaction" : "order"} #{deleteConfirm.itemId}? This action cannot be undone.
+                </p>
+                <div className="flex justify-center gap-3">
+                  <button
+                    onClick={() => setDeleteConfirm({ isOpen: false, itemId: null, recordType: "preorder" })}
+                    className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="rounded-lg bg-rose-500 px-5 py-2 text-sm font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-600 transition-all duration-300 shadow-sm"
+                  >
+                    Yes, Delete
+                  </button>
+                </div>
+              </div>
             </div>
-            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">Delete Order?</h3>
-            <p className="text-sm text-gray-500 mb-8 px-2">Are you sure you want to permanently delete Order #{deleteConfirm.orderId}? This action cannot be undone.</p>
-            <div className="flex justify-center gap-3">
-              <button onClick={() => setDeleteConfirm({ isOpen: false, orderId: null })} className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">Cancel</button>
-              <button onClick={confirmDelete} className="rounded-lg bg-rose-500 px-5 py-2 text-sm font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-600 transition-all duration-300 shadow-sm">Yes, Delete</button>
-            </div>
-          </div>
-        </div>
+          );
+        })()
       )}
 
       {/* CONFIRM ARCHIVE/RESTORE MODAL */}

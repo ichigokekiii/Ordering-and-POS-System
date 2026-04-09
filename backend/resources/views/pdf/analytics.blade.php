@@ -72,6 +72,24 @@
         }, $points));
     };
 
+    $getLineMaxValue = function ($points, $series) {
+        $values = [];
+
+        foreach ($points as $point) {
+            foreach ($series as $seriesItem) {
+                $values[] = (float) ($point[$seriesItem['key']] ?? 0);
+            }
+        }
+
+        if (empty($values)) {
+            return 1;
+        }
+
+        $maxValue = max($values);
+
+        return $maxValue > 0 ? $maxValue : 1;
+    };
+
     $cardsToRender = !empty($summaryCards) ? $summaryCards : $supportingCards;
 @endphp
 <!DOCTYPE html>
@@ -191,40 +209,53 @@
                                     </div>
 
                                     @if(($chart['type'] ?? '') === 'line' && !empty($chart['points']) && !empty($chart['series']))
-                                        <svg viewBox="0 0 440 180" preserveAspectRatio="none" style="width: 100%; height: 170px; display: block;">
-                                            <line x1="0" y1="160" x2="440" y2="160" stroke="#e2e8f0" stroke-width="1" />
-                                            <line x1="0" y1="110" x2="440" y2="110" stroke="#f1f5f9" stroke-width="1" />
-                                            <line x1="0" y1="60" x2="440" y2="60" stroke="#f1f5f9" stroke-width="1" />
-                                            <line x1="0" y1="10" x2="440" y2="10" stroke="#f1f5f9" stroke-width="1" />
-
-                                            @foreach($chart['series'] as $series)
-                                                <polyline
-                                                    fill="none"
-                                                    stroke="{{ $series['color'] ?? $theme['accent'] }}"
-                                                    stroke-width="3"
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    points="{{ $getPolylinePoints($chart['points'], $series['key']) }}"
-                                                />
-                                            @endforeach
-                                        </svg>
-
-                                        <table style="width: 100%; border-collapse: collapse; margin-top: 6px;">
-                                            <tr>
-                                                @foreach($chart['points'] as $point)
-                                                    <td style="font-size: 8px; color: #94a3b8; text-align: center;">
-                                                        {{ $point['label'] ?? $point['name'] ?? '' }}
-                                                    </td>
-                                                @endforeach
-                                            </tr>
-                                        </table>
+                                        @php
+                                            $lineMaxValue = $getLineMaxValue($chart['points'], $chart['series']);
+                                            $chartHeight = 150;
+                                        @endphp
+                                        <div style="border-left: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; padding: 8px 0 0 8px; margin-bottom: 10px;">
+                                            <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+                                                <tr>
+                                                    @foreach($chart['points'] as $point)
+                                                        <td style="vertical-align: bottom; height: {{ $chartHeight }}px; padding: 0 2px;">
+                                                            <table style="width: 100%; border-collapse: collapse; table-layout: fixed; height: {{ $chartHeight }}px;">
+                                                                <tr>
+                                                                    @foreach($chart['series'] as $series)
+                                                                        @php
+                                                                            $rawValue = (float) ($point[$series['key']] ?? 0);
+                                                                            $barHeight = max($rawValue > 0 ? ($rawValue / $lineMaxValue) * ($chartHeight - 16) : 0, $rawValue > 0 ? 8 : 0);
+                                                                            $topHeight = max($chartHeight - $barHeight, 0);
+                                                                        @endphp
+                                                                        <td style="width: {{ 100 / max(count($chart['series']), 1) }}%; padding: 0 2px; vertical-align: bottom;">
+                                                                            <table style="width: 100%; border-collapse: collapse; height: {{ $chartHeight }}px;">
+                                                                                <tr>
+                                                                                    <td style="height: {{ $topHeight }}px;"></td>
+                                                                                </tr>
+                                                                                <tr>
+                                                                                    <td style="height: {{ $barHeight }}px; background: {{ $series['color'] ?? $theme['accent'] }}; border-radius: 999px 999px 0 0;"></td>
+                                                                                </tr>
+                                                                            </table>
+                                                                        </td>
+                                                                    @endforeach
+                                                                </tr>
+                                                            </table>
+                                                        </td>
+                                                    @endforeach
+                                                </tr>
+                                                <tr>
+                                                    @foreach($chart['points'] as $point)
+                                                        <td style="padding-top: 8px; font-size: 8px; color: #94a3b8; text-align: center;">
+                                                            {{ $point['label'] ?? $point['name'] ?? '' }}
+                                                        </td>
+                                                    @endforeach
+                                                </tr>
+                                            </table>
+                                        </div>
 
                                         <div style="margin-top: 10px; text-align: center;">
                                             @foreach($chart['series'] as $series)
                                                 <span style="display: inline-block; margin: 0 8px; font-size: 9px; color: #64748b;">
-                                                    <svg width="8" height="8" viewBox="0 0 8 8" style="display: inline-block; margin-right: 4px; vertical-align: middle;">
-                                                        <circle cx="4" cy="4" r="4" fill="{{ $series['color'] ?? $theme['accent'] }}" />
-                                                    </svg>
+                                                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: {{ $series['color'] ?? $theme['accent'] }}; margin-right: 4px; vertical-align: middle;"></span>
                                                     {{ $series['label'] }}
                                                 </span>
                                             @endforeach

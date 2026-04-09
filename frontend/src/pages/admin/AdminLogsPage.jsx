@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { ChevronDown, Search, Filter, Loader2, CalendarClock } from "lucide-react";
 import api from "../../services/api";
+import { sanitizeSearchTerm } from "../../utils/formValidation";
 
 const formatRole = (role) => {
   if (!role) return "System";
@@ -115,7 +116,7 @@ function AdminLogsPage() {
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({
       ...prev,
-      [key]: value,
+      [key]: key === "search" ? sanitizeSearchTerm(value) : value,
       page: key === "page" ? value : 1,
     }));
   };
@@ -154,6 +155,7 @@ function AdminLogsPage() {
              placeholder="Search logs by keyword or module..." 
              value={filters.search}
              onChange={(event) => handleFilterChange("search", event.target.value)}
+             maxLength={100}
              className="w-full bg-slate-50 border border-gray-100 rounded-2xl pl-11 pr-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#eaf2ff] transition-all"
            />
         </div>

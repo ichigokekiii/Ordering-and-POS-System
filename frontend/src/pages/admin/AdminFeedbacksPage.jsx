@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Star,
 } from "lucide-react";
+import { sanitizeSearchTerm } from "../../utils/formValidation";
 
 const RatingPill = ({ rating }) => {
   const colors = {
@@ -140,7 +141,8 @@ function AdminFeedbacksPage() {
             type="text"
             placeholder="Search by customer name or feedback content..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => setSearchQuery(sanitizeSearchTerm(e.target.value))}
+            maxLength={100}
             className="w-full bg-slate-50 border border-gray-100 rounded-2xl pl-11 pr-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#eaf2ff] transition-all"
           />
         </div>

@@ -108,6 +108,31 @@ class PosTransactionsController extends Controller
         }
     }
 
+    public function destroy(Request $request, $id)
+    {
+        if (strtolower((string) optional($request->user())->role) !== 'admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        try {
+            $transaction = PosTransactions::findOrFail($id);
+
+            if (!$transaction->isArchived) {
+                return response()->json([
+                    'message' => 'Archive this POS transaction before deleting it.',
+                ], 409);
+            }
+
+            $transaction->delete();
+
+            return response()->json([
+                'message' => 'POS transaction deleted successfully.',
+            ]);
+        } catch (\Exception $e) {
+            return $this->serverErrorResponse('Failed to delete POS transaction.', $e);
+        }
+    }
+
     public function analytics()
     {
         try {

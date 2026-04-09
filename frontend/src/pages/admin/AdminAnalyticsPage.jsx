@@ -61,6 +61,29 @@ const formatValue = (value, format = "number") => {
   return Number(value || 0).toLocaleString();
 };
 
+const PieLegendList = ({ data = [], format = "number" }) => {
+  if (!data.length) return null;
+
+  return (
+    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {data.map((entry, index) => (
+        <div key={entry.name} className="flex items-center justify-between rounded-xl border border-gray-100 bg-[#f8fafc] px-3 py-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
+            />
+            <span className="truncate text-xs font-semibold text-gray-600">{entry.name}</span>
+          </div>
+          <span className="ml-3 shrink-0 text-xs font-bold text-gray-900">
+            {formatValue(entry.value, format)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const CardMenu = ({ onEmail }) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
@@ -387,30 +410,36 @@ function AdminAnalyticsPage() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <AnalyticsPanel title="Delivery Breakdown" subtitle="Revenue share by delivery method." onEmail={handleEmailReport}>
             {deliveryBreakdown.length ? (
-              <div className="h-[280px] w-full mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={deliveryBreakdown} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
-                      {deliveryBreakdown.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="mt-4">
+                <div className="h-[220px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={deliveryBreakdown} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
+                        {deliveryBreakdown.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <PieLegendList data={deliveryBreakdown} format="currency" />
               </div>
             ) : <div className="h-full flex items-center justify-center text-gray-400">No delivery data found</div>}
           </AnalyticsPanel>
 
           <AnalyticsPanel title="Payment Methods" subtitle="How customers pay across tracked transactions." onEmail={handleEmailReport}>
             {paymentMethods.length ? (
-              <div className="h-[280px] w-full mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={paymentMethods} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
-                      {paymentMethods.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="mt-4">
+                <div className="h-[220px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={paymentMethods} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
+                        {paymentMethods.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <PieLegendList data={paymentMethods} />
               </div>
             ) : <div className="h-full flex items-center justify-center text-gray-400">No payment method data found</div>}
           </AnalyticsPanel>
@@ -459,15 +488,18 @@ function AdminAnalyticsPage() {
 
           <AnalyticsPanel title="Order Mix" subtitle="Custom versus premade ordering behavior." onEmail={handleEmailReport}>
             {mix.length ? (
-              <div className="h-[320px] w-full mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={mix} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
-                      {mix.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="mt-4">
+                <div className="h-[220px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={mix} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
+                        {mix.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <PieLegendList data={mix} />
               </div>
             ) : <div className="h-full flex items-center justify-center text-gray-400">No order mix data found</div>}
           </AnalyticsPanel>
@@ -629,30 +661,36 @@ function AdminAnalyticsPage() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <AnalyticsPanel title="Payment Status" subtitle="Breakdown of tracked payment states." onEmail={handleEmailReport}>
             {statusBreakdown.length ? (
-              <div className="h-[300px] w-full mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={statusBreakdown} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
-                      {statusBreakdown.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="mt-4">
+                <div className="h-[220px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={statusBreakdown} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
+                        {statusBreakdown.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <PieLegendList data={statusBreakdown} />
               </div>
             ) : <div className="h-full flex items-center justify-center text-gray-400">No payment status data found</div>}
           </AnalyticsPanel>
 
           <AnalyticsPanel title="Payment Methods" subtitle="Method usage across payments." onEmail={handleEmailReport}>
             {methodBreakdown.length ? (
-              <div className="h-[300px] w-full mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={methodBreakdown} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
-                      {methodBreakdown.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="mt-4">
+                <div className="h-[220px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={methodBreakdown} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
+                        {methodBreakdown.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <PieLegendList data={methodBreakdown} />
               </div>
             ) : <div className="h-full flex items-center justify-center text-gray-400">No payment method data found</div>}
           </AnalyticsPanel>
@@ -713,15 +751,18 @@ function AdminAnalyticsPage() {
 
           <AnalyticsPanel title="POS Payment Mix" subtitle="Payment methods recorded in the POS flow." onEmail={handleEmailReport}>
             {methodBreakdown.length ? (
-              <div className="h-[320px] w-full mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={methodBreakdown} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
-                      {methodBreakdown.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="mt-4">
+                <div className="h-[220px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={methodBreakdown} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
+                        {methodBreakdown.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <PieLegendList data={methodBreakdown} />
               </div>
             ) : <div className="h-full flex items-center justify-center text-gray-400">No POS payment data found</div>}
           </AnalyticsPanel>

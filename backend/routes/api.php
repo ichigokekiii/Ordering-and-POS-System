@@ -151,6 +151,7 @@ Route::middleware(['auth:sanctum', 'admin.owner'])->group(function () {
     Route::middleware('admin.only')->group(function () {
         Route::post('/users', [UserController::class, 'store']);
         Route::delete('/users/{id}', [UserController::class, 'destroy']);
+        Route::delete('/pos-transactions/{id}', [PosTransactionsController::class, 'destroy']);
 
         // OTP endpoints for admin user management
         Route::post('/users/{id}/email-otp', [UserController::class, 'sendEmailOtp']);

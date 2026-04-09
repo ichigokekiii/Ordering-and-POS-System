@@ -30,13 +30,16 @@ class ContentController extends Controller
             'page' => 'required|string|max:255',
             'type' => 'required|in:text,image',
             'content_text' => 'nullable|string',
-            'content_image' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+            'content_image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:5120',
             'identifier' => [
                 'required',
                 'string',
                 'max:255',
                 Rule::unique('contents')->where(fn ($query) => $query->where('page', $request->page)->where('isArchived', false)),
             ],
+        ], [
+            'content_image.mimes' => 'Only JPG, JPEG, PNG, and GIF files are allowed.',
+            'content_image.max' => 'Image must be 5MB or smaller.',
         ]);
 
         try {
@@ -89,6 +92,13 @@ class ContentController extends Controller
                     'page' => 'nullable|string|max:255',
                 ]);
             }
+
+            $request->validate([
+                'content_image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:5120',
+            ], [
+                'content_image.mimes' => 'Only JPG, JPEG, PNG, and GIF files are allowed.',
+                'content_image.max' => 'Image must be 5MB or smaller.',
+            ]);
 
             if ($request->filled('identifier')) {
                 $content->identifier = $request->identifier;

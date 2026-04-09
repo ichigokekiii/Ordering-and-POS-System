@@ -260,4 +260,56 @@ class DynamicScheduleOrderingTest extends TestCase
                 'locked' => true,
             ]);
     }
+
+    public function test_invalid_legacy_priority_does_not_immediately_lock_on_first_cancellation(): void
+    {
+        Mail::fake();
+
+        $user = User::query()->create([
+            'first_name' => 'Legacy',
+            'last_name' => 'Priority',
+            'email' => 'legacy-priority@example.com',
+            'password' => bcrypt('secret123'),
+            'role' => 'user',
+            'priority' => 10,
+            'consecutive_cancellations' => 99,
+            'is_verified' => true,
+        ]);
+
+        $schedule = Schedule::query()->create([
+            'schedule_name' => 'Reset Priority Event',
+            'location' => 'Main Branch',
+            'event_date' => now()->addDays(10),
+            'isAvailable' => true,
+            'isArchived' => false,
+        ]);
+
+        $order = new Order();
+        $order->order_id = 'ORD-CANCEL-LEGACY';
+        $order->user_id = $user->id;
+        $order->schedule_id = $schedule->id;
+        $order->order_date = now()->toDateTimeString();
+        $order->total_amount = 1000;
+        $order->order_status = 'pending';
+        $order->delivery_method = 'pickup';
+        $order->address = 'Pickup';
+        $order->save();
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson('/api/orders/ORD-CANCEL-LEGACY/cancel');
+        $response->assertOk()
+            ->assertJson([
+                'account_disabled' => false,
+                'priority' => 0,
+                'consecutive_cancellations' => 1,
+            ]);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'priority' => 0,
+            'consecutive_cancellations' => 1,
+            'is_locked' => false,
+        ]);
+    }
 }

@@ -4,6 +4,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\User;
 use App\Mail\OrderCancelledMail;
 use App\Mail\AccountDisabledMail;
 use Illuminate\Http\Request;
@@ -13,6 +14,34 @@ use Carbon\Carbon;
 
 class OrderCancellationController extends Controller
 {
+    private function normalizeCustomerPriority(User $user): int
+    {
+        $role = strtolower((string) $user->role);
+
+        if (!in_array($role, ['user', 'customer'], true)) {
+            return 0;
+        }
+
+        $priority = (int) $user->priority;
+
+        if ($priority < 0 || $priority > 3) {
+            return 0;
+        }
+
+        return $priority;
+    }
+
+    private function normalizeCancellationStreak(User $user): int
+    {
+        $streak = (int) $user->consecutive_cancellations;
+
+        if ($streak < 0 || $streak > 1) {
+            return 0;
+        }
+
+        return $streak;
+    }
+
     public function cancel(Request $request, string $orderId)
     {
         $user = Auth::user()->fresh();
@@ -58,7 +87,8 @@ class OrderCancellationController extends Controller
 
         $accountDisabled = false;
 
-        $user->consecutive_cancellations = (int) $user->consecutive_cancellations + 1;
+        $user->priority = $this->normalizeCustomerPriority($user);
+        $user->consecutive_cancellations = $this->normalizeCancellationStreak($user) + 1;
 
         if ($user->consecutive_cancellations >= 2) {
             $user->priority = min(((int) $user->priority) + 1, 3);

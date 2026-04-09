@@ -12,10 +12,10 @@ import {
   X,
   Loader2,
   PackageSearch,
-  MapPin,
-  ShieldCheck
+  MapPin
 } from "lucide-react";
 
+// --- REUSABLE PILLS ---
 const OrderStatusPill = ({ status }) => {
   let colorClass = "bg-gray-100 text-gray-600 border-gray-200";
   if (status === "Pending") colorClass = "bg-amber-100 text-amber-700 border-amber-200";
@@ -23,6 +23,7 @@ const OrderStatusPill = ({ status }) => {
   else if (status === "Shipped") colorClass = "bg-purple-100 text-purple-700 border-purple-200";
   else if (status === "Delivered" || status === "Completed") colorClass = "bg-emerald-100 text-emerald-700 border-emerald-200";
   else if (status === "Cancelled") colorClass = "bg-rose-100 text-rose-700 border-rose-200";
+  
   return (
     <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${colorClass}`}>
       {status || "Unknown"}
@@ -30,31 +31,40 @@ const OrderStatusPill = ({ status }) => {
   );
 };
 
-const normalizePriority = (priority, role) => {
-  const normalizedRole = String(role || "").toLowerCase();
-  if (normalizedRole && !["user", "customer"].includes(normalizedRole)) {
-    return 0;
-  }
-
+const normalizePriority = (priority) => {
   return Math.min(Math.max(Number(priority) || 0, 0), 3);
 };
 
-const PriorityPill = ({ priority = 0, role }) => {
-  const safePriority = normalizePriority(priority, role);
+// Returns the Tailwind background color class for the edge accent bar
+const getPriorityEdgeColor = (priority) => {
+  const safePriority = normalizePriority(priority);
+  if (safePriority === 0) return "bg-emerald-400"; // Top Priority
+  if (safePriority === 1) return "bg-amber-400";   // Mid Priority
+  if (safePriority === 2) return "bg-orange-400";  // Low Priority
+  if (safePriority === 3) return "bg-rose-400";    // Locked / Highest Risk
+  return "bg-transparent"; 
+};
+
+// Pill for the detailed modal view (Now styled identically to OrderStatusPill)
+const PriorityPill = ({ priority = 0 }) => {
+  const safePriority = normalizePriority(priority);
   const colors = {
-    0: "bg-slate-100 text-slate-700 border-slate-200",
-    1: "bg-amber-100 text-amber-700 border-amber-200",
-    2: "bg-orange-100 text-orange-700 border-orange-200",
-    3: "bg-rose-100 text-rose-700 border-rose-200",
+    0: "bg-emerald-100 text-emerald-700 border-emerald-200", // Green
+    1: "bg-amber-100 text-amber-700 border-amber-200",       // Yellow
+    2: "bg-orange-100 text-orange-700 border-orange-200",    // Orange
+    3: "bg-rose-100 text-rose-700 border-rose-200",          // Red
   };
+
+  const labels = { 0: "Top", 1: "Mid", 2: "Low", 3: "Locked" };
 
   return (
     <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${colors[safePriority] || colors[0]}`}>
-      Priority {safePriority}
+      {labels[safePriority]} Priority
     </span>
   );
 };
 
+// --- MAIN COMPONENT ---
 function AdminOrdersPage({ user }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -66,12 +76,12 @@ function AdminOrdersPage({ user }) {
   const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', message: '' });
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, orderId: null });
 
-  // Search, Sort, Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("priority");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterDelivery, setFilterDelivery] = useState("all");
-  const [filterPriority, setFilterPriority] = useState("all");
+  const [filterEvent, setFilterEvent] = useState("all");
+  
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
 
@@ -88,7 +98,7 @@ function AdminOrdersPage({ user }) {
       const data = (Array.isArray(res.data) ? res.data : res.data.orders ?? res.data.data ?? []).map((order) => ({
         ...order,
         user: order.user
-          ? { ...order.user, priority: normalizePriority(order.user.priority, order.user.role) }
+          ? { ...order.user, priority: normalizePriority(order.user.priority) }
           : order.user,
         order_items: order.order_items || order.orderItems || [],
       }));
@@ -111,10 +121,15 @@ function AdminOrdersPage({ user }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Extract unique events for the filter dropdown
+  const uniqueEvents = useMemo(() => {
+    const events = orders.map(o => o.schedule?.schedule_name).filter(Boolean);
+    return [...new Set(events)];
+  }, [orders]);
+
   const filteredOrders = useMemo(() => {
     let result = [...orders];
 
-    // Search by order ID, customer name, or email
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter((o) => {
@@ -126,42 +141,26 @@ function AdminOrdersPage({ user }) {
       });
     }
 
-    // Filter by status
-    if (filterStatus !== "all") {
-      result = result.filter(
-        (o) => (o.order_status || "").toLowerCase() === filterStatus.toLowerCase()
-      );
-    }
+    if (filterStatus !== "all") result = result.filter((o) => (o.order_status || "").toLowerCase() === filterStatus.toLowerCase());
+    if (filterDelivery !== "all") result = result.filter((o) => (o.delivery_method || "").toLowerCase() === filterDelivery.toLowerCase());
+    if (filterEvent !== "all") result = result.filter((o) => (o.schedule?.schedule_name || "Unlinked") === filterEvent);
 
-    // Filter by delivery method
-    if (filterDelivery !== "all") {
-      result = result.filter(
-        (o) => (o.delivery_method || "").toLowerCase() === filterDelivery.toLowerCase()
-      );
-    }
-
-    if (filterPriority !== "all") {
-      result = result.filter(
-        (o) => String(normalizePriority(o.user?.priority, o.user?.role)) === filterPriority
-      );
-    }
-
-    // Sort
     result.sort((a, b) => {
       if (sortBy === "priority") {
-        const priorityDiff = normalizePriority(a.user?.priority, a.user?.role) - normalizePriority(b.user?.priority, b.user?.role);
+        // Sorted ascending so 0 comes before 3
+        const priorityDiff = normalizePriority(a.user?.priority) - normalizePriority(b.user?.priority);
         if (priorityDiff !== 0) return priorityDiff;
         return new Date(b.created_at) - new Date(a.created_at);
       }
       if (sortBy === "created_at") return new Date(b.created_at) - new Date(a.created_at);
       if (sortBy === "created_at_asc") return new Date(a.created_at) - new Date(b.created_at);
       if (sortBy === "total_amount") return Number(b.total_amount) - Number(a.total_amount);
-      if (sortBy === "id") return Number(a.order_id || a.id) - Number(b.order_id || b.id);
+      if (sortBy === "id") return Number(b.order_id || b.id) - Number(a.order_id || a.id);
       return 0;
     });
 
     return result;
-  }, [orders, searchQuery, filterStatus, filterDelivery, filterPriority, sortBy]);
+  }, [orders, searchQuery, filterStatus, filterDelivery, filterEvent, sortBy]);
 
   const promptDelete = (id) => setDeleteConfirm({ isOpen: true, orderId: id });
 
@@ -214,10 +213,10 @@ function AdminOrdersPage({ user }) {
   };
 
   const sortOptions = [
-    { key: "priority", label: "Priority first" },
-    { key: "created_at", label: "Newest first" },
-    { key: "created_at_asc", label: "Oldest first" },
-    { key: "total_amount", label: "Highest total" },
+    { key: "priority", label: "Priority (High to Low)" },
+    { key: "created_at", label: "Newest Orders" },
+    { key: "created_at_asc", label: "Oldest Orders" },
+    { key: "total_amount", label: "Highest Value" },
     { key: "id", label: "Order ID" },
   ];
 
@@ -227,7 +226,7 @@ function AdminOrdersPage({ user }) {
       {/* HEADER AREA */}
       <div className="mb-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-3xl font-playfair font-bold text-gray-900 tracking-tight">Orders</h1>
+          <h1 className="text-3xl font-playfair font-bold text-gray-900 tracking-tight">Order Fulfillment</h1>
           <p className="mt-1.5 max-w-2xl text-sm font-medium text-gray-500">
             Manage customer orders, track delivery statuses, and oversee transactions.
           </p>
@@ -264,7 +263,7 @@ function AdminOrdersPage({ user }) {
               <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showSortMenu ? "rotate-180" : ""}`} />
             </button>
             {showSortMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 p-2 animate-in fade-in zoom-in duration-100">
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 p-2 animate-in fade-in zoom-in duration-100">
                 {sortOptions.map(({ key, label }) => (
                   <button
                     key={key}
@@ -289,7 +288,7 @@ function AdminOrdersPage({ user }) {
               <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showFilterMenu ? "rotate-180" : ""}`} />
             </button>
             {showFilterMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 p-4 animate-in fade-in zoom-in duration-100">
+              <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 p-4 animate-in fade-in zoom-in duration-100 max-h-[80vh] overflow-y-auto">
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Filter by Status</p>
                 <div className="space-y-1 mb-4">
                   {["all", "Pending", "Processing", "Shipped", "Delivered", "Cancelled"].map((s) => (
@@ -302,8 +301,34 @@ function AdminOrdersPage({ user }) {
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Filter by Delivery</p>
-                <div className="space-y-1">
+
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-t border-gray-50 pt-4">Filter by Event</p>
+                <div className="space-y-1 mb-4 max-h-32 overflow-y-auto">
+                  <button
+                    onClick={() => setFilterEvent("all")}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold capitalize transition-colors ${filterEvent === "all" ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
+                  >
+                    All Events
+                  </button>
+                  <button
+                    onClick={() => setFilterEvent("Unlinked")}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold capitalize transition-colors ${filterEvent === "Unlinked" ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
+                  >
+                    No Event / Unlinked
+                  </button>
+                  {uniqueEvents.map((e) => (
+                    <button
+                      key={e}
+                      onClick={() => setFilterEvent(e)}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold truncate transition-colors ${filterEvent === e ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-t border-gray-50 pt-4">Filter by Delivery</p>
+                <div className="space-y-1 mb-4">
                   {["all", "delivery", "pickup"].map((d) => (
                     <button
                       key={d}
@@ -311,18 +336,6 @@ function AdminOrdersPage({ user }) {
                       className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold capitalize transition-colors ${filterDelivery === d ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
                     >
                       {d === "all" ? "All Methods" : d}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 mt-4">Filter by Priority</p>
-                <div className="space-y-1">
-                  {["all", "0", "1", "2", "3"].map((priority) => (
-                    <button
-                      key={priority}
-                      onClick={() => setFilterPriority(priority)}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold capitalize transition-colors ${filterPriority === priority ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
-                    >
-                      {priority === "all" ? "All Priorities" : `Priority ${priority}`}
                     </button>
                   ))}
                 </div>
@@ -347,7 +360,7 @@ function AdminOrdersPage({ user }) {
             </span>
             {orders.length > 0 && (
               <button
-                onClick={() => { setSearchQuery(""); setFilterStatus("all"); setFilterDelivery("all"); setFilterPriority("all"); }}
+                onClick={() => { setSearchQuery(""); setFilterStatus("all"); setFilterDelivery("all"); setFilterEvent("all"); }}
                 className="text-xs font-bold text-[#4f6fa5] hover:underline mt-1"
               >
                 Clear filters
@@ -356,74 +369,93 @@ function AdminOrdersPage({ user }) {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
                 <tr className="border-b border-gray-50 bg-[#f8fafc]">
-                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap w-32">Order ID</th>
-                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Customer / User ID</th>
+                  <th className="w-2"></th>
+                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap w-28">Order ID</th>
+                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Customer Info</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Event</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Delivery</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Date Placed</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Status</th>
-                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Total</th>
-                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Priority</th>
+                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap text-right">Total</th>
                   {canEdit && <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredOrders.map((order) => {
                   const orderId = order.order_id || order.id;
+                  const edgeColor = getPriorityEdgeColor(order.user?.priority);
+
                   return (
                     <tr
                       key={orderId}
                       onClick={() => canEdit ? openEditModal(order) : setViewingOrder(order)}
-                      className="group hover:bg-slate-50/80 transition-colors cursor-pointer"
+                      className="group hover:bg-slate-50/80 transition-colors cursor-pointer relative"
                     >
-                      <td className="px-5 py-5">
+                      {/* Priority Edge Accent Bar */}
+                      <td className="p-0">
+                        <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${edgeColor}`}></div>
+                      </td>
+
+                      {/* Order ID */}
+                      <td className="px-5 py-5 pl-8">
                         <span className="text-sm font-bold text-gray-900 whitespace-nowrap">#{orderId}</span>
                       </td>
+                      
+                      {/* Customer Info */}
                       <td className="px-5 py-5">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-[#4f6fa5] font-bold shrink-0 text-xs">
                             {order.user?.first_name ? order.user.first_name.charAt(0) : "U"}
                           </div>
-                          <div className="min-w-0 max-w-[180px] lg:max-w-[240px]">
+                          <div className="min-w-0 max-w-[150px] lg:max-w-[200px]">
                             <p className="font-bold text-gray-900 tracking-tight truncate text-sm">
                               {order.user?.first_name ? `${order.user.first_name} ${order.user.last_name}` : `User ID: ${order.user_id}`}
                             </p>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 truncate mt-2">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 truncate mt-1">
                               {order.user?.email || "No Email provided"}
                             </p>
                           </div>
                         </div>
                       </td>
+                      
+                      {/* Event */}
                       <td className="px-5 py-5">
-                        <div className="max-w-[180px] lg:max-w-[220px]">
+                        <div className="max-w-[160px] lg:max-w-[200px]">
                           <p className="text-sm font-semibold text-gray-700 truncate">
                             {order.schedule?.schedule_name || "Legacy / Unlinked"}
                           </p>
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1">
-                            {order.schedule?.event_date ? new Date(order.schedule.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "No linked event"}
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1 truncate">
+                            {order.schedule?.event_date ? new Date(order.schedule.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "No linked date"}
                           </p>
                         </div>
                       </td>
+
+                      {/* Delivery */}
                       <td className="px-5 py-5">
                         <p className="text-sm font-semibold text-gray-700 capitalize whitespace-nowrap">{order.delivery_method}</p>
                       </td>
+
+                      {/* Date Placed */}
                       <td className="px-5 py-5">
                         <p className="text-sm font-semibold text-gray-600 whitespace-nowrap">
                           {new Date(order.created_at).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })}
                         </p>
                       </td>
+
+                      {/* Status */}
                       <td className="px-5 py-5">
                         <OrderStatusPill status={order.order_status} />
                       </td>
-                      <td className="px-5 py-5">
+
+                      {/* Total */}
+                      <td className="px-5 py-5 text-right">
                         <p className="text-sm font-bold text-[#4f6fa5] whitespace-nowrap">₱{order.total_amount}</p>
                       </td>
-                      <td className="px-5 py-5">
-                        <PriorityPill priority={order.user?.priority ?? 0} role={order.user?.role} />
-                      </td>
+
+                      {/* Actions */}
                       {canEdit && (
                         <td className="px-5 py-5">
                           <div className="flex items-center justify-end gap-2">
@@ -479,16 +511,17 @@ function AdminOrdersPage({ user }) {
                   <div className="space-y-3 text-sm">
                     <div className="flex justify-between"><span className="text-gray-500">Date Placed</span><span className="font-semibold text-gray-900">{new Date(activeOrder.created_at).toLocaleDateString()}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500">Delivery</span><span className="font-semibold text-gray-900 capitalize">{activeOrder.delivery_method}</span></div>
-                    <div className="flex justify-between gap-4"><span className="text-gray-500">Event</span><span className="font-semibold text-gray-900 text-right">{activeOrder.schedule?.schedule_name || "Legacy / Unlinked event"}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500">Event Date</span><span className="font-semibold text-gray-900">{activeOrder.schedule?.event_date ? new Date(activeOrder.schedule.event_date).toLocaleDateString() : "No linked date"}</span></div>
+                    <div className="flex justify-between gap-4"><span className="text-gray-500">Event</span><span className="font-semibold text-gray-900 text-right">{activeOrder.schedule?.schedule_name || "Legacy / Unlinked"}</span></div>
                     <div className="flex justify-between items-center"><span className="text-gray-500">Current Status</span><OrderStatusPill status={activeOrder.order_status} /></div>
-                    <div className="flex justify-between items-center"><span className="text-gray-500">Priority</span><PriorityPill priority={activeOrder.user?.priority ?? 0} role={activeOrder.user?.role} /></div>
                   </div>
                 </div>
                 <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
                   <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Customer</h3>
                   <div className="space-y-3 text-sm">
-                    <p className="font-semibold text-gray-900">{activeOrder.user?.first_name ? `${activeOrder.user.first_name} ${activeOrder.user.last_name}` : "Guest/Unknown"}</p>
+                    <div className="flex items-center justify-between">
+                       <p className="font-semibold text-gray-900">{activeOrder.user?.first_name ? `${activeOrder.user.first_name} ${activeOrder.user.last_name}` : "Guest/Unknown"}</p>
+                       <PriorityPill priority={activeOrder.user?.priority ?? 0} />
+                    </div>
                     <p className="text-gray-600 truncate">{activeOrder.user?.email || "No email"}</p>
                     <p className="text-gray-600">{activeOrder.user?.phone_number || "No phone"}</p>
                     <p className="text-gray-600">User ID: {activeOrder.user_id}</p>
@@ -545,18 +578,22 @@ function AdminOrdersPage({ user }) {
 
               {isEditingMode && (
                 <div className="pt-2 border-t border-gray-100">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Update Fulfillment Status</label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-900 focus:border-[#4f6fa5] focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all shadow-sm"
-                  >
-                    <option value="Pending">Pending (Awaiting review)</option>
-                    <option value="Processing">Processing (Arrangement being created)</option>
-                    <option value="Shipped">Shipped (Out for delivery)</option>
-                    <option value="Delivered">Delivered (Order fulfilled)</option>
-                    <option value="Cancelled">Cancelled (Order voided)</option>
-                  </select>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Update Order Status</label>
+                  
+                  <div className="relative">
+                    <select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                      className="w-full appearance-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 hover:border-gray-900 hover:text-gray-900 transition-all cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-[#eaf2ff]"
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="Processing">Processing</option>
+                      <option value="Shipped">Shipped</option>
+                      <option value="Delivered">Delivered</option>
+                      <option value="Cancelled">Cancelled</option>
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  </div>
                 </div>
               )}
 

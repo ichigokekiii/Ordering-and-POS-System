@@ -19,13 +19,16 @@ class PremadeController extends Controller
     {
         $request->validate([
             'name'        => 'required|string',
-            'image'       => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'image'       => 'required|image|mimes:jpg,jpeg,png,gif|max:5120',
             'description' => 'sometimes|required|string',
             'category'    => 'nullable|string',
             'type'        => 'nullable|string',
             'price'       => 'required|numeric',
             'isAvailable' => 'required|boolean',
             'isArchived'  => 'sometimes|boolean',
+        ], [
+            'image.mimes' => 'Only JPG, JPEG, PNG, and GIF files are allowed.',
+            'image.max' => 'Image must be 5MB or smaller.',
         ]);
 
         // Store file in storage/app/public/premades
@@ -55,13 +58,16 @@ class PremadeController extends Controller
     {
         $request->validate([
             'name'        => 'sometimes|required|string',
-            'image'       => 'sometimes|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'image'       => 'sometimes|image|mimes:jpg,jpeg,png,gif|max:5120',
             'description' => 'sometimes|required|string',
             'category'    => 'sometimes|nullable|string',
             'type'        => 'sometimes|nullable|string',
             'price'       => 'sometimes|required|numeric',
             'isAvailable' => 'sometimes|required|boolean',
             'isArchived'  => 'sometimes|required|boolean',
+        ], [
+            'image.mimes' => 'Only JPG, JPEG, PNG, and GIF files are allowed.',
+            'image.max' => 'Image must be 5MB or smaller.',
         ]);
 
         $premade = PremadeProduct::findOrFail($id);

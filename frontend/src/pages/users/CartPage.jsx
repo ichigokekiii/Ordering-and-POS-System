@@ -2,6 +2,10 @@ import { ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../contexts/CartContext";
 import { useSchedules } from "../../contexts/ScheduleContext";
+import {
+  formatCustomSelection,
+  getCustomOrderSummary,
+} from "../../utils/customOrderSummary";
 
 function CartPage() {
   const { cartItems, removeFromCart, updateQuantity, clearCart, totalItems, totalPrice, selectedScheduleId } = useCart();
@@ -61,12 +65,16 @@ function CartPage() {
           {/* Left Column: Cart Items */}
           <div className="flex-1 space-y-6">
             <h3 className="text-xs uppercase tracking-widest font-bold text-gray-500 mb-2">{totalItems} Item{totalItems !== 1 ? "s" : ""} selected</h3>
-            {cartItems.map((item) => (
-              <div
-                key={item.id}
-                className="group rounded-3xl bg-white p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative"
-              >
-                <div className="flex items-start gap-5">
+            {cartItems.map((item) => {
+              const customSummary =
+                item.type === "custom" ? getCustomOrderSummary(item) : null;
+
+              return (
+                <div
+                  key={item.id}
+                  className="group rounded-3xl bg-white p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative"
+                >
+                  <div className="flex items-start gap-5">
                   {/* Image */}
                   <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-50">
                     <img
@@ -98,17 +106,62 @@ function CartPage() {
                       )}
 
                       {/* Item Breakdown or Description */}
-                      {item.type === "custom" && item.items ? (
-                        <ul className="mt-1 space-y-1">
-                          {item.items.map((flower) => (
-                            <li key={flower.id} className="text-xs text-gray-500 font-medium">
-                              {flower.name} ×{flower.quantity}
-                              <span className="ml-1 text-gray-300">
-                                {flower.free ? "" : `— +₱${(flower.price * flower.quantity).toLocaleString()}`}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
+                      {item.type === "custom" && customSummary ? (
+                        <div className="mt-3 space-y-2">
+                          {customSummary.bouquet && (
+                            <div className="rounded-2xl border border-[#4f6fa5]/10 bg-[#4f6fa5]/5 px-4 py-3">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5]">
+                                Wrapper
+                              </p>
+                              <p className="mt-1 text-sm font-semibold text-gray-900">
+                                {customSummary.bouquet.name}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="grid gap-2 md:grid-cols-3">
+                            <div className="rounded-2xl bg-gray-50 px-4 py-3">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                Main Flowers
+                              </p>
+                              <p className="mt-1 text-xs font-medium text-gray-600">
+                                {customSummary.mains.length > 0
+                                  ? customSummary.mains
+                                      .map(formatCustomSelection)
+                                      .join(", ")
+                                  : "Included count met"}
+                              </p>
+                            </div>
+                            <div className="rounded-2xl bg-gray-50 px-4 py-3">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                Fillers
+                              </p>
+                              <p className="mt-1 text-xs font-medium text-gray-600">
+                                {customSummary.fillers.length > 0
+                                  ? customSummary.fillers
+                                      .map(formatCustomSelection)
+                                      .join(", ")
+                                  : "Included count met"}
+                              </p>
+                            </div>
+                            <div className="rounded-2xl bg-gray-50 px-4 py-3">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                Add-ons
+                              </p>
+                              <p className="mt-1 text-xs font-medium text-gray-600">
+                                {customSummary.addOns.length > 0
+                                  ? customSummary.addOns
+                                      .map((entry) =>
+                                        `${formatCustomSelection(entry)} (+₱${(
+                                          entry.price * entry.quantity
+                                        ).toLocaleString()})`
+                                      )
+                                      .join(", ")
+                                  : "No extras added"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       ) : (
                         <p className="text-xs font-medium uppercase tracking-widest text-gray-400 truncate mt-1">{item.description}</p>
                       )}
@@ -147,8 +200,9 @@ function CartPage() {
                     <p className="text-xs text-gray-700 italic border-l-2 border-[#4f6fa5]/30 pl-3">"{item.greetingCard}"</p>
                   </div>
                 )}
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
 
           {/* Right Column: Order Summary */}
@@ -159,12 +213,21 @@ function CartPage() {
                 </h3>
                 
                 <div className="space-y-4 mb-6">
-                  {cartItems.map((item) => (
+                  {cartItems.map((item) => {
+                    const customSummary =
+                      item.type === "custom" ? getCustomOrderSummary(item) : null;
+
+                    return (
                     <div key={item.id} className="space-y-1">
                       <div className="flex justify-between text-sm font-semibold text-gray-600">
                         <span className="truncate pr-4">{item.name} <span className="text-xs text-gray-400 ml-1">x{item.quantity}</span></span>
                         <span className="flex-shrink-0">₱{(item.price * item.quantity).toLocaleString()}</span>
                       </div>
+                      {customSummary?.bouquet && (
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5]">
+                          {customSummary.bouquet.name}
+                        </p>
+                      )}
                       {item.greetingCard && (
                         <div className="flex justify-between text-[11px] font-medium text-[#4f6fa5] pl-2 border-l-2 border-[#4f6fa5]/20">
                           <span>Card included</span>
@@ -172,7 +235,8 @@ function CartPage() {
                         </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="flex justify-between border-t border-gray-100 pt-6 mb-8 items-end">

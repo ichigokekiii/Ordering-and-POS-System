@@ -3,6 +3,11 @@ import { useEffect, useState } from "react";
 import { useSchedules } from "../../contexts/ScheduleContext";
 import { CalendarPlus, MapPin, CalendarClock, Pencil, Archive, ArchiveRestore, CheckCircle2, X } from "lucide-react";
 
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
+const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png|gif)$/i;
+const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,.gif,image/jpeg,image/png,image/gif";
+
 function AdminSchedulePage({ user }) {
   const {
     schedules,
@@ -40,7 +45,27 @@ function AdminSchedulePage({ user }) {
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) setImage(file);
+    if (!file) return;
+
+    const hasValidMimeType = !file.type || ALLOWED_IMAGE_TYPES.includes(file.type);
+    const hasValidExtension = ALLOWED_IMAGE_NAME_REGEX.test(file.name || "");
+
+    if (!hasValidMimeType || !hasValidExtension) {
+      setErrors((prev) => ({ ...prev, image: ["Only JPG, JPEG, PNG, and GIF files are allowed."] }));
+      setImage(null);
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      setErrors((prev) => ({ ...prev, image: ["Image must be 5MB or smaller."] }));
+      setImage(null);
+      e.target.value = "";
+      return;
+    }
+
+    setErrors((prev) => ({ ...prev, image: null }));
+    setImage(file);
   };
 
   const resetForm = () => {
@@ -522,13 +547,21 @@ function AdminSchedulePage({ user }) {
                 )}
                 <input
                   type="file"
-                  accept="image/*"
+                  accept={ADMIN_IMAGE_ACCEPT}
                   onChange={handleImageChange}
                   className="w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-4 file:py-2.5 file:text-xs file:font-bold file:text-gray-600 hover:file:bg-gray-200 transition-all cursor-pointer"
                 />
+                <p className="mt-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  JPG, JPEG, PNG, or GIF only. Max 5MB.
+                </p>
                 {!image && editingSchedule && (
                   <p className="mt-2 text-[10px] font-bold text-amber-500 uppercase tracking-wider">
                     Note: Current image will be kept if no new file is chosen.
+                  </p>
+                )}
+                {errors.image && (
+                  <p className="mt-2 text-xs text-rose-500">
+                    {errors.image[0]}
                   </p>
                 )}
               </div>

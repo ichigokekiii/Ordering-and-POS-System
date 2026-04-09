@@ -1,11 +1,5 @@
-import { useState } from "react";
-import {
-  ArrowLeft,
-  Check,
-  Minus,
-  Plus,
-  ShoppingCart,
-} from "lucide-react";
+import { useRef, useState } from "react";
+import { ArrowLeft, Check, Minus, Plus, ShoppingCart } from "lucide-react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { useProducts } from "../../contexts/ProductContext";
 import { useCart } from "../../contexts/CartContext";
@@ -14,54 +8,112 @@ import { useSchedules } from "../../contexts/ScheduleContext";
 const MAX_GREETING_CHARS = 150;
 const GREETING_CARD_PRICE = 5;
 
-function QuantityCard({
+function SelectionCard({
   product,
   quantity,
-  onDecrease,
-  onIncrease,
-  disabledIncrease = false,
+  onAdd,
+  onRemove,
   subtitle,
+  helperText,
+  disableAdd = false,
 }) {
+  const isSelected = quantity > 0;
+  const isMuted = disableAdd && !isSelected;
+
+  const handleAdd = () => {
+    if (disableAdd) {
+      return;
+    }
+
+    onAdd(product.id);
+  };
+
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white transition-all duration-200 hover:shadow-sm">
-      <div className="flex h-52 items-center justify-center border-b border-gray-100 bg-gray-50/40 p-6">
+    <div
+      role={disableAdd ? undefined : "button"}
+      tabIndex={disableAdd ? -1 : 0}
+      onClick={handleAdd}
+      onKeyDown={(event) => {
+        if (disableAdd) {
+          return;
+        }
+
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          handleAdd();
+        }
+      }}
+      className={`group relative overflow-hidden rounded-3xl border bg-white transition-all duration-200 ${
+        isSelected
+          ? "border-[#4f6fa5] shadow-md ring-2 ring-[#4f6fa5]/10"
+          : "border-gray-200"
+      } ${
+        isMuted
+          ? "cursor-not-allowed opacity-45"
+          : "cursor-pointer hover:-translate-y-1 hover:shadow-lg"
+      }`}
+    >
+      <div className="relative flex h-52 items-center justify-center border-b border-gray-100 bg-gray-50/60 p-6">
         <img
           src={`http://localhost:8000${product.image}`}
           alt={product.name}
-          className="h-full w-full object-contain"
+          className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
         />
+        {isSelected && (
+          <div className="absolute right-4 top-4 rounded-full bg-[#4f6fa5] px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-white shadow-sm">
+            {quantity} selected
+          </div>
+        )}
       </div>
-      <div className="space-y-4 p-5">
-        <div className="text-center">
+
+      <div className="space-y-3 p-5">
+        <div className="space-y-1 text-center">
           <h3 className="truncate text-base font-semibold text-gray-900">
             {product.name}
           </h3>
           {subtitle && (
-            <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-[#4f6fa5]">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#4f6fa5]">
               {subtitle}
             </p>
           )}
         </div>
-        <div className="mx-auto flex w-fit items-center gap-3 rounded-full border border-gray-200 bg-gray-50 px-2 py-1">
-          <button
-            type="button"
-            onClick={() => onDecrease(product.id)}
-            disabled={quantity === 0}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-500 shadow-sm transition hover:text-[#4f6fa5] disabled:opacity-40"
-          >
-            <Minus className="h-4 w-4" />
-          </button>
-          <span className="w-6 text-center text-sm font-bold text-gray-900">
-            {quantity}
-          </span>
-          <button
-            type="button"
-            onClick={() => onIncrease(product.id)}
-            disabled={disabledIncrease}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-500 shadow-sm transition hover:text-[#4f6fa5] disabled:opacity-40"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
+
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">
+              {helperText}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-gray-900">
+              {isSelected ? `${quantity} in your build` : "Tap card to add 1"}
+            </p>
+          </div>
+
+          <div className="flex flex-shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onRemove(product.id);
+              }}
+              disabled={quantity === 0}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-[#4f6fa5] hover:text-[#4f6fa5] disabled:cursor-not-allowed disabled:opacity-35"
+              aria-label={`Remove ${product.name}`}
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleAdd();
+              }}
+              disabled={disableAdd}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-[#4f6fa5] hover:text-[#4f6fa5] disabled:cursor-not-allowed disabled:opacity-35"
+              aria-label={`Add ${product.name}`}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -73,10 +125,10 @@ function BouquetCard({ product, isSelected, onSelect }) {
     <button
       type="button"
       onClick={() => onSelect(product)}
-      className={`overflow-hidden rounded-2xl border bg-white text-left transition-all duration-200 ${
+      className={`overflow-hidden rounded-3xl border bg-white text-left transition-all duration-200 ${
         isSelected
           ? "border-[#4f6fa5] shadow-md ring-2 ring-[#4f6fa5]/10"
-          : "border-gray-200 hover:shadow-sm"
+          : "border-gray-200 hover:-translate-y-1 hover:shadow-lg"
       }`}
     >
       <div className="relative flex h-56 items-center justify-center border-b border-gray-100 bg-gray-50/40 p-6">
@@ -115,6 +167,13 @@ function OrderCustom() {
   const { schedules } = useSchedules();
   const selectedSchedule = schedules.find((schedule) => schedule.id === selectedScheduleId);
 
+  const bouquetSectionRef = useRef(null);
+  const mainSectionRef = useRef(null);
+  const fillerSectionRef = useRef(null);
+  const addOnSectionRef = useRef(null);
+  const personalSectionRef = useRef(null);
+  const customItemCounterRef = useRef(0);
+
   const [selectedBouquet, setSelectedBouquet] = useState(null);
   const [mainCounts, setMainCounts] = useState({});
   const [fillerCounts, setFillerCounts] = useState({});
@@ -123,7 +182,9 @@ function OrderCustom() {
   const [greetingMessage, setGreetingMessage] = useState("");
   const [added, setAdded] = useState(false);
 
-  const availableProducts = products.filter((product) => !product.isArchived && product.isAvailable);
+  const availableProducts = products.filter(
+    (product) => !product.isArchived && product.isAvailable
+  );
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
   const matchesSearch = (product) =>
@@ -150,7 +211,6 @@ function OrderCustom() {
   const addOns = availableProducts.filter(
     (product) =>
       product.category === "Additional" &&
-      (product.type === "Main Flowers" || product.type === "Fillers") &&
       matchesSearch(product)
   );
 
@@ -176,32 +236,160 @@ function OrderCustom() {
   );
   const greetingTotal = greetingCard ? GREETING_CARD_PRICE : 0;
   const totalPrice = basePrice + addOnTotal + greetingTotal;
-
-  const canAddToCart =
+  const baseBuildReady =
     selectedBouquet &&
     totalMains === requiredMainCount &&
-    totalFillers === requiredFillerCount &&
-    (!greetingCard || greetingMessage.trim());
+    totalFillers === requiredFillerCount;
 
-  const updateCounter = (setter, id, value) => {
+  const canAddToCart =
+    baseBuildReady && (!greetingCard || greetingMessage.trim());
+
+  const scrollToSection = (ref) => {
+    window.setTimeout(() => {
+      ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
+  };
+
+  const stepRefs = {
+    bouquet: bouquetSectionRef,
+    main: mainSectionRef,
+    filler: fillerSectionRef,
+    addOns: addOnSectionRef,
+    personal: personalSectionRef,
+  };
+
+  const currentStepKey = (() => {
+    if (!selectedBouquet) {
+      return "bouquet";
+    }
+
+    if (totalMains < requiredMainCount) {
+      return "main";
+    }
+
+    if (totalFillers < requiredFillerCount) {
+      return "filler";
+    }
+
+    return greetingCard ? "personal" : "addOns";
+  })();
+
+  const steps = [
+    {
+      key: "bouquet",
+      label: "1. Bouquet",
+      isComplete: Boolean(selectedBouquet),
+      isAvailable: true,
+    },
+    {
+      key: "main",
+      label: "2. Main Flowers",
+      isComplete: Boolean(selectedBouquet) && totalMains === requiredMainCount,
+      isAvailable: Boolean(selectedBouquet),
+    },
+    {
+      key: "filler",
+      label: "3. Fillers",
+      isComplete: baseBuildReady || Boolean(selectedBouquet) && totalFillers === requiredFillerCount,
+      isAvailable: Boolean(selectedBouquet) && totalMains === requiredMainCount,
+    },
+    {
+      key: "addOns",
+      label: "4. Add-ons",
+      isComplete: selectedAddOns.length > 0,
+      isAvailable: Boolean(baseBuildReady),
+    },
+    {
+      key: "personal",
+      label: "5. Personal Touch",
+      isComplete: greetingCard && Boolean(greetingMessage.trim()),
+      isAvailable: Boolean(baseBuildReady),
+    },
+  ];
+
+  const updateCounter = (setter, id, nextValue) => {
+    setAdded(false);
     setter((prev) => ({
       ...prev,
-      [id]: Math.max(0, value),
+      [id]: Math.max(0, nextValue),
     }));
   };
 
   const handleBouquetSelect = (product) => {
     const isSameBouquet = selectedBouquet?.id === product.id;
+
+    setAdded(false);
     setSelectedBouquet(isSameBouquet ? null : product);
     setMainCounts({});
     setFillerCounts({});
     setAdditionalCounts({});
     setGreetingCard(false);
     setGreetingMessage("");
+
+    if (isSameBouquet) {
+      scrollToSection(bouquetSectionRef);
+      return;
+    }
+
+    if (Number(product.required_main_count ?? 1) > 0) {
+      scrollToSection(mainSectionRef);
+      return;
+    }
+
+    if (Number(product.required_filler_count ?? 2) > 0) {
+      scrollToSection(fillerSectionRef);
+      return;
+    }
+
+    scrollToSection(addOnSectionRef);
+  };
+
+  const handleMainAdd = (id) => {
+    if (totalMains >= requiredMainCount) {
+      if (requiredFillerCount > 0) {
+        scrollToSection(fillerSectionRef);
+      }
+      return;
+    }
+
+    const nextTotal = totalMains + 1;
+    updateCounter(setMainCounts, id, (mainCounts[id] || 0) + 1);
+
+    if (nextTotal === requiredMainCount) {
+      if (requiredFillerCount > 0) {
+        scrollToSection(fillerSectionRef);
+        return;
+      }
+
+      scrollToSection(addOnSectionRef);
+    }
+  };
+
+  const handleFillerAdd = (id) => {
+    if (totalMains < requiredMainCount) {
+      scrollToSection(mainSectionRef);
+      return;
+    }
+
+    if (totalFillers >= requiredFillerCount) {
+      scrollToSection(addOnSectionRef);
+      return;
+    }
+
+    const nextTotal = totalFillers + 1;
+    updateCounter(setFillerCounts, id, (fillerCounts[id] || 0) + 1);
+
+    if (nextTotal === requiredFillerCount) {
+      scrollToSection(addOnSectionRef);
+    }
   };
 
   const handleAddToCart = () => {
-    if (!canAddToCart) return;
+    if (!canAddToCart) {
+      return;
+    }
+
+    customItemCounterRef.current += 1;
 
     const items = [
       { ...selectedBouquet, quantity: 1 },
@@ -212,19 +400,41 @@ function OrderCustom() {
 
     addToCart(
       {
-        id: `custom-${Date.now()}`,
+        id: `custom-${selectedBouquet.id}-${customItemCounterRef.current}`,
         type: "custom",
         name: "Custom Bouquet",
         description: [
           selectedBouquet.name,
-          ...selectedMains.map((item) => `${item.name} ×${item.quantity}`),
-          ...selectedFillers.map((item) => `${item.name} ×${item.quantity}`),
-          ...selectedAddOns.map((item) => `${item.name} ×${item.quantity}`),
+          ...selectedMains.map((item) => `${item.name} x${item.quantity}`),
+          ...selectedFillers.map((item) => `${item.name} x${item.quantity}`),
+          ...selectedAddOns.map((item) => `${item.name} x${item.quantity}`),
         ].join(", "),
         price: totalPrice,
         image: selectedBouquet.image,
         items,
         greetingCard: greetingCard ? greetingMessage.trim() : null,
+        builderSummary: {
+          bouquet: { name: selectedBouquet.name, quantity: 1 },
+          mains: selectedMains.map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            free: true,
+            type: item.type,
+          })),
+          fillers: selectedFillers.map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            free: true,
+            type: item.type,
+          })),
+          addOns: selectedAddOns.map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: Number(item.price) || 0,
+            free: false,
+            type: item.type,
+          })),
+        },
       },
       1
     );
@@ -264,40 +474,109 @@ function OrderCustom() {
             </h1>
             {selectedSchedule && (
               <p className="mt-3 text-sm text-gray-500">
-                For <span className="font-semibold text-gray-900">{selectedSchedule.schedule_name}</span>
+                For{" "}
+                <span className="font-semibold text-gray-900">
+                  {selectedSchedule.schedule_name}
+                </span>
               </p>
             )}
           </div>
-          <div className="max-w-lg">
+          <div className="max-w-xl space-y-3">
             <p className="text-sm leading-relaxed text-gray-500">
-              Choose a bouquet wrapper, complete the required flowers, then add
-              extras and a personal message before sending it to your cart.
+              This now follows the POS flow: pick a wrapper, tap the flower cards
+              to add one at a time, and we will move you to the next builder step
+              as soon as the required count is filled.
             </p>
-            <p className="mt-3 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
-              {searchTerm ? `Filtering by "${searchTerm}"` : "Showing all available options"}
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+              {searchTerm
+                ? `Filtering by "${searchTerm}"`
+                : "Showing all available options"}
             </p>
           </div>
         </div>
 
-        <div className="mb-12 flex flex-wrap gap-2 border-b border-gray-100 pb-6">
-          {[
-            "1. Bouquet",
-            "2. Main Flowers",
-            "3. Fillers",
-            "4. Add-ons",
-            "5. Personal Touch",
-          ].map((step) => (
-            <span
-              key={step}
-              className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-widest text-gray-500"
+        <div className="mb-8 flex flex-wrap gap-3">
+          {steps.map((step) => (
+            <button
+              key={step.key}
+              type="button"
+              onClick={() => {
+                if (!step.isAvailable) {
+                  return;
+                }
+
+                scrollToSection(stepRefs[step.key]);
+              }}
+              className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-widest transition-all ${
+                currentStepKey === step.key
+                  ? "border-[#4f6fa5] bg-[#4f6fa5] text-white shadow-sm"
+                  : step.isComplete
+                    ? "border-[#4f6fa5]/20 bg-[#4f6fa5]/10 text-[#4f6fa5]"
+                    : step.isAvailable
+                      ? "border-gray-200 bg-white text-gray-600 hover:border-[#4f6fa5]/30 hover:text-[#4f6fa5]"
+                      : "cursor-not-allowed border-gray-200 bg-white text-gray-300"
+              }`}
             >
-              {step}
-            </span>
+              {step.label}
+            </button>
           ))}
         </div>
 
+        <div className="mb-10 rounded-3xl border border-[#4f6fa5]/10 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-[#4f6fa5]">
+                Current focus
+              </p>
+              <p className="mt-1 text-lg font-playfair font-bold text-gray-900">
+                {currentStepKey === "bouquet" && "Choose your bouquet wrapper"}
+                {currentStepKey === "main" &&
+                  `Tap ${requiredMainCount - totalMains} more main flower${requiredMainCount - totalMains === 1 ? "" : "s"}`}
+                {currentStepKey === "filler" &&
+                  `Tap ${requiredFillerCount - totalFillers} more filler${requiredFillerCount - totalFillers === 1 ? "" : "s"}`}
+                {currentStepKey === "addOns" && "Add any extras you want before checkout"}
+                {currentStepKey === "personal" && "Add your card message if you want one"}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+              <div className="rounded-2xl bg-[#fcfaf9] px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+                  Wrapper
+                </p>
+                <p className="mt-1 font-semibold text-gray-900">
+                  {selectedBouquet ? "Ready" : "Pending"}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-[#fcfaf9] px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+                  Main
+                </p>
+                <p className="mt-1 font-semibold text-gray-900">
+                  {totalMains}/{requiredMainCount}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-[#fcfaf9] px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+                  Fillers
+                </p>
+                <p className="mt-1 font-semibold text-gray-900">
+                  {totalFillers}/{requiredFillerCount}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-[#fcfaf9] px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+                  Total
+                </p>
+                <p className="mt-1 font-semibold text-gray-900">
+                  ₱{totalPrice.toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-14">
-          <section>
+          <section ref={bouquetSectionRef}>
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-3xl font-playfair font-bold text-gray-900">
                 Bouquet Wrapper
@@ -309,7 +588,9 @@ function OrderCustom() {
               )}
             </div>
             {bouquets.length === 0 ? (
-              <p className="py-12 text-gray-400">No bouquets match the current search.</p>
+              <p className="py-12 text-gray-400">
+                No bouquets match the current search.
+              </p>
             ) : (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
                 {bouquets.map((product) => (
@@ -324,14 +605,17 @@ function OrderCustom() {
             )}
           </section>
 
-          <section className={!selectedBouquet ? "pointer-events-none opacity-45" : ""}>
+          <section
+            ref={mainSectionRef}
+            className={!selectedBouquet ? "pointer-events-none opacity-45" : ""}
+          >
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h2 className="text-3xl font-playfair font-bold text-gray-900">
                   Main Flowers
                 </h2>
                 <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
-                  {requiredMainCount} required
+                  Tap each card to add one included flower
                 </p>
               </div>
               <span className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-widest text-gray-500">
@@ -339,20 +623,23 @@ function OrderCustom() {
               </span>
             </div>
             {mainFlowers.length === 0 ? (
-              <p className="py-12 text-gray-400">No main flowers match the current search.</p>
+              <p className="py-12 text-gray-400">
+                No main flowers match the current search.
+              </p>
             ) : (
-              <div className="grid grid-cols-2 gap-5 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
                 {mainFlowers.map((product) => (
-                  <QuantityCard
+                  <SelectionCard
                     key={product.id}
                     product={product}
                     quantity={mainCounts[product.id] || 0}
-                    onDecrease={(id) => updateCounter(setMainCounts, id, (mainCounts[id] || 0) - 1)}
-                    onIncrease={(id) => {
-                      if (totalMains >= requiredMainCount && (mainCounts[id] || 0) === 0) return;
-                      updateCounter(setMainCounts, id, (mainCounts[id] || 0) + 1);
-                    }}
-                    disabledIncrease={totalMains >= requiredMainCount && (mainCounts[product.id] || 0) === 0}
+                    onAdd={handleMainAdd}
+                    onRemove={(id) =>
+                      updateCounter(setMainCounts, id, (mainCounts[id] || 0) - 1)
+                    }
+                    disableAdd={totalMains >= requiredMainCount}
+                    subtitle="Included in bouquet"
+                    helperText="Tap card to add"
                   />
                 ))}
               </div>
@@ -360,6 +647,7 @@ function OrderCustom() {
           </section>
 
           <section
+            ref={fillerSectionRef}
             className={
               !selectedBouquet || totalMains !== requiredMainCount
                 ? "pointer-events-none opacity-45"
@@ -372,7 +660,7 @@ function OrderCustom() {
                   Fillers
                 </h2>
                 <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
-                  {requiredFillerCount} required
+                  Tap each card to add one included filler
                 </p>
               </div>
               <span className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-widest text-gray-500">
@@ -380,20 +668,27 @@ function OrderCustom() {
               </span>
             </div>
             {fillers.length === 0 ? (
-              <p className="py-12 text-gray-400">No fillers match the current search.</p>
+              <p className="py-12 text-gray-400">
+                No fillers match the current search.
+              </p>
             ) : (
-              <div className="grid grid-cols-2 gap-5 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
                 {fillers.map((product) => (
-                  <QuantityCard
+                  <SelectionCard
                     key={product.id}
                     product={product}
                     quantity={fillerCounts[product.id] || 0}
-                    onDecrease={(id) => updateCounter(setFillerCounts, id, (fillerCounts[id] || 0) - 1)}
-                    onIncrease={(id) => {
-                      if (totalFillers >= requiredFillerCount && (fillerCounts[id] || 0) === 0) return;
-                      updateCounter(setFillerCounts, id, (fillerCounts[id] || 0) + 1);
-                    }}
-                    disabledIncrease={totalFillers >= requiredFillerCount && (fillerCounts[product.id] || 0) === 0}
+                    onAdd={handleFillerAdd}
+                    onRemove={(id) =>
+                      updateCounter(
+                        setFillerCounts,
+                        id,
+                        (fillerCounts[id] || 0) - 1
+                      )
+                    }
+                    disableAdd={totalFillers >= requiredFillerCount}
+                    subtitle="Included in bouquet"
+                    helperText="Tap card to add"
                   />
                 ))}
               </div>
@@ -401,52 +696,71 @@ function OrderCustom() {
           </section>
 
           <section
-            className={
-              !selectedBouquet ||
-              totalMains !== requiredMainCount ||
-              totalFillers !== requiredFillerCount
-                ? "pointer-events-none opacity-45"
-                : ""
-            }
+            ref={addOnSectionRef}
+            className={!baseBuildReady ? "pointer-events-none opacity-45" : ""}
           >
-            <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#4f6fa5]">
-                Current Base Build
-              </p>
-              <p className="text-sm text-gray-700">
-                {selectedBouquet
-                  ? [
-                      selectedBouquet.name,
-                      ...selectedMains.map((item) => `${item.name} ×${item.quantity}`),
-                      ...selectedFillers.map((item) => `${item.name} ×${item.quantity}`),
-                    ].join(" + ")
-                  : "Select a bouquet to begin."}
-              </p>
-              <p className="mt-3 text-base font-semibold text-gray-900">
-                Base price: ₱{basePrice.toLocaleString()}
-              </p>
+            <div className="mb-8 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#4f6fa5]">
+                    Current Base Build
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    {selectedBouquet
+                      ? [
+                          selectedBouquet.name,
+                          ...selectedMains.map((item) => `${item.name} x${item.quantity}`),
+                          ...selectedFillers.map((item) => `${item.name} x${item.quantity}`),
+                        ].join(" + ")
+                      : "Select a bouquet to begin."}
+                  </p>
+                </div>
+                <p className="text-base font-semibold text-gray-900">
+                  Base price: ₱{basePrice.toLocaleString()}
+                </p>
+              </div>
             </div>
 
-            <div className="mb-6">
-              <h2 className="text-3xl font-playfair font-bold text-gray-900">
-                Add-ons
-              </h2>
-              <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
-                Optional extras
-              </p>
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-playfair font-bold text-gray-900">
+                  Add-ons
+                </h2>
+                <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+                  Optional extras, including extra mains and fillers
+                </p>
+              </div>
+              <span className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-widest text-gray-500">
+                ₱{addOnTotal.toLocaleString()} extra
+              </span>
             </div>
             {addOns.length === 0 ? (
-              <p className="py-12 text-gray-400">No add-ons match the current search.</p>
+              <p className="py-12 text-gray-400">
+                No add-ons match the current search.
+              </p>
             ) : (
-              <div className="grid grid-cols-2 gap-5 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
                 {addOns.map((product) => (
-                  <QuantityCard
+                  <SelectionCard
                     key={product.id}
                     product={product}
                     quantity={additionalCounts[product.id] || 0}
-                    onDecrease={(id) => updateCounter(setAdditionalCounts, id, (additionalCounts[id] || 0) - 1)}
-                    onIncrease={(id) => updateCounter(setAdditionalCounts, id, (additionalCounts[id] || 0) + 1)}
+                    onAdd={(id) =>
+                      updateCounter(
+                        setAdditionalCounts,
+                        id,
+                        (additionalCounts[id] || 0) + 1
+                      )
+                    }
+                    onRemove={(id) =>
+                      updateCounter(
+                        setAdditionalCounts,
+                        id,
+                        (additionalCounts[id] || 0) - 1
+                      )
+                    }
                     subtitle={`+₱${Number(product.price).toLocaleString()}`}
+                    helperText="Tap card to add"
                   />
                 ))}
               </div>
@@ -454,13 +768,8 @@ function OrderCustom() {
           </section>
 
           <section
-            className={
-              !selectedBouquet ||
-              totalMains !== requiredMainCount ||
-              totalFillers !== requiredFillerCount
-                ? "pointer-events-none opacity-45"
-                : ""
-            }
+            ref={personalSectionRef}
+            className={!baseBuildReady ? "pointer-events-none opacity-45" : ""}
           >
             <div className="mb-6">
               <h2 className="text-3xl font-playfair font-bold text-gray-900">
@@ -471,18 +780,21 @@ function OrderCustom() {
               </p>
             </div>
 
-            <div className="max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="max-w-3xl rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="font-semibold text-gray-900">Greeting card</p>
                   <p className="mt-1 text-sm text-gray-500">
-                    Include a personal message for an additional ₱{GREETING_CARD_PRICE}.
+                    Include a personal message for an additional ₱
+                    {GREETING_CARD_PRICE}.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
+                    setAdded(false);
                     setGreetingCard((prev) => !prev);
+
                     if (greetingCard) {
                       setGreetingMessage("");
                     }
@@ -512,9 +824,10 @@ function OrderCustom() {
                   <textarea
                     rows={4}
                     value={greetingMessage}
-                    onChange={(e) => {
-                      if (e.target.value.length <= MAX_GREETING_CHARS) {
-                        setGreetingMessage(e.target.value);
+                    onChange={(event) => {
+                      if (event.target.value.length <= MAX_GREETING_CHARS) {
+                        setAdded(false);
+                        setGreetingMessage(event.target.value);
                       }
                     }}
                     placeholder="Write your heartfelt message here..."
@@ -531,10 +844,10 @@ function OrderCustom() {
             selectedBouquet ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
         >
-          <div className="flex min-w-0 items-center justify-between gap-5 rounded-[28px] bg-gray-900 px-6 py-4 text-white shadow-2xl md:min-w-[560px]">
+          <div className="flex min-w-0 flex-col gap-4 rounded-[28px] bg-gray-900 px-6 py-4 text-white shadow-2xl md:min-w-[620px] md:flex-row md:items-center md:justify-between">
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-white/60">
-                {canAddToCart ? "Ready to add" : "Complete required selections"}
+                {canAddToCart ? "Ready to add" : "Finish the required build first"}
               </p>
               <div className="mt-1 flex items-center justify-between gap-4">
                 <p className="truncate text-lg font-playfair font-bold">
@@ -542,12 +855,17 @@ function OrderCustom() {
                 </p>
                 <p className="text-xl font-bold">₱{totalPrice.toLocaleString()}</p>
               </div>
+              <p className="mt-2 text-sm text-white/70">
+                {canAddToCart
+                  ? "Your bouquet is complete. Add it to cart whenever you are ready."
+                  : `Mains ${totalMains}/${requiredMainCount} • Fillers ${totalFillers}/${requiredFillerCount}`}
+              </p>
             </div>
             <button
               type="button"
               onClick={handleAddToCart}
               disabled={!canAddToCart || added}
-              className={`inline-flex items-center gap-2 rounded-full px-6 py-3 text-xs font-bold uppercase tracking-widest transition-all ${
+              className={`inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-xs font-bold uppercase tracking-widest transition-all ${
                 added
                   ? "bg-green-500 text-white"
                   : canAddToCart

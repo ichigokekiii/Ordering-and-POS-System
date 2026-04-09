@@ -64,6 +64,11 @@ const CharCount = ({ value, max }) => (
 const FieldError = ({ error }) =>
   error ? <p className="mt-1.5 text-[10px] font-bold text-rose-500 uppercase tracking-wide">{error}</p> : null;
 
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
+const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png|gif)$/i;
+const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,.gif,image/jpeg,image/png,image/gif";
+
 const asBoolean = (value) => value === 1 || value === true || value === "1";
 
 const StatusPill = ({ isAvailable }) => (
@@ -201,12 +206,24 @@ function AdminProductPage({ user }) {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      setErrors(prev => ({ ...prev, image: "Image must be under 2MB. Please compress it first." }));
+
+    const hasValidMimeType = !file.type || ALLOWED_IMAGE_TYPES.includes(file.type);
+    const hasValidExtension = ALLOWED_IMAGE_NAME_REGEX.test(file.name || "");
+
+    if (!hasValidMimeType || !hasValidExtension) {
+      setErrors(prev => ({ ...prev, image: "Only JPG, JPEG, PNG, and GIF files are allowed." }));
       setImage(null);
       e.target.value = "";
       return;
     }
+
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      setErrors(prev => ({ ...prev, image: "Image must be 5MB or smaller." }));
+      setImage(null);
+      e.target.value = "";
+      return;
+    }
+
     setErrors(prev => ({ ...prev, image: "" }));
     setImage(file);
   };
@@ -797,10 +814,13 @@ function AdminProductPage({ user }) {
                   <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Cover Image</label>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept={ADMIN_IMAGE_ACCEPT}
                     onChange={handleImageChange}
                     className="w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-gray-600 hover:file:bg-gray-200 transition-all cursor-pointer"
                   />
+                  <p className="mt-2 text-[9px] font-bold text-gray-400 uppercase tracking-wider leading-tight">
+                    JPG, JPEG, PNG, or GIF only. Max 5MB.
+                  </p>
                   {!image && isEditing && (
                     <p className="mt-2 text-[9px] font-bold text-amber-500 uppercase tracking-wider leading-tight">
                       Current image kept if blank.

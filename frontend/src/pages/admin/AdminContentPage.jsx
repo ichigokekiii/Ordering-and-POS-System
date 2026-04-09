@@ -10,6 +10,11 @@ import { useContents } from "../../contexts/ContentContext";
 import { CMS_PAGES, getCmsAssetUrl } from "../../cms/cmsRegistry";
 import { ChevronDown, Monitor, LayoutTemplate, Layers, ArchiveRestore, Trash2, Archive, CheckCircle2, X } from "lucide-react";
 
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
+const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png|gif)$/i;
+const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,.gif,image/jpeg,image/png,image/gif";
+
 // ISOLATED PREVIEWS
 function PreviewScene({ activePage, cmsPreview }) {
   if (activePage === "home") {
@@ -470,6 +475,21 @@ function AdminContentPage() {
                   return;
                 }
 
+                if (formDataState.type === "image" && imageFile instanceof File && imageFile.size > 0) {
+                  const hasValidMimeType = !imageFile.type || ALLOWED_IMAGE_TYPES.includes(imageFile.type);
+                  const hasValidExtension = ALLOWED_IMAGE_NAME_REGEX.test(imageFile.name || "");
+
+                  if (!hasValidMimeType || !hasValidExtension) {
+                    showModalAlert("error", "Only JPG, JPEG, PNG, and GIF files are allowed.");
+                    return;
+                  }
+
+                  if (imageFile.size > MAX_IMAGE_SIZE_BYTES) {
+                    showModalAlert("error", "Image must be 5MB or smaller.");
+                    return;
+                  }
+                }
+
                 try {
                   if (editingContent) { 
                     await updateContent(editingContent.id, formData); 
@@ -517,7 +537,10 @@ function AdminContentPage() {
                     </div>
                   )}
                   <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Upload New Image</label>
-                  <input type="file" name="content_image" className="w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-gray-700 hover:file:bg-gray-200 transition-all" accept="image/*" />
+                  <input type="file" name="content_image" className="w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-gray-700 hover:file:bg-gray-200 transition-all" accept={ADMIN_IMAGE_ACCEPT} />
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    JPG, JPEG, PNG, or GIF only. Max 5MB.
+                  </p>
                 </div>
               )}
 

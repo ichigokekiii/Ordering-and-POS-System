@@ -20,10 +20,7 @@ class OrderController extends Controller
     private function normalizeUserPriority(?User $user): ?User
     {
         if ($user) {
-            $role = strtolower((string) $user->role);
-            $user->priority = in_array($role, ['user', 'customer'], true)
-                ? min(max((int) $user->priority, 0), 3)
-                : 0;
+            $user->priority = min(max((int) $user->priority, 0), 3);
         }
 
         return $user;

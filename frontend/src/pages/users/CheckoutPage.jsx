@@ -1,9 +1,12 @@
-/* eslint-disable no-unused-vars */
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../contexts/CartContext";
 import api from "../../services/api";
 import { useSchedules } from "../../contexts/ScheduleContext";
+import {
+  formatCustomSelection,
+  getCustomOrderSummary,
+} from "../../utils/customOrderSummary";
 
 function CheckoutPage() {
   const navigate = useNavigate();
@@ -560,7 +563,11 @@ function CheckoutPage() {
               </h3>
 
               <div className="mb-6 max-h-[300px] overflow-y-auto pr-2 space-y-4 nice-scrollbar">
-                {cartItems.map((item, index) => (
+                {cartItems.map((item, index) => {
+                  const customSummary =
+                    item.type === "custom" ? getCustomOrderSummary(item) : null;
+
+                  return (
                   <div key={`${item.id}-${index}`} className="space-y-1.5">
                     <div className="flex justify-between text-sm">
                       <div className="flex gap-3">
@@ -576,6 +583,41 @@ function CheckoutPage() {
                       </div>
                       <span className="text-gray-900 font-bold flex-shrink-0">₱{(item.price * item.quantity).toLocaleString()}</span>
                     </div>
+                    {customSummary && (
+                      <div className="ml-8 rounded-2xl bg-[#4f6fa5]/5 px-3 py-2">
+                        {customSummary.bouquet && (
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5]">
+                            Wrapper: <span className="font-semibold">{customSummary.bouquet.name}</span>
+                          </p>
+                        )}
+                        <div className="mt-1 space-y-1 text-xs text-gray-600">
+                          <p>
+                            Main flowers:{" "}
+                            {customSummary.mains.length > 0
+                              ? customSummary.mains.map(formatCustomSelection).join(", ")
+                              : "Included count met"}
+                          </p>
+                          <p>
+                            Fillers:{" "}
+                            {customSummary.fillers.length > 0
+                              ? customSummary.fillers.map(formatCustomSelection).join(", ")
+                              : "Included count met"}
+                          </p>
+                          {customSummary.addOns.length > 0 && (
+                            <p>
+                              Add-ons:{" "}
+                              {customSummary.addOns
+                                .map((entry) =>
+                                  `${formatCustomSelection(entry)} (+₱${(
+                                    entry.price * entry.quantity
+                                  ).toLocaleString()})`
+                                )
+                                .join(", ")}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     {item.greetingCard && (
                       <div className="ml-8 flex items-start gap-1.5">
                         <div className="min-w-0 border-l-2 border-[#4f6fa5]/20 pl-2">
@@ -584,7 +626,8 @@ function CheckoutPage() {
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="space-y-3 text-sm text-gray-600 mb-6">

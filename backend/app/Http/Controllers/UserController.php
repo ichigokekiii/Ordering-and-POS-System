@@ -246,6 +246,7 @@ public function store(Request $request)
             if ($isLocked === false) {
                 $user->failed_attempt_count = 0;
                 $user->last_failed_attempt_at = null;
+                $user->priority = 0;
                 $user->consecutive_cancellations = 0;
                 $user->status = 'Active';
             }

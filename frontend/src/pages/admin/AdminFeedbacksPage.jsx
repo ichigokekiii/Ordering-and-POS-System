@@ -293,7 +293,7 @@ function AdminFeedbacksPage() {
 
       {/* VIEW FEEDBACK MODAL */}
       {viewingFeedback && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
           <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl border border-white/20 p-8 animate-in zoom-in-95 duration-200">
 
             <div className="flex justify-between items-start mb-6">

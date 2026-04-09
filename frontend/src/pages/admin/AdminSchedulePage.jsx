@@ -444,7 +444,7 @@ const handleImageChange = (e) => {
 
       {/* ADD/EDIT MODAL */}
       {showModal && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[200]">
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300]">
           <div className="bg-white rounded-[2rem] w-[90%] max-w-lg shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             
             <div className="mb-6">
@@ -623,7 +623,7 @@ const handleImageChange = (e) => {
 
       {/* --- CONFIRMATION MODAL (CREATE/EDIT) --- */}
       {confirmModal.isOpen && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#eaf2ff] text-[#4f6fa5]">
                <CalendarClock size={28} />
@@ -658,7 +658,7 @@ const handleImageChange = (e) => {
       {archiveConfirm.isOpen && archiveConfirm.schedule && (() => {
         const isRestoring = asBoolean(archiveConfirm.schedule.isArchived);
         return (
-          <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
+          <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
             <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
               <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${isRestoring ? 'bg-emerald-100 text-emerald-500' : 'bg-amber-100 text-amber-500'}`}>
                  {isRestoring ? <ArchiveRestore size={28} /> : <Archive size={28} />}
@@ -696,7 +696,7 @@ const handleImageChange = (e) => {
 
       {/* --- STATUS ALERT MODAL --- */}
       {statusModal.isOpen && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[500] p-4">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
             <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${statusModal.type === 'success' ? 'bg-emerald-100 text-emerald-500' : 'bg-rose-100 text-rose-500'}`}>
                {statusModal.type === 'success' ? <CheckCircle2 size={28} /> : <X size={28} />}

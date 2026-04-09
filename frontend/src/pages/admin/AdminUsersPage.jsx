@@ -652,7 +652,7 @@ function AdminUsersPage({ user }) {
 
       {/* ADD USER MODAL */}
       {showCreateModal && canManageUsers && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[200]">
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300]">
           <div className="bg-white rounded-3xl w-[90%] max-w-lg shadow-2xl border border-white/20 p-8 animate-in zoom-in-95 duration-200">
             <h2 className="text-2xl font-playfair font-bold mb-6 text-gray-900">Add New User</h2>
 
@@ -779,7 +779,7 @@ function AdminUsersPage({ user }) {
 
       {/* Edit User Modal */}
       {showEditModal && selectedUser && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[200]">
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300]">
           <div className="bg-white rounded-3xl w-[90%] max-w-lg shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-6">
                <h2 className="text-2xl font-playfair font-bold text-gray-900">{canManageUsers ? "Edit User Details" : "User Details"}</h2>
@@ -954,7 +954,7 @@ function AdminUsersPage({ user }) {
 
       {/* Confirm Save Modal */}
       {showConfirmSave && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300]">
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400]">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-500">
                <ShieldCheck size={28} />
@@ -975,7 +975,7 @@ function AdminUsersPage({ user }) {
 
       {/* Confirm Delete Modal */}
       {showConfirmDelete && selectedUser && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300]">
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400]">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 text-rose-500">
                <Trash2 size={28} />
@@ -996,7 +996,7 @@ function AdminUsersPage({ user }) {
 
       {/* --- STATUS ALERT MODAL (Replaces Toast) --- */}
       {statusModal.isOpen && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[500] p-4">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
             <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${statusModal.type === 'success' ? 'bg-emerald-100 text-emerald-500' : 'bg-rose-100 text-rose-500'}`}>
                {statusModal.type === 'success' ? <CheckCircle2 size={28} /> : <X size={28} />}

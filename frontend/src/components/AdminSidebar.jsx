@@ -66,6 +66,11 @@ function AdminSidebar({ onLogout }) {
             Content
           </NavLink>
 
+          <NavLink to="/admin/feedbacks" className={({ isActive }) => (isActive ? activeClass : baseClass)}>
+            <MessageSquare className="h-5 w-5" />
+            Feedback
+          </NavLink>
+
           <NavLink to="/admin/users" className={({ isActive }) => (isActive ? activeClass : baseClass)}>
             <Users className="h-5 w-5" />
             Users
@@ -74,11 +79,6 @@ function AdminSidebar({ onLogout }) {
           <NavLink to="/admin/logs" className={({ isActive }) => (isActive ? activeClass : baseClass)}>
             <ScrollText className="h-5 w-5" />
             Logs
-          </NavLink>
-
-          <NavLink to="/admin/feedbacks" className={({ isActive }) => (isActive ? activeClass : baseClass)}>
-            <MessageSquare className="h-5 w-5" />
-            Feedback
           </NavLink>
         </ul>
       </nav>
@@ -96,7 +96,7 @@ function AdminSidebar({ onLogout }) {
 
       {/* Modal */}
       {showBlockModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="w-[90%] max-w-md rounded-[2rem] bg-white p-8 shadow-2xl border border-gray-100">
             <h2 className="text-xl font-playfair font-bold text-gray-900">
               Feature In Progress

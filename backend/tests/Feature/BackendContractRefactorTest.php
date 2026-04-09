@@ -143,4 +143,97 @@ class BackendContractRefactorTest extends TestCase
 
         $this->assertDatabaseCount('schedule_bookings', 1);
     }
+
+    public function test_admin_schedule_creation_requires_image(): void
+    {
+        $admin = User::query()->create([
+            'first_name' => 'Admin',
+            'last_name' => 'User',
+            'email' => 'admin-schedule@example.com',
+            'password' => bcrypt('secret123'),
+            'role' => 'admin',
+            'is_verified' => true,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->post('/api/schedules', [
+            'schedule_name' => 'No Image Event',
+            'location' => 'Main Branch',
+            'schedule_description' => 'Image should be required for new schedules.',
+            'event_date' => now()->addDays(7)->toDateString(),
+            'isAvailable' => 1,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['image']);
+    }
+
+    public function test_admin_schedule_creation_rejects_gif_images(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::query()->create([
+            'first_name' => 'Admin',
+            'last_name' => 'User',
+            'email' => 'admin-schedule-gif@example.com',
+            'password' => bcrypt('secret123'),
+            'role' => 'admin',
+            'is_verified' => true,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->post('/api/schedules', [
+            'schedule_name' => 'GIF Event',
+            'location' => 'Main Branch',
+            'schedule_description' => 'GIF uploads should be rejected.',
+            'event_date' => now()->addDays(7)->toDateString(),
+            'isAvailable' => 1,
+            'image' => UploadedFile::fake()->image('schedule.gif'),
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['image']);
+    }
+
+    public function test_admin_schedule_update_allows_keeping_existing_image_without_uploading_new_one(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::query()->create([
+            'first_name' => 'Admin',
+            'last_name' => 'User',
+            'email' => 'admin-schedule-update@example.com',
+            'password' => bcrypt('secret123'),
+            'role' => 'admin',
+            'is_verified' => true,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $schedule = Schedule::create([
+            'schedule_name' => 'Existing Event',
+            'location' => 'Main Branch',
+            'schedule_description' => 'Existing schedule.',
+            'event_date' => now()->addDays(8),
+            'image' => '/storage/schedules/existing.jpg',
+            'isAvailable' => true,
+            'isArchived' => false,
+        ]);
+
+        $response = $this->put("/api/schedules/{$schedule->id}", [
+            'schedule_name' => 'Existing Event Updated',
+            'location' => 'Main Branch',
+            'schedule_description' => 'Still keeping the current image.',
+            'event_date' => now()->addDays(9)->toDateString(),
+            'isAvailable' => 1,
+        ]);
+
+        $response->assertOk()
+            ->assertJson([
+                'schedule_name' => 'Existing Event Updated',
+                'image' => '/storage/schedules/existing.jpg',
+            ]);
+    }
 }

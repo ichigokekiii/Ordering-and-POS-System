@@ -42,14 +42,15 @@ class ScheduleController extends Controller
             'location'             => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s\-.,#]+$/'],
             'schedule_description' => ['nullable', 'string', 'max:1000', 'regex:/^[^<>]*$/'], 
             'event_date'           => 'required|date|after_or_equal:today',
-            'image'                => 'nullable|image|mimes:jpg,jpeg,png,gif|max:5120',
+            'image'                => 'required|image|mimes:jpg,jpeg,png|max:5120',
             'isAvailable'          => 'required|boolean',
             'isArchived'           => 'sometimes|boolean',
         ], [
             'schedule_name.regex'        => 'Event name cannot contain HTML tags (< >).',
             'location.regex'             => 'Location contains invalid symbols.',
             'schedule_description.regex' => 'Description cannot contain HTML tags (< >).',
-            'image.mimes'                => 'Only JPG, JPEG, PNG, and GIF files are allowed.',
+            'image.required'             => 'Please upload an image for this event.',
+            'image.mimes'                => 'Only JPG, JPEG, and PNG files are allowed.',
             'image.max'                  => 'Image must be 5MB or smaller.',
         ]);
 
@@ -83,14 +84,14 @@ class ScheduleController extends Controller
             'location'             => ['sometimes', 'required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s\-.,#]+$/'],
             'schedule_description' => ['nullable', 'string', 'max:1000', 'regex:/^[^<>]*$/'],
             'event_date'           => 'sometimes|required|date|after_or_equal:today', 
-            'image'                => 'nullable|image|mimes:jpg,jpeg,png,gif|max:5120',
+            'image'                => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
             'isAvailable'          => 'sometimes|boolean',
             'isArchived'           => 'sometimes|boolean',
         ], [
             'schedule_name.regex'        => 'Event name cannot contain HTML tags (< >).',
             'location.regex'             => 'Location contains invalid symbols.',
             'schedule_description.regex' => 'Description cannot contain HTML tags (< >).',
-            'image.mimes'                => 'Only JPG, JPEG, PNG, and GIF files are allowed.',
+            'image.mimes'                => 'Only JPG, JPEG, and PNG files are allowed.',
             'image.max'                  => 'Image must be 5MB or smaller.',
         ]);
 

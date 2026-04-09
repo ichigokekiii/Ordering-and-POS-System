@@ -5,9 +5,9 @@ import { CalendarPlus, MapPin, CalendarClock, Pencil, Archive, ArchiveRestore, C
 import { canManageAdminDashboard } from "../../utils/adminAccess";
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
-const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png|gif)$/i;
-const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,.gif,image/jpeg,image/png,image/gif";
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
+const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png)$/i;
+const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,image/jpeg,image/png";
 
 function AdminSchedulePage({ user }) {
   const {
@@ -49,13 +49,17 @@ function AdminSchedulePage({ user }) {
 
 const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file) {
+      setErrors((prev) => ({ ...prev, image: null }));
+      setImage(null);
+      return;
+    }
 
     const hasValidMimeType = !file.type || ALLOWED_IMAGE_TYPES.includes(file.type);
     const hasValidExtension = ALLOWED_IMAGE_NAME_REGEX.test(file.name || "");
 
     if (!hasValidMimeType || !hasValidExtension) {
-      setErrors((prev) => ({ ...prev, image: ["Only JPG, JPEG, PNG, and GIF files are allowed."] }));
+      setErrors((prev) => ({ ...prev, image: ["Only JPG, JPEG, and PNG files are allowed."] }));
       setImage(null);
       e.target.value = "";
       return;
@@ -119,6 +123,11 @@ const handleImageChange = (e) => {
       newErrors.schedule_description = ["This field is required"];
     } else if (htmlRegex.test(scheduleDescription)) {
       newErrors.schedule_description = ["Description cannot contain HTML tags."];
+    }
+
+    // Require an image for brand-new schedules, but allow edits to keep the current one.
+    if (!editingSchedule && !image) {
+      newErrors.image = ["An image is required."];
     }
 
     // If there are errors, set them and stop submission
@@ -571,7 +580,9 @@ const handleImageChange = (e) => {
                   className="w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-4 file:py-2.5 file:text-xs file:font-bold file:text-gray-600 hover:file:bg-gray-200 transition-all cursor-pointer"
                 />
                 <p className="mt-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                  JPG, JPEG, PNG, or GIF only. Max 5MB.
+                  {editingSchedule
+                    ? "Optional on edit. JPG, JPEG, or PNG only. Max 5MB."
+                    : "Required for new events. JPG, JPEG, or PNG only. Max 5MB."}
                 </p>
                 {!image && editingSchedule && (
                   <p className="mt-2 text-[10px] font-bold text-amber-500 uppercase tracking-wider">

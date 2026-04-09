@@ -71,67 +71,35 @@ function VerifyOtpPage({ cmsPreview }) {
     }
   };
 
-  const handleVerify = async (e) => {
-  e.preventDefault();
-  if (cmsPreview?.enabled) return;
-  setError("");
-  setLoading(true);
+const handleVerify = async (e) => {
+    e.preventDefault();
+    if (cmsPreview?.enabled) return;
+    setError("");
+    setLoading(true);
 
-  try {
-    const res = await api.post("/verify-otp", { email, otp });
-
-    // ✅ Handle password reset BEFORE storing token or logging in
-    if (purpose === "reset-password") {
-      setModalMessage("OTP verified! Redirecting to reset password...");
-      setShowModal(true);
-      setTimeout(() => {
-        navigate("/reset-password", { state: { email, otp } });
-      }, 1500);
-      return;
-    }
-
-    // Only store token and log in for non-reset flows
-    if (!res.data.token) {
-      setError("Authentication failed. Please try logging in again.");
-      setLoading(false);
-      return;
-    }
-
-    localStorage.setItem("token", res.data.token);
-
-    let userData = null;
-    const pendingUser = localStorage.getItem("pendingUser");
-    if (pendingUser) {
-      userData = JSON.parse(pendingUser);
-      localStorage.removeItem("pendingUser");
-      setModalMessage("Login verified! Logging you in...");
-    } else {
-      userData = res.data.user;
-      setModalMessage("Account verified successfully! Logging you in...");
-    }
-
-    handleLogin(userData);
-    localStorage.removeItem("otp_email");
-    setShowModal(true);
-    setTimeout(() => {
-      if (hasAdminDashboardAccess(userData)) navigate("/admin");
-      else navigate("/");
-    }, 1500);
-
-  } catch (err) {
-    setError(err.response?.data?.message || "Invalid or expired OTP.");
-  } finally {
-    setLoading(false);
-  }
-};
     try {
-      const res = await api.post("/verify-otp", { email, otp });
-      if (res.data.token) localStorage.setItem("token", res.data.token);
+      // CHANGE THIS LINE: Add 'purpose' to the data being sent
+      const res = await api.post("/verify-otp", { email, otp, purpose });
+
+      // ✅ Handle password reset BEFORE storing token or logging in
+      if (purpose === "reset-password") {
+        setModalMessage("OTP verified! Redirecting to reset password...");
+        setShowModal(true);
+        setTimeout(() => {
+          navigate("/reset-password", { state: { email, otp } });
+        }, 1500);
+        return;
+      }
+
+      // Only store token and log in for non-reset flows
       if (!res.data.token) {
         setError("Authentication failed. Please try logging in again.");
         setLoading(false);
         return;
       }
+
+      localStorage.setItem("token", res.data.token);
+
       let userData = null;
       const pendingUser = localStorage.getItem("pendingUser");
       if (pendingUser) {
@@ -142,20 +110,15 @@ function VerifyOtpPage({ cmsPreview }) {
         userData = res.data.user;
         setModalMessage("Account verified successfully! Logging you in...");
       }
-      if (purpose === "reset-password") {
-        setModalMessage("OTP verified! Redirecting to reset password...");
-        setShowModal(true);
-        setTimeout(() => {
-          navigate("/reset-password", { state: { email, otp } });
-        }, 1500);
-        return;
-      }
+
       handleLogin(userData);
       localStorage.removeItem("otp_email");
       setShowModal(true);
+      
       setTimeout(() => {
         navigate(getPostLoginPath(userData));
       }, 1500);
+
     } catch (err) {
       setError(err.response?.data?.message || "Invalid or expired OTP.");
     } finally {

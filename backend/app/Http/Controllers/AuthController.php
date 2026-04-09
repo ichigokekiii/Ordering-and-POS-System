@@ -156,11 +156,12 @@ class AuthController extends Controller
         ]);
     }
 
-    public function verifyOtp(Request $request)
+public function verifyOtp(Request $request)
     {
         $request->validate([
             'email' => 'required|email',
             'otp' => 'required|digits:6',
+            'purpose' => 'sometimes|nullable|string', // Allow the purpose field
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -178,9 +179,20 @@ class AuthController extends Controller
             return response()->json(['message' => 'Invalid or expired OTP'], 400);
         }
 
+        // --- THE FIX ---
+        // If they are just checking the OTP to reset their password, 
+        // return success but DO NOT delete the OTP yet!
+        if ($request->purpose === 'reset-password') {
+            return response()->json([
+                'message' => 'OTP is valid. Proceed to reset password.'
+            ]);
+        }
+        // ---------------
+
         $user->is_verified = true;
         $user->save();
 
+        // Delete the OTP for normal logins
         $otp->delete();
 
         // Auto-login after verification
@@ -268,10 +280,23 @@ class AuthController extends Controller
 
     public function resetPassword(Request $request)
     {
+        // Add strong password validation to match frontend requirements
         $request->validate([
             'email' => 'required|email',
             'otp' => 'required|digits:6',
-            'password' => 'required|min:6|confirmed',
+            'password' => [
+                'required',
+                'string',
+                'min:8',             // must be at least 8 characters in length
+                'regex:/[a-z]/',     // must contain at least one lowercase letter
+                'regex:/[A-Z]/',     // must contain at least one uppercase letter
+                'regex:/[0-9]/',     // must contain at least one digit
+                'confirmed'          // must match password_confirmation
+            ],
+        ], [
+            'password.regex' => 'Your password must contain at least one uppercase letter, one lowercase letter, and one number.',
+            'password.min' => 'Your password must be at least 8 characters long.',
+            'password.confirmed' => 'The passwords do not match.',
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -295,7 +320,11 @@ class AuthController extends Controller
 
         $user->password = Hash::make($request->password);
         $user->save();
+        
+        // Invalidate all existing sessions/tokens
         $user->tokens()->delete();
+        
+        // Consume the OTP so it cannot be reused
         $otp->delete();
 
         $this->writeUserLog('password_reset_completed', $user, 'Password reset completed');

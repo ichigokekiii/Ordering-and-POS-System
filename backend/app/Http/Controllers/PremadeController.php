@@ -10,9 +10,31 @@ use App\Support\ProductService;
 
 class PremadeController extends Controller
 {
-    public function index()
+    private function canViewAll(Request $request): bool
     {
-        return PremadeProduct::all();
+        $user = $request->user();
+
+        return $user && in_array(strtolower((string) $user->role), ['admin', 'owner', 'staff'], true);
+    }
+
+    public function index(Request $request)
+    {
+        return PremadeProduct::query()
+            ->when(
+                !$this->canViewAll($request),
+                fn ($query) => $query->where('isArchived', false)->where('isAvailable', true)
+            )
+            ->get();
+    }
+
+    public function show(Request $request, $id)
+    {
+        return PremadeProduct::query()
+            ->when(
+                !$this->canViewAll($request),
+                fn ($query) => $query->where('isArchived', false)->where('isAvailable', true)
+            )
+            ->findOrFail($id);
     }
 
     public function store(Request $request)

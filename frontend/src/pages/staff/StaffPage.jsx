@@ -406,22 +406,15 @@ function StaffPage({ children, customCategories }) {
       });
 
       showToast("success", "Transaction completed");
+      setCart([]);
+      setMethodModal(false);
+      setCashModal(false);
+      setQrModal(false);
+      setCashReceived(0);
     } catch (err) {
       console.error("Failed to save transaction", err);
-
-      // If backend responded, it likely still succeeded → show success
-      if (err.response) {
-        showToast("success", "Transaction completed");
-      } else {
-        showToast("error", "Something went wrong");
-      }
+      showToast("error", err.response?.data?.message || "Failed to save transaction");
     }
-
-    setCart([]);
-    setMethodModal(false);
-    setCashModal(false);
-    setQrModal(false);
-    setCashReceived(0);
 
   };
 

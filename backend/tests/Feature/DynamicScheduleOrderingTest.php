@@ -37,6 +37,8 @@ class DynamicScheduleOrderingTest extends TestCase
             'isArchived' => false,
         ]);
 
+        Sanctum::actingAs($user);
+
         $response = $this->post('/api/orders', [
             'user_id' => $user->id,
             'schedule_id' => $schedule->id,
@@ -79,6 +81,8 @@ class DynamicScheduleOrderingTest extends TestCase
             'isAvailable' => false,
             'isArchived' => false,
         ]);
+
+        Sanctum::actingAs($user);
 
         $response = $this->post('/api/orders', [
             'user_id' => $user->id,

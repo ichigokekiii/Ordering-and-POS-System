@@ -110,6 +110,10 @@ export const CMS_FIELDS = [
   { page: "auth", identifier: "auth_forgot_title", label: "Forgot Password Title", type: "text", input: "text", previewEnabled: true },
   { page: "auth", identifier: "auth_forgot_subtitle", label: "Forgot Password Subtitle", type: "text", input: "textarea", previewEnabled: true },
 
+  { page: "auth", identifier: "auth_reset_image", label: "Reset Password Background", type: "image", input: "image", previewEnabled: true },
+  { page: "auth", identifier: "auth_reset_title", label: "Reset Password Title", type: "text", input: "text", previewEnabled: true },
+  { page: "auth", identifier: "auth_reset_subtitle", label: "Reset Password Subtitle", type: "text", input: "textarea", previewEnabled: true },
+
   // --- FOOTER ---
   { page: "footer", identifier: "footer_brand", label: "Footer Brand Name", type: "text", input: "text", previewEnabled: true },
   { page: "footer", identifier: "footer_bg_color", label: "Footer Background Color", type: "text", input: "color", previewEnabled: true },

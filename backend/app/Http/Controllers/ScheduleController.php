@@ -14,23 +14,41 @@ use App\Support\ScheduleService;
 
 class ScheduleController extends Controller
 {
+    private function canViewAll(Request $request): bool
+    {
+        $user = $request->user();
+
+        return $user && in_array(strtolower((string) $user->role), ['admin', 'owner', 'staff'], true);
+    }
+
     // GET all schedules
-    public function index()
+    public function index(Request $request)
     {
         ScheduleService::syncPastSchedules();
 
         return response()->json(
             Schedule::query()
+                ->when(
+                    !$this->canViewAll($request),
+                    fn ($query) => $query->where('isArchived', false)
+                )
                 ->orderBy('event_date')
                 ->get()
         );
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
         ScheduleService::syncPastSchedules();
 
-        return response()->json(Schedule::findOrFail($id));
+        return response()->json(
+            Schedule::query()
+                ->when(
+                    !$this->canViewAll($request),
+                    fn ($query) => $query->where('isArchived', false)
+                )
+                ->findOrFail($id)
+        );
     }
 
     // CREATE schedule

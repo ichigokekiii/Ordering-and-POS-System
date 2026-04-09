@@ -17,6 +17,11 @@ use App\Support\ScheduleService;
 
 class OrderController extends Controller
 {
+    private function canManageOrders(?User $user): bool
+    {
+        return $user && in_array(strtolower((string) $user->role), ['admin', 'owner', 'staff'], true);
+    }
+
     private function normalizeUserPriority(?User $user): ?User
     {
         if ($user) {
@@ -38,6 +43,10 @@ class OrderController extends Controller
     public function index()
     {
         try {
+            if (!$this->canManageOrders(request()->user())) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
             $orders = Order::query()
                 ->select('orders.*')
                 ->leftJoin('users', 'orders.user_id', '=', 'users.id')
@@ -72,6 +81,15 @@ class OrderController extends Controller
                 'orderItems.product',
             ])->where('order_id', $id)->firstOrFail();
 
+            $actor = request()->user();
+
+            if (
+                !$this->canManageOrders($actor)
+                && (int) $order->user_id !== (int) optional($actor)->id
+            ) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
             $this->normalizeOrderForResponse($order);
 
             return response()->json($order);
@@ -83,9 +101,18 @@ class OrderController extends Controller
         }
     }
 
-    public function userOrders($userId)
+    public function userOrders(Request $request, $userId)
     {
         try {
+            $actor = $request->user();
+
+            if (
+                !$this->canManageOrders($actor)
+                && (int) $userId !== (int) optional($actor)->id
+            ) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
             $orders = Order::with([
                 'user',
                 'payment',
@@ -110,7 +137,7 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'user_id'          => 'required|integer|exists:users,id',
+            'user_id'          => 'nullable|integer|exists:users,id',
             'schedule_id'      => 'required|integer|exists:schedules,id',
             'address'          => 'required|string',
             'delivery_method'  => 'required|in:pickup,delivery',
@@ -123,7 +150,31 @@ class OrderController extends Controller
             'terms_scope'      => 'required|string|in:customer,internal',
         ]);
 
-        $orderUser = User::find($request->input('user_id'));
+        $actor = $request->user();
+        $isPrivilegedActor = $this->canManageOrders($actor);
+        $requestedUserId = (int) $request->input('user_id', $actor?->id);
+
+        if (!$actor) {
+            return response()->json([
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        if (!$isPrivilegedActor && $requestedUserId !== (int) $actor->id) {
+            return response()->json([
+                'message' => 'You can only place orders for your own account.',
+            ], 403);
+        }
+
+        $resolvedUserId = $isPrivilegedActor ? $requestedUserId : (int) $actor->id;
+        $orderUser = User::find($resolvedUserId);
+
+        if (!$orderUser) {
+            return response()->json([
+                'message' => 'The selected customer account was not found.',
+            ], 404);
+        }
+
         $expectedTermsScope = in_array(strtolower((string) optional($orderUser)->role), ['user', 'customer'], true)
             ? 'customer'
             : 'internal';
@@ -151,12 +202,12 @@ class OrderController extends Controller
         $imagePath = $request->file('reference_image')->store('payments', 'public');
 
         try {
-            DB::transaction(function () use ($request, $now, $orderId, $paymentId, $imagePath, $schedule) {
+            DB::transaction(function () use ($request, $now, $orderId, $paymentId, $imagePath, $schedule, $resolvedUserId) {
 
                 // 1. Create order with payment_id null
                 $order = new Order();
                 $order->order_id        = $orderId;
-                $order->user_id         = $request->input('user_id');
+                $order->user_id         = $resolvedUserId;
                 $order->schedule_id     = $schedule->id;
                 $order->payment_id      = null;
                 $order->order_date      = $now->toDateTimeString();

@@ -15,6 +15,25 @@ class PosTransactionsController extends Controller
 {
     public function store(Request $request)
     {
+        $user = $request->user();
+
+        if (!$user || !in_array(strtolower((string) $user->role), ['admin', 'owner', 'staff'], true)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'nullable|integer',
+            'items.*.name' => 'nullable|string|max:255',
+            'items.*.product_name' => 'nullable|string|max:255',
+            'items.*.price' => 'required|numeric|min:0',
+            'items.*.qty' => 'nullable|integer|min:1',
+            'items.*.quantity' => 'nullable|integer|min:1',
+            'total_amount' => 'required|numeric|min:0',
+            'payment_method' => 'required|string|in:CASH,QR',
+            'cash_received' => 'required|numeric|min:0',
+        ]);
+
         try {
             DB::transaction(function () use ($request) {
                 $posTransaction = PosTransactions::create([

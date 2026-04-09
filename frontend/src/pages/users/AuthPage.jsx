@@ -101,12 +101,6 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
 
       const loggedInUser = res.data.user || res.data;
 
-      try {
-        await api.post("/resend-otp", { email: loginEmail });
-      } catch (otpErr) {
-        console.warn("OTP sending failed", otpErr);
-      }
-
       localStorage.setItem("pendingUser", JSON.stringify(loggedInUser));
       navigate("/verify-otp", { state: { email: loginEmail, from: 'login' } });
     } catch (err) {

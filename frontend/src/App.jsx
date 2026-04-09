@@ -32,6 +32,7 @@ import OrderCustomAdditional from "./pages/users/OrderCustomAdditional";
 import OrderPremade from "./pages/users/OrderPremade";
 import CartPage from "./pages/users/CartPage";
 import CheckoutPage from "./pages/users/CheckoutPage";
+import ResetPasswordPage from "./pages/users/ResetPasswordPage";
 
 // ADMIN PAGES
 import AdminOverviewPage from "./pages/admin/AdminOverviewPage";
@@ -122,6 +123,7 @@ function App() {
         <Route path="/register" element={<AuthPage onLogin={handleLogin} initialView="register" />} />
         <Route path="/verify-otp" element={<VerifyOtpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Admin Routes */}
         <>

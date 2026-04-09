@@ -5,6 +5,7 @@ import Footer from "../../components/Footer";
 import AuthPage from "../users/AuthPage";
 import VerifyOtpPage from "../users/VerifyOtpPage";
 import ForgotPasswordPage from "../users/ForgotPasswordPage";
+import ResetPasswordPage from "../users/ResetPasswordPage";
 import LandingPage from "../users/LandingPage";
 import AboutPage from "../users/AboutPage";
 import ProductPage from "../users/ProductPage";
@@ -18,10 +19,103 @@ import {
   isStaffReadOnlyAdmin,
 } from "../../utils/adminAccess";
 
-const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
 const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png)$/i;
 const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,image/jpeg,image/png";
+const MAX_IMAGE_SIZE_LABEL = "2MB";
+
+const getContentRequestErrorMessage = (error, fallbackMessage) => {
+  if (error?.response?.status === 422) {
+    const serverErrors = error.response.data?.errors;
+
+    if (serverErrors) {
+      const firstKey = Object.keys(serverErrors)[0];
+      if (firstKey && serverErrors[firstKey]?.[0]) {
+        return serverErrors[firstKey][0];
+      }
+    }
+  }
+
+  return error?.response?.data?.error || error?.response?.data?.message || fallbackMessage;
+};
+
+const loadImageFromFile = (file) =>
+  new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Image could not be loaded."));
+    };
+
+    image.src = objectUrl;
+  });
+
+const canvasToBlob = (canvas, type, quality) =>
+  new Promise((resolve) => {
+    canvas.toBlob(resolve, type, quality);
+  });
+
+const buildOptimizedImageName = (originalName, mimeType) => {
+  const baseName = (originalName || "content-image").replace(/\.[^.]+$/, "");
+  const extension = mimeType === "image/png" ? ".png" : ".jpg";
+  return `${baseName}-optimized${extension}`;
+};
+
+const optimizeImageForUpload = async (file) => {
+  if (!(file instanceof File) || file.size === 0 || file.size <= MAX_IMAGE_SIZE_BYTES) {
+    return file;
+  }
+
+  const image = await loadImageFromFile(file);
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    return null;
+  }
+
+  const sourceWidth = image.naturalWidth || image.width;
+  const sourceHeight = image.naturalHeight || image.height;
+  const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg";
+
+  let scale = 1;
+  let quality = mimeType === "image/jpeg" ? 0.9 : undefined;
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const width = Math.max(1, Math.round(sourceWidth * scale));
+    const height = Math.max(1, Math.round(sourceHeight * scale));
+
+    canvas.width = width;
+    canvas.height = height;
+    context.clearRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+
+    const blob = await canvasToBlob(canvas, mimeType, quality);
+
+    if (blob && blob.size <= MAX_IMAGE_SIZE_BYTES) {
+      return new File([blob], buildOptimizedImageName(file.name, mimeType), {
+        type: mimeType,
+        lastModified: Date.now(),
+      });
+    }
+
+    if (mimeType === "image/jpeg" && typeof quality === "number" && quality > 0.45) {
+      quality = Number((quality - 0.12).toFixed(2));
+    } else {
+      scale *= 0.82;
+    }
+  }
+
+  return null;
+};
 
 function AdminModalPortal({ children }) {
   if (typeof document === "undefined") {
@@ -88,6 +182,14 @@ function PreviewScene({ activePage, cmsPreview }) {
          <div>
            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4 text-center">Verify OTP View</p>
            <VerifyOtpPage cmsPreview={cmsPreview} />
+         </div>
+
+         <div className="border-t-4 border-dashed border-gray-300 w-full my-4"></div>
+
+         {/* Reset Password */}
+         <div>
+           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4 text-center">Reset Password View</p>
+           <ResetPasswordPage cmsPreview={cmsPreview} />
          </div>
       </div>
     );
@@ -533,10 +635,19 @@ function AdminContentPage({ user }) {
                     return;
                   }
 
-                  if (imageFile.size > MAX_IMAGE_SIZE_BYTES) {
-                    showModalAlert("error", "Image must be 5MB or smaller.");
+                  const optimizedImageFile = await optimizeImageForUpload(imageFile);
+
+                  if (!optimizedImageFile) {
+                    showModalAlert("error", `Image must be ${MAX_IMAGE_SIZE_LABEL} or smaller. Try a smaller image.`);
                     return;
                   }
+
+                  if (optimizedImageFile.size > MAX_IMAGE_SIZE_BYTES) {
+                    showModalAlert("error", `Image must be ${MAX_IMAGE_SIZE_LABEL} or smaller.`);
+                    return;
+                  }
+
+                  formData.set("content_image", optimizedImageFile, optimizedImageFile.name);
                 }
 
                 try {
@@ -549,8 +660,8 @@ function AdminContentPage({ user }) {
                   }
                   closeEditor();
                 } catch (error) { 
-                  console.error("Failed to save", error); 
-                  showModalAlert("error", "Failed to save changes.");
+                  console.error("Failed to save", error.response?.data || error.message);
+                  showModalAlert("error", getContentRequestErrorMessage(error, "Failed to save changes."));
                 }
               }}
             >
@@ -588,7 +699,7 @@ function AdminContentPage({ user }) {
                   <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Upload New Image</label>
                   <input type="file" name="content_image" disabled={!canManageContent} className="w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-gray-700 hover:file:bg-gray-200 transition-all disabled:cursor-not-allowed disabled:opacity-60" accept={ADMIN_IMAGE_ACCEPT} />
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                    {editingContent ? "Optional on edit. JPG, JPEG, or PNG only. Max 5MB." : "Required for new image content. JPG, JPEG, or PNG only. Max 5MB."}
+                    {editingContent ? `Optional on edit. JPG, JPEG, or PNG only. Max ${MAX_IMAGE_SIZE_LABEL}. Larger images are auto-resized when possible.` : `Required for new image content. JPG, JPEG, or PNG only. Max ${MAX_IMAGE_SIZE_LABEL}. Larger images are auto-resized when possible.`}
                   </p>
                 </div>
               )}

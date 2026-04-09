@@ -132,18 +132,18 @@ class AuthController extends Controller
             ], 403);
         }
 
-        // ── SUCCESS: reset lockout counters ───────────────────────────────────
+        // ── SUCCESS: reset lockout counters and require OTP verification ─────
         $user->failed_attempt_count = 0;
         $user->last_failed_attempt_at = null;
         $user->save();
 
-        $user->tokens()->delete();
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $this->sendOtp($user);
 
-        $this->writeUserLog('login_success', $user, 'Successful login');
+        $this->writeUserLog('otp_resent', $user, 'Login OTP issued after successful password validation');
 
         return response()->json([
-            'message' => 'Login successful',
+            'message' => 'OTP sent successfully.',
+            'otp_required' => true,
             'user' => [
                 'id' => $user->id,
                 'first_name' => $user->first_name,
@@ -153,7 +153,6 @@ class AuthController extends Controller
                 'profile_picture' => $user->profile_picture,
                 'role' => $user->role,
             ],
-            'token' => $token
         ]);
     }
 
@@ -161,7 +160,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'email' => 'required|email',
-            'otp' => 'required'
+            'otp' => 'required|digits:6',
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -214,21 +213,10 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if (!$user) {
-            return response()->json(['message' => 'User not found'], 404);
+            return response()->json(['message' => 'If the account exists, a new OTP has been sent.']);
         }
 
-        Otp::where('user_id', $user->id)->delete();
-
-        $otpCode = rand(100000, 999999);
-
-        Otp::updateOrCreate([
-            'user_id' => $user->id,
-        ], [
-            'code' => $otpCode,
-            'expires_at' => now()->addMinutes(5),
-        ]);
-
-        Mail::to($user->email)->send(new SendOtpMail($otpCode));
+        $this->sendOtp($user);
 
         $this->writeUserLog('otp_resent', $user, 'OTP resent for account verification');
 
@@ -265,8 +253,8 @@ class AuthController extends Controller
 
         if (!$user) {
             return response()->json([
-                'message' => 'Email not found'
-            ], 404);
+                'message' => 'If the account exists, an OTP has been sent.'
+            ]);
         }
 
         $this->sendOtp($user);
@@ -282,7 +270,8 @@ class AuthController extends Controller
     {
         $request->validate([
             'email' => 'required|email',
-            'password' => 'required|min:6'
+            'otp' => 'required|digits:6',
+            'password' => 'required|min:6|confirmed',
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -293,8 +282,21 @@ class AuthController extends Controller
             ], 404);
         }
 
+        $otp = Otp::where('user_id', $user->id)
+            ->where('code', $request->otp)
+            ->where('expires_at', '>', now())
+            ->first();
+
+        if (!$otp) {
+            return response()->json([
+                'message' => 'Invalid or expired OTP'
+            ], 400);
+        }
+
         $user->password = Hash::make($request->password);
         $user->save();
+        $user->tokens()->delete();
+        $otp->delete();
 
         $this->writeUserLog('password_reset_completed', $user, 'Password reset completed');
 

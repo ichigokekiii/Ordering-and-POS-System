@@ -15,6 +15,7 @@ import {
   STAFF_POS_DARK_MODE_STORAGE_KEY,
   STAFF_POS_THEME_EVENT,
 } from "../constants/theme";
+import { hasAdminDashboardAccess } from "../utils/adminAccess";
 
 const readPosDarkMode = (fallbackValue) => {
   if (typeof window === "undefined") {
@@ -51,7 +52,7 @@ function AdminQuickActions({ user }) {
   const buttonSize = 56; // 14 * 4px (h-14 w-14)
   const padding = 24; // 6 * 4px (bottom-6 right-6)
 
-  const canUseQuickActions = user?.role === "admin" || user?.role === "owner";
+  const canUseQuickActions = hasAdminDashboardAccess(user);
   const isStaffRoute = location.pathname.startsWith("/staff");
   const currentDarkMode = isStaffRoute ? readPosDarkMode(isDarkMode) : isDarkMode;
 

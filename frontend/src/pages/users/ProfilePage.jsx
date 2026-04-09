@@ -1,11 +1,12 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import api from "../../services/api";
 import { useNavbar } from "../../contexts/NavbarContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { MapPin, Package, Plus, CheckCircle2, X, Loader2, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getAssetUrl } from "../../utils/assetUrl";
 
 const MotionDiv = motion.div;
 
@@ -18,6 +19,8 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [accountDisabledModal, setAccountDisabledModal] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef(null);
 
   // --- Modal System (replaces all alert/confirm) ---
   const [statusModal, setStatusModal] = useState({ isOpen: false, type: "success", message: "" });
@@ -50,6 +53,8 @@ export default function ProfilePage() {
 
   // Helper to show status modal
   const showAlert = (type, message) => setStatusModal({ isOpen: true, type, message });
+  const profilePictureUrl = getAssetUrl(profile?.profile_picture);
+  const profileInitial = profile?.first_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || "U";
 
   useEffect(() => {
     fetchProfile();
@@ -106,6 +111,43 @@ export default function ProfilePage() {
   // PROFILE LOGIC
   // -------------------------------------------------------------
   const handleProfileChange = (e) => setProfile({ ...profile, [e.target.name]: e.target.value });
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("profile_picture", file);
+
+    setUploadingPhoto(true);
+
+    try {
+      const res = await api.post("/profile/photo", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (res.data?.user) {
+        updateUser(res.data.user);
+        setProfile((currentProfile) => ({
+          ...(currentProfile || {}),
+          ...res.data.user,
+        }));
+      }
+
+      await fetchProfile();
+      showAlert("success", "Profile photo updated successfully.");
+    } catch (err) {
+      showAlert("error", err.response?.data?.message || "Failed to upload profile photo.");
+    } finally {
+      setUploadingPhoto(false);
+      e.target.value = "";
+    }
+  };
 
   const saveProfile = async () => {
     try {
@@ -319,12 +361,32 @@ export default function ProfilePage() {
                       )}
                     </div>
                     <div className="p-6">
+                      <input
+                        ref={photoInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/gif"
+                        className="hidden"
+                        onChange={handlePhotoUpload}
+                      />
                       <div className="flex items-center gap-4 mb-6">
-                        <div className="w-12 h-12 rounded-full bg-[#c0795c] flex items-center justify-center text-white text-lg font-bold shadow-inner">
-                          {profile.first_name?.[0]}
+                        <div className="w-16 h-16 rounded-full bg-[#c0795c] flex items-center justify-center text-white text-lg font-bold shadow-inner overflow-hidden">
+                          {profilePictureUrl ? (
+                            <img
+                              src={profilePictureUrl}
+                              alt={`${profile.first_name} ${profile.last_name}`}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            profileInitial
+                          )}
                         </div>
-                        <button className="text-xs font-semibold border border-gray-900 px-4 py-2 rounded-full bg-white text-gray-900 hover:bg-[#0f1b2d] hover:text-white transition-all duration-300 ease-out">
-                          Change Photo
+                        <button
+                          onClick={() => photoInputRef.current?.click()}
+                          disabled={uploadingPhoto}
+                          className="text-xs font-semibold border border-gray-900 px-4 py-2 rounded-full bg-white text-gray-900 hover:bg-[#0f1b2d] hover:text-white transition-all duration-300 ease-out disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          {uploadingPhoto && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                          {uploadingPhoto ? "Uploading..." : profile?.profile_picture ? "Change Photo" : "Upload Photo"}
                         </button>
                       </div>
                       <div className="grid md:grid-cols-2 gap-6">
@@ -338,13 +400,13 @@ export default function ProfilePage() {
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-gray-500 mb-1.5">Phone Number</label>
-                          <input name="phone_number" value={profile.phone_number} onChange={handleProfileChange} disabled={!editingProfile} className={`w-full border ${editingProfile ? "border-gray-300 focus:border-[#3b82f6]" : "border-gray-200 bg-gray-50"} rounded-xl px-3 py-2 text-sm text-gray-800 outline-none transition-colors`} />
+                          <input name="phone_number" value={profile.phone_number ?? ""} onChange={handleProfileChange} disabled={!editingProfile} className={`w-full border ${editingProfile ? "border-gray-300 focus:border-[#3b82f6]" : "border-gray-200 bg-gray-50"} rounded-xl px-3 py-2 text-sm text-gray-800 outline-none transition-colors`} />
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-gray-500 mb-1.5">Email Address</label>
                           {!emailChangeMode ? (
                             <div className="flex gap-2">
-                              <input value={profile.email} disabled className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-sm text-gray-800 outline-none" />
+                              <input value={profile.email ?? ""} disabled className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-sm text-gray-800 outline-none" />
                               <button onClick={() => setEmailChangeMode(true)} className="text-xs font-semibold border border-gray-900 px-4 py-2 rounded-full bg-white text-gray-900 hover:bg-[#0f1b2d] hover:text-white transition-all duration-300 ease-out">
                                 Change
                               </button>

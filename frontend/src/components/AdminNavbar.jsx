@@ -321,7 +321,7 @@ function AdminNavbar({ user, onLogout }) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-100 bg-white px-8">
+    <header className="sticky top-0 z-[80] flex h-16 items-center justify-between border-b border-gray-100 bg-white px-8 isolate">
       {/* Left side - Search */}
       <div className="w-full max-w-md">
         <form onSubmit={handleSearchSubmit} className="relative">
@@ -357,7 +357,7 @@ function AdminNavbar({ user, onLogout }) {
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 top-full z-40 mt-4 w-80 rounded-[1.5rem] border border-gray-100 bg-white p-4 shadow-xl">
+            <div className="absolute right-0 top-full z-[90] mt-4 w-80 rounded-[1.5rem] border border-gray-100 bg-white p-4 shadow-xl">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-bold text-gray-900">Notifications</h2>
                 {notifications.length > 0 && (
@@ -414,7 +414,7 @@ function AdminNavbar({ user, onLogout }) {
           </button>
 
           {showProfileMenu && (
-            <div className="absolute right-0 top-full z-40 mt-4 w-56 overflow-hidden rounded-[1.5rem] border border-gray-100 bg-white shadow-xl">
+            <div className="absolute right-0 top-full z-[90] mt-4 w-56 overflow-hidden rounded-[1.5rem] border border-gray-100 bg-white shadow-xl">
               <div className="border-b border-gray-50 bg-[#fcfaf9] px-4 py-4">
                 <p className="text-sm font-bold text-gray-900">{displayName}</p>
                 <p className="truncate text-xs text-gray-500 mt-0.5">{user?.email || roleLabel}</p>

@@ -78,6 +78,20 @@ export const CMS_FIELDS = [
     { page: "about", identifier: `about_faq_a_${i+1}`, label: `FAQ ${i+1} Answer`, type: "text", input: "textarea", previewEnabled: true },
   ]),
 
+  // --- SHOWCASE PAGE ---
+  { page: "products", identifier: "products_hero_label", label: "Hero Top Label", type: "text", input: "text", previewEnabled: true },
+  { page: "products", identifier: "products_hero_title_intro", label: "Hero Title Intro", type: "text", input: "text", previewEnabled: true },
+  { page: "products", identifier: "products_hero_title_accent", label: "Hero Title Accent", type: "text", input: "text", previewEnabled: true },
+  { page: "products", identifier: "products_hero_description", label: "Hero Description", type: "text", input: "textarea", previewEnabled: true },
+  { page: "products", identifier: "products_hero_image", label: "Hero Background Image", type: "image", input: "image", previewEnabled: true },
+
+  // --- SCHEDULE PAGE ---
+  { page: "schedule", identifier: "schedule_hero_label", label: "Hero Top Label", type: "text", input: "text", previewEnabled: true },
+  { page: "schedule", identifier: "schedule_hero_title_intro", label: "Hero Title Intro", type: "text", input: "text", previewEnabled: true },
+  { page: "schedule", identifier: "schedule_hero_title_accent", label: "Hero Title Accent", type: "text", input: "text", previewEnabled: true },
+  { page: "schedule", identifier: "schedule_hero_description", label: "Hero Description", type: "text", input: "textarea", previewEnabled: true },
+  { page: "schedule", identifier: "schedule_hero_image", label: "Hero Background Image", type: "image", input: "image", previewEnabled: true },
+
 
   // --- AUTH PAGES ---
   { page: "auth", identifier: "auth_login_image", label: "Login Background", type: "image", input: "image", previewEnabled: true },
@@ -112,6 +126,8 @@ export const CMS_FIELDS = [
 export const CMS_PAGES = [
   { id: "home", label: "Home" },
   { id: "about", label: "About" },
+  { id: "products", label: "Showcase" },
+  { id: "schedule", label: "Schedule" },
   { id: "auth", label: "Login/Register" },
   { id: "navbar", label: "Navbar" },
   { id: "footer", label: "Footer" },

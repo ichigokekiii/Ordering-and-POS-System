@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import api from "../../services/api";
+import { hasAdminDashboardAccess } from "../../utils/adminAccess";
 
 // CMS IMPORTS
 import { useContents } from "../../contexts/ContentContext";
@@ -105,10 +106,8 @@ function VerifyOtpPage({ cmsPreview }) {
       handleLogin(userData);
       localStorage.removeItem("otp_email");
       setShowModal(true);
-      const role = (userData?.role || "").toLowerCase();
       setTimeout(() => {
-        if (role === "admin" || role === "owner") navigate("/admin");
-        else if (role === "staff") navigate("/staff");
+        if (hasAdminDashboardAccess(userData)) navigate("/admin");
         else navigate("/");
       }, 1500);
     } catch (err) {

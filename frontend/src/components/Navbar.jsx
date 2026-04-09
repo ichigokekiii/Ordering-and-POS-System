@@ -1,10 +1,10 @@
 import { Link, useNavigate } from "react-router-dom";
-import { User } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useNavbar } from "../contexts/NavbarContext";
 import { useContents } from "../contexts/ContentContext";
 import { useTheme } from "../contexts/ThemeContext";
 import CmsEditableRegion from "./admin/CmsEditableRegion";
+import { getAssetUrl } from "../utils/assetUrl";
 import {
   getCmsField,
   getCmsAssetUrl,
@@ -29,6 +29,8 @@ function Navbar({ cmsPreview }) {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const profilePictureUrl = getAssetUrl(currentUser?.profile_picture);
+  const profileInitial = currentUser?.first_name?.[0]?.toUpperCase() || "U";
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -147,9 +149,19 @@ function Navbar({ cmsPreview }) {
                   setMenuOpen(!menuOpen);
                 }
               }}
-              className="flex items-center justify-center rounded-full border p-2 hover:bg-[#4f6fa5]/10 hover:text-[#4f6fa5]"
+              className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-white hover:border-[#4f6fa5] hover:bg-[#4f6fa5]/10"
             >
-              <User size={20} />
+              {profilePictureUrl ? (
+                <img
+                  src={profilePictureUrl}
+                  alt={`${currentUser.first_name} profile`}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-sm font-semibold text-gray-700">
+                  {profileInitial}
+                </span>
+              )}
             </button>
 
             {menuOpen && (

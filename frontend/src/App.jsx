@@ -14,6 +14,7 @@ import AdminLayout from "./components/AdminLayout";
 import Footer from "./components/Footer";
 import OrderLayout from "./components/OrderLayout";
 import AdminQuickActions from "./components/AdminQuickActions";
+import { hasAdminDashboardAccess } from "./utils/adminAccess";
 
 // USER PAGES
 import LandingPage from "./pages/users/LandingPage";
@@ -43,8 +44,6 @@ import AdminContentPage from "./pages/admin/AdminContentPage";
 import AdminLogsPage from "./pages/admin/AdminLogsPage";
 import AdminFeedbacksPage from "./pages/admin/AdminFeedbacksPage";
 
-
-
 import StaffCustomPage from "./pages/staff/StaffCustomPage";
 import StaffPremadePage from "./pages/staff/StaffPremadePage";
 
@@ -65,7 +64,7 @@ function App() {
     }
 
     if (user.role === "staff" && location.pathname === "/") {
-      navigate("/staff");
+      navigate("/admin");
       didHandleInitialRoleRedirect.current = true;
       return;
     }
@@ -84,7 +83,7 @@ function App() {
     location.pathname.startsWith("/staff");
 
   // Helper variable to clean up the long condition
-  const hasAdminAccess = user && (user.role === "admin" || user.role === "owner" || user.role === "staff");
+  const hasAdminAccess = hasAdminDashboardAccess(user);
   const canAccessPos = user && (user.role === "admin" || user.role === "owner" || user.role === "staff");
 
   const renderAdminPage = (page, allowAccess = hasAdminAccess) => {
@@ -145,8 +144,8 @@ function App() {
     <Route
       path="/admin/content"
       element={renderAdminPage(
-        <AdminContentPage />,
-        user && (user.role === "admin" || user.role === "owner")
+        <AdminContentPage user={user} />,
+        hasAdminAccess
       )}
     />
 

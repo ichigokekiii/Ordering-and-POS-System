@@ -16,6 +16,7 @@ const STAFF_POS_CART_STORAGE_KEY = "staff-pos-cart";
 
 function StaffPage({ children, customCategories }) {
   const { products, loading } = useProducts();
+  const isVisibleForStaff = (product) => !product.isArchived && product.isAvailable;
 
   // UI STATE
   const [activeTab, setActiveTab] = useState("Bouquets");
@@ -57,7 +58,7 @@ function StaffPage({ children, customCategories }) {
   const [cashReceived, setCashReceived] = useState(0);
 
 
-  const available = products.filter((p) => p.isAvailable);
+  const available = products.filter(isVisibleForStaff);
 
   const categories = {
     Bouquets: available

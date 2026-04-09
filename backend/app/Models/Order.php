@@ -18,6 +18,7 @@ class Order extends Model
     // Specify the columns that can be filled directly
     protected $fillable = [
         'user_id',
+        'schedule_id',
         'payment_id',
         'order_date',
         'total_amount',
@@ -37,6 +38,11 @@ class Order extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
+    }
+
+    public function schedule()
+    {
+        return $this->belongsTo(Schedule::class, 'schedule_id');
     }
 
     // Relationship: An Order has many OrderItems

@@ -10,13 +10,27 @@ use App\Mail\SendScheduleBookingMail;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use App\Support\ScheduleService;
 
 class ScheduleController extends Controller
 {
     // GET all schedules
     public function index()
     {
-        return response()->json(Schedule::all());
+        ScheduleService::syncPastSchedules();
+
+        return response()->json(
+            Schedule::query()
+                ->orderBy('event_date')
+                ->get()
+        );
+    }
+
+    public function show($id)
+    {
+        ScheduleService::syncPastSchedules();
+
+        return response()->json(Schedule::findOrFail($id));
     }
 
     // CREATE schedule
@@ -29,7 +43,8 @@ class ScheduleController extends Controller
             'schedule_description' => ['nullable', 'string', 'max:1000', 'regex:/^[^<>]*$/'], 
             'event_date'           => 'required|date|after_or_equal:today',
             'image'                => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
-            'isAvailable'          => 'required|in:0,1,true,false'
+            'isAvailable'          => 'required|boolean',
+            'isArchived'           => 'sometimes|boolean',
         ], [
             'schedule_name.regex'        => 'Event name cannot contain HTML tags (< >).',
             'location.regex'             => 'Location contains invalid symbols.',
@@ -41,6 +56,8 @@ class ScheduleController extends Controller
         }
 
         $validated = $validator->validated();
+        $validated['isAvailable'] = $request->boolean('isAvailable');
+        $validated['isArchived'] = $request->boolean('isArchived');
 
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('schedules', 'public');
@@ -55,6 +72,7 @@ class ScheduleController extends Controller
     // UPDATE schedule
     public function update(Request $request, $id)
     {
+        ScheduleService::syncPastSchedules();
         $schedule = Schedule::findOrFail($id);
 
         $validator = Validator::make($request->all(), [
@@ -64,7 +82,8 @@ class ScheduleController extends Controller
             'schedule_description' => ['nullable', 'string', 'max:1000', 'regex:/^[^<>]*$/'],
             'event_date'           => 'sometimes|required|date|after_or_equal:today', 
             'image'                => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
-            'isAvailable'          => 'sometimes|in:0,1,true,false'
+            'isAvailable'          => 'sometimes|boolean',
+            'isArchived'           => 'sometimes|boolean',
         ], [
             'schedule_name.regex'        => 'Event name cannot contain HTML tags (< >).',
             'location.regex'             => 'Location contains invalid symbols.',
@@ -76,6 +95,14 @@ class ScheduleController extends Controller
         }
 
         $validated = $validator->validated();
+
+        if ($request->has('isAvailable')) {
+            $validated['isAvailable'] = $request->boolean('isAvailable');
+        }
+
+        if ($request->has('isArchived')) {
+            $validated['isArchived'] = $request->boolean('isArchived');
+        }
 
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('schedules', 'public');
@@ -90,6 +117,7 @@ class ScheduleController extends Controller
     // DELETE schedule
     public function destroy($id)
     {
+        ScheduleService::syncPastSchedules();
         $schedule = Schedule::findOrFail($id);
         $schedule->delete();
 
@@ -103,10 +131,12 @@ class ScheduleController extends Controller
             'email' => 'required|email'
         ]);
 
-        $schedule = Schedule::findOrFail($id);
+        $schedule = ScheduleService::findBookableSchedule((int) $id);
 
-        if (Carbon::parse($schedule->event_date)->lt(Carbon::today())) {
-            return response()->json(['message' => 'This event has already passed and cannot be booked.'], 400);
+        if (!$schedule) {
+            return response()->json([
+                'message' => 'This event is no longer available for booking.',
+            ], 400);
         }
 
         $existingBooking = ScheduleBooking::where('schedule_id', $schedule->id)

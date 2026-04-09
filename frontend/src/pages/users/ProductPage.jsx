@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 function ProductPage() {
   const { premades, loading } = useProducts();
+  const asBoolean = (value) => value === 1 || value === true || value === "1";
 
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState("");
@@ -28,6 +29,8 @@ function ProductPage() {
 
   // Filter logic
   const filteredProducts = premades.filter(product => {
+    if (asBoolean(product.isArchived)) return false;
+
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory =
       activeCategory === "All" ||

@@ -23,6 +23,7 @@ class User extends Authenticatable
         'last_failed_attempt_at',
         'is_locked',
         'priority',
+        'consecutive_cancellations',
         'is_verified',
     ];
 
@@ -40,6 +41,7 @@ class User extends Authenticatable
             'last_failed_attempt_at' => 'datetime',
             'is_locked' => 'boolean',
             'priority' => 'integer',
+            'consecutive_cancellations' => 'integer',
             'is_verified' => 'boolean',
             'deleted_at' => 'datetime',
         ];

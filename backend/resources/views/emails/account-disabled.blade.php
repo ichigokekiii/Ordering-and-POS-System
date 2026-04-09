@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Account Temporarily Disabled</title>
+  <title>Account Locked</title>
   <style>
     body {
       margin: 0; padding: 0;
@@ -93,36 +93,36 @@
   <div class="wrapper">
 
     <div class="header">
-      <h1>Account Temporarily Disabled</h1>
+      <h1>Account Locked</h1>
       <p>Action is required to restore access to your account.</p>
-      <span class="badge">Account Disabled</span>
+      <span class="badge">Fraud Lock</span>
     </div>
 
     <div class="body">
       <p class="greeting">Hi <strong>{{ $user->first_name }}</strong>,</p>
       <p style="font-size:13px; color:#6b7280; line-height:1.7; margin-bottom: 20px;">
-        Your Petal Express account has been <strong style="color:#d97706;">temporarily disabled</strong> due to a high number of order cancellations within a short period of time.
+        Your Petal Express account has been <strong style="color:#d97706;">locked</strong> because repeated order cancellations triggered our fraudulent buying protection rules.
       </p>
 
       <div class="reason-box">
-        <div class="label">Reason for Suspension</div>
+        <div class="label">Reason for Lock</div>
         <ul>
-          <li>Exceeded the allowed number of order cancellations</li>
+          <li>Exceeded the allowed limit for consecutive order cancellations</li>
           <li>Repeated cancellations affect our ability to serve other customers</li>
-          <li>This is an automated suspension for account protection</li>
+          <li>This is an automated fraud-protection lock</li>
         </ul>
       </div>
 
       <div class="notice">
-        <strong>This is a temporary suspension.</strong> Your account can be reactivated by contacting our support team. We're happy to help resolve this for you.
+        <strong>This account is locked.</strong> Please contact IT support so the team can review your activity and restore access if appropriate.
       </div>
 
       <div class="steps">
         <strong>What to do next:</strong>
         <ol>
-          <li>Reach out to our support team via email below</li>
+          <li>Reach out to IT support via email below</li>
           <li>Provide your registered email and order details if applicable</li>
-          <li>Our team will review and reactivate your account within 1–2 business days</li>
+          <li>Our team will review and respond with next steps within 1–2 business days</li>
         </ol>
       </div>
 

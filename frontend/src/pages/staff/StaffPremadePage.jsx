@@ -5,7 +5,7 @@ import StaffPage from "./StaffPage";
 function StaffPremadePage() {
   const { premades } = useProducts();
 
-  const available = premades.filter((p) => p.isAvailable);
+  const available = premades.filter((p) => !p.isArchived && p.isAvailable);
   const premadeCategories = available.reduce((groups, premade) => {
     const categoryName = (premade.category || "Uncategorized").trim() || "Uncategorized";
     if (!groups[categoryName]) {

@@ -3,6 +3,7 @@ import { ArrowLeft, Check, Minus, Plus, Search, X } from "lucide-react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { useProducts } from "../../contexts/ProductContext";
 import { useCart } from "../../contexts/CartContext";
+import { useSchedules } from "../../contexts/ScheduleContext";
 
 const MAX_GREETING_CHARS = 150;
 const GREETING_CARD_PRICE = 5;
@@ -160,15 +161,17 @@ function OrderModal({ product, onClose, onConfirm }) {
 function OrderPremadePage() {
   const navigate = useNavigate();
   const { premades, loading } = useProducts();
-  const { addToCart } = useCart();
+  const { addToCart, selectedScheduleId } = useCart();
+  const { schedules } = useSchedules();
   const { searchTerm = "", setSearchTerm } = useOutletContext() || {};
+  const selectedSchedule = schedules.find((schedule) => schedule.id === selectedScheduleId);
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [addedId, setAddedId] = useState(null);
   const [activeCategory, setActiveCategory] = useState("All");
 
   const categories = ["All", "Roses", "Lilies", "Tulips", "Carnation", "Mixed"];
-  const availableProducts = premades.filter((product) => product.isAvailable);
+  const availableProducts = premades.filter((product) => !product.isArchived && product.isAvailable);
 
   const filteredProducts = availableProducts.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -232,6 +235,11 @@ function OrderPremadePage() {
               <h1 className="text-4xl font-playfair font-bold text-gray-900 md:text-5xl">
                 Premade Bouquets
               </h1>
+              {selectedSchedule && (
+                <p className="mt-3 text-sm text-gray-500">
+                  For <span className="font-semibold text-gray-900">{selectedSchedule.schedule_name}</span>
+                </p>
+              )}
             </div>
             <p className="max-w-lg text-sm leading-relaxed text-gray-500">
               Browse the ready-made collection, filter by category, and use the

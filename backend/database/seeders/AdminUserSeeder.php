@@ -21,7 +21,7 @@ class AdminUserSeeder extends Seeder
                 'phone_number' => null,
                 'failed_attempt_count' => 0,
                 'is_locked' => false,
-                'priority' => 10,
+                'priority' => 0,
                 'is_verified' => 1,
 
             ]

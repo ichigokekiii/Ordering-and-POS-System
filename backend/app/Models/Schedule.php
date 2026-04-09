@@ -16,11 +16,21 @@ class Schedule extends Model
         'location',
         'event_date',
         'isAvailable',
+        'isArchived',
+    ];
+
+    protected $casts = [
+        'isAvailable' => 'boolean',
+        'isArchived' => 'boolean',
     ];
 
     public function bookings()
     {
         return $this->hasMany(ScheduleBooking::class);
     }
-    
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
 }

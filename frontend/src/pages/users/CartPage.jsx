@@ -1,10 +1,13 @@
 import { ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../contexts/CartContext";
+import { useSchedules } from "../../contexts/ScheduleContext";
 
 function CartPage() {
-  const { cartItems, removeFromCart, updateQuantity, clearCart, totalItems, totalPrice } = useCart();
+  const { cartItems, removeFromCart, updateQuantity, clearCart, totalItems, totalPrice, selectedScheduleId } = useCart();
+  const { schedules } = useSchedules();
   const navigate = useNavigate();
+  const selectedSchedule = schedules.find((schedule) => schedule.id === selectedScheduleId);
 
   if (cartItems.length === 0) {
     return (
@@ -15,7 +18,7 @@ function CartPage() {
         <h2 className="text-3xl font-playfair font-bold text-gray-900 mt-4">Your cart is empty</h2>
         <p className="text-sm uppercase tracking-widest font-semibold text-gray-400">Discover our floral collection</p>
         <button
-          onClick={() => navigate("/order")}
+          onClick={() => navigate("/schedule")}
           className="mt-6 rounded-full bg-gray-900 px-8 py-3.5 text-xs font-bold uppercase tracking-widest text-white transition-all hover:bg-[#4f6fa5] hover:shadow-lg active:scale-95"
         >
           Begin your journey
@@ -40,6 +43,11 @@ function CartPage() {
             </button>
             <p className="text-[#4f6fa5] font-semibold tracking-widest uppercase text-xs mb-1">Make it yours</p>
             <h2 className="text-4xl md:text-5xl font-playfair font-bold text-gray-900">Your Cart</h2>
+            {selectedSchedule && (
+              <p className="mt-3 text-sm text-gray-500">
+                Ordering for <span className="font-semibold text-gray-900">{selectedSchedule.schedule_name}</span>
+              </p>
+            )}
           </div>
           <button
             onClick={clearCart}

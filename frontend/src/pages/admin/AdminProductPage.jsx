@@ -11,7 +11,8 @@ import {
   Layers, 
   Package,
   Image as ImageIcon,
-  Archive
+  Archive,
+  ArchiveRestore
 } from "lucide-react";
 
 // Validation rules
@@ -63,6 +64,8 @@ const CharCount = ({ value, max }) => (
 const FieldError = ({ error }) =>
   error ? <p className="mt-1.5 text-[10px] font-bold text-rose-500 uppercase tracking-wide">{error}</p> : null;
 
+const asBoolean = (value) => value === 1 || value === true || value === "1";
+
 const StatusPill = ({ isAvailable }) => (
   <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest shadow-sm backdrop-blur-md border ${
     isAvailable ? "bg-emerald-500/90 text-white border-emerald-400" : "bg-rose-500/90 text-white border-rose-400"
@@ -107,9 +110,14 @@ const ProductCard = ({ product, onEdit, onDelete, canEdit, isArchived }) => (
           </button>
           <button
             onClick={() => onDelete(product)}
-            className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-4 py-1.5 text-xs font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-500 transition-all duration-300 shadow-sm"
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-bold text-white border-2 transition-all duration-300 shadow-sm ${
+              isArchived
+                ? "bg-rose-500 border-rose-500 hover:bg-transparent hover:text-rose-500"
+                : "bg-amber-500 border-amber-500 hover:bg-transparent hover:text-amber-500"
+            }`}
           >
-            <Trash2 className="w-3.5 h-3.5" /> Delete
+            {isArchived ? <Trash2 className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+            {isArchived ? "Delete" : "Archive"}
           </button>
         </div>
       )}
@@ -166,6 +174,7 @@ function AdminProductPage({ user }) {
   const [category, setCategory] = useState("");
   const [type, setType] = useState("");
   const [isAvailable, setIsAvailable] = useState(1);
+  const [isArchived, setIsArchived] = useState(0);
   const [requiredMainCount, setRequiredMainCount] = useState("1");
   const [requiredFillerCount, setRequiredFillerCount] = useState("2");
 
@@ -173,6 +182,7 @@ function AdminProductPage({ user }) {
 
   const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', message: '' });
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, item: null });
+  const [archiveConfirm, setArchiveConfirm] = useState({ isOpen: false, type: "", item: null });
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -255,7 +265,8 @@ function AdminProductPage({ user }) {
       formData.append("price", price);
       formData.append("description", description);
       formData.append("category", category);
-      formData.append("isAvailable", isAvailable ? 1 : 0); // Backend safely casts this to boolean now
+      formData.append("isAvailable", isAvailable ? 1 : 0);
+      formData.append("isArchived", isArchived ? 1 : 0);
       
       // Only append image if the user uploaded a new one
       if (image) {
@@ -319,8 +330,27 @@ function AdminProductPage({ user }) {
     setDeleteConfirm({ isOpen: true, item });
   };
 
+  const promptArchive = (item) => {
+    setArchiveConfirm({
+      isOpen: true,
+      type: "archive",
+      item: {
+        ...item,
+        section: activeSection,
+        isArchived: asBoolean(item.isArchived),
+      },
+    });
+  };
+
   const confirmDelete = async () => {
     if (!deleteConfirm.item) return;
+
+    if (!asBoolean(deleteConfirm.item.isArchived)) {
+      showModalAlert("error", "You must archive this item before deleting it.");
+      setDeleteConfirm({ isOpen: false, item: null });
+      return;
+    }
+
     try {
       if (activeSection === "custom") await deleteProduct(deleteConfirm.item.id);
       else await deletePremade(deleteConfirm.item.id);
@@ -333,7 +363,40 @@ function AdminProductPage({ user }) {
     }
   };
 
-const handleEdit = (product) => {
+  const toggleArchiveItem = async (item) => {
+    const formData = new FormData();
+    formData.append("isArchived", item.isArchived ? 0 : 1);
+    formData.append("_method", "PUT");
+
+    if (item.section === "custom") {
+      await updateProduct(item.id, formData);
+      return;
+    }
+
+    await updatePremade(item.id, formData);
+  };
+
+  const executeArchiveAction = async () => {
+    const { item, type } = archiveConfirm;
+    if (!item) return;
+
+    try {
+      await toggleArchiveItem(item);
+      showModalAlert("success", type === "archive" ? "Item archived successfully." : "Item restored successfully.");
+
+      if (currentId === item.id) {
+        resetForm();
+        setShowModal(false);
+      }
+    } catch (error) {
+      console.error(`Failed to ${type} item`, error);
+      showModalAlert("error", `Failed to ${type} item.`);
+    } finally {
+      setArchiveConfirm({ isOpen: false, type: "", item: null });
+    }
+  };
+
+  const handleEdit = (product) => {
     setIsEditing(true);
     setCurrentId(product.id);
     setName(product.name);
@@ -342,10 +405,10 @@ const handleEdit = (product) => {
     setDescription(product.description);
     setCategory(product.category);
     setType(product.type || "");
-    
-    // CHANGE THIS LINE: Safely interpret whatever the database sent
-    setIsAvailable(product.isAvailable === 1 || product.isAvailable === true || product.isAvailable === "1" ? 1 : 0);
-    
+
+    setIsAvailable(asBoolean(product.isAvailable) ? 1 : 0);
+    setIsArchived(asBoolean(product.isArchived) ? 1 : 0);
+
     setRequiredMainCount(String(product.required_main_count ?? 1));
     setRequiredFillerCount(String(product.required_filler_count ?? 2));
     setErrors({ name: "", description: "", price: "", image: "" });
@@ -354,7 +417,7 @@ const handleEdit = (product) => {
 
   const resetForm = () => {
     setName(""); setImage(null); setPrice(""); setDescription("");
-    setCategory(""); setType(""); setIsAvailable(1);
+    setCategory(""); setType(""); setIsAvailable(1); setIsArchived(0);
     setRequiredMainCount("1"); setRequiredFillerCount("2");
     setCurrentId(null); setIsEditing(false);
     setErrors({ name: "", description: "", price: "", image: "" });
@@ -365,11 +428,11 @@ const handleEdit = (product) => {
     [activeSection]
   );
 
-  const activeProducts = products.filter(p => p.isAvailable);
-  const archivedProducts = products.filter(p => !p.isAvailable);
+  const activeProducts = products.filter((p) => !asBoolean(p.isArchived));
+  const archivedProducts = products.filter((p) => asBoolean(p.isArchived));
 
-  const activePremades = premades.filter(p => p.isAvailable);
-  const archivedPremades = premades.filter(p => !p.isAvailable);
+  const activePremades = premades.filter((p) => !asBoolean(p.isArchived));
+  const archivedPremades = premades.filter((p) => asBoolean(p.isArchived));
 
   const bouquets = activeProducts.filter((p) => p.category === "Bouquets");
   const mainFlowers = activeProducts.filter((p) => p.category === "Additional" && p.type === "Main Flowers");
@@ -448,11 +511,11 @@ const handleEdit = (product) => {
       <div className="flex-1 mt-4">
         {activeSection === "custom" && (
           <div className="animate-in fade-in duration-500">
-            <SectionGrid title="Bouquet Frameworks" items={bouquets} emptyMsg="No bouquets available in inventory." onEdit={handleEdit} onDelete={promptDelete} canEdit={canEdit} />
-            <SectionGrid title="Main Flowers" items={mainFlowers} emptyMsg="No main flowers available in inventory." onEdit={handleEdit} onDelete={promptDelete} canEdit={canEdit} />
-            <SectionGrid title="Filler Elements" items={fillers} emptyMsg="No fillers available in inventory." onEdit={handleEdit} onDelete={promptDelete} canEdit={canEdit} />
+            <SectionGrid title="Bouquet Frameworks" items={bouquets} emptyMsg="No bouquets available in inventory." onEdit={handleEdit} onDelete={promptArchive} canEdit={canEdit} />
+            <SectionGrid title="Main Flowers" items={mainFlowers} emptyMsg="No main flowers available in inventory." onEdit={handleEdit} onDelete={promptArchive} canEdit={canEdit} />
+            <SectionGrid title="Filler Elements" items={fillers} emptyMsg="No fillers available in inventory." onEdit={handleEdit} onDelete={promptArchive} canEdit={canEdit} />
 
-            {/* Archived Items (Out of Stock) */}
+            {/* Archived Items */}
             <div className="mt-16 pt-8 border-t border-gray-100">
               <div className="mb-6 flex items-end justify-between border-b border-gray-100 pb-4">
                 <h3 className="text-2xl font-playfair font-bold text-gray-400">Archived Items</h3>
@@ -481,7 +544,7 @@ const handleEdit = (product) => {
 
         {activeSection === "premades" && (
           <div className="animate-in fade-in duration-500">
-            <SectionGrid title="Curated Collections" items={activePremades} emptyMsg="No curated collections available in inventory." onEdit={handleEdit} onDelete={promptDelete} canEdit={canEdit} />
+            <SectionGrid title="Curated Collections" items={activePremades} emptyMsg="No curated collections available in inventory." onEdit={handleEdit} onDelete={promptArchive} canEdit={canEdit} />
 
             {/* Archived Premades */}
             <div className="mt-16 pt-8 border-t border-gray-100">
@@ -516,13 +579,20 @@ const handleEdit = (product) => {
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
           <div className="w-full max-w-lg rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             
-            <div className="mb-6">
-              <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5] mb-3 inline-block">
-                {activeSection === "custom" ? "Custom Element" : "Premade Collection"}
-              </span>
-              <h2 className="text-2xl font-playfair font-bold text-gray-900">
-                {isEditing ? "Edit Item Details" : "Create New Item"}
-              </h2>
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5] mb-3 inline-block">
+                  {activeSection === "custom" ? "Custom Element" : "Premade Collection"}
+                </span>
+                <h2 className="text-2xl font-playfair font-bold text-gray-900">
+                  {isEditing ? "Edit Item Details" : "Create New Item"}
+                </h2>
+              </div>
+              {isEditing && (
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${isArchived ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                  {isArchived ? "Archived" : "Active"}
+                </span>
+              )}
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -741,7 +811,28 @@ const handleEdit = (product) => {
               </div>
 
               {/* Form Actions */}
-              <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-100">
+              <div className="mt-8 flex items-center justify-between gap-3 pt-6 border-t border-gray-100">
+                <div>
+                  {isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => setArchiveConfirm({
+                        isOpen: true,
+                        type: isArchived ? "restore" : "archive",
+                        item: {
+                          id: currentId,
+                          name,
+                          isArchived: !!isArchived,
+                          section: activeSection,
+                        },
+                      })}
+                      className={`rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wide transition-colors ${isArchived ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "bg-amber-50 text-amber-700 hover:bg-amber-100"}`}
+                    >
+                      {isArchived ? "Restore" : "Archive"}
+                    </button>
+                  )}
+                </div>
+                <div className="flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => { setShowModal(false); resetForm(); }}
@@ -755,8 +846,41 @@ const handleEdit = (product) => {
                 >
                   {isEditing ? "Save Changes" : "Create Product"}
                 </button>
+                </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {archiveConfirm.isOpen && (
+        <div className="fixed inset-0 z-[320] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
+            <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${archiveConfirm.type === "archive" ? "bg-amber-100 text-amber-500" : "bg-emerald-100 text-emerald-500"}`}>
+              {archiveConfirm.type === "archive" ? <Archive size={28} /> : <ArchiveRestore size={28} />}
+            </div>
+            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
+              {archiveConfirm.type === "archive" ? "Archive Item?" : "Restore Item?"}
+            </h3>
+            <p className="text-sm text-gray-500 mb-8 px-2">
+              {archiveConfirm.type === "archive"
+                ? `This will hide "${archiveConfirm.item?.name}" from the live catalog until it is restored.`
+                : `This will restore "${archiveConfirm.item?.name}" back to the live catalog.`}
+            </p>
+            <div className="flex justify-center gap-3">
+              <button
+                onClick={() => setArchiveConfirm({ isOpen: false, type: "", item: null })}
+                className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeArchiveAction}
+                className={`rounded-lg px-5 py-2 text-sm font-bold text-white transition-all duration-300 shadow-sm ${archiveConfirm.type === "archive" ? "bg-amber-500 hover:bg-amber-600" : "bg-emerald-500 hover:bg-emerald-600"}`}
+              >
+                {archiveConfirm.type === "archive" ? "Yes, Archive" : "Yes, Restore"}
+              </button>
+            </div>
           </div>
         </div>
       )}

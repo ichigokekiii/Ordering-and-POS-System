@@ -35,8 +35,13 @@ class AuthController extends Controller
         if ($user->is_locked) {
             $this->writeUserLog('login_blocked', $user, 'Login blocked because the account is locked');
 
+            $isFraudLock = in_array(strtolower((string) $user->role), ['user', 'customer'], true)
+                && (int) ($user->priority ?? 0) >= 3;
+
             return response()->json([
-                'message' => 'Your account has been locked due to too many failed login attempts. Please contact an administrator to unlock it.',
+                'message' => $isFraudLock
+                    ? 'Your account has been locked and flagged for fraudulent buying behavior. Please contact IT support to restore access.'
+                    : 'Your account has been locked due to too many failed login attempts. Please contact an administrator to unlock it.',
                 'locked' => true,
             ], 423);
         }

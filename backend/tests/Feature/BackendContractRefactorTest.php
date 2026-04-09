@@ -52,9 +52,14 @@ class BackendContractRefactorTest extends TestCase
                 'price',
                 'image',
                 'isAvailable',
+                'isArchived',
                 'required_main_count',
                 'required_filler_count',
             ]);
+
+        $response->assertJson([
+            'isArchived' => false,
+        ]);
 
         $this->assertDatabaseHas('custom_products', [
             'name' => 'Sunrise Bouquet',
@@ -95,6 +100,10 @@ class BackendContractRefactorTest extends TestCase
         ]);
 
         $response->assertCreated();
+
+        $response->assertJson([
+            'isArchived' => false,
+        ]);
 
         $this->assertDatabaseHas('custom_products', [
             'name' => 'Baby Breath',

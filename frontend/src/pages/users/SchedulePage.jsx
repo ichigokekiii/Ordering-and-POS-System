@@ -1,24 +1,29 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useSchedules } from "../../contexts/ScheduleContext";
 import api from "../../services/api";
-import { Search, SlidersHorizontal, ChevronLeft, ChevronRight, Share } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Share } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useCart } from "../../contexts/CartContext";
 
 function SchedulePage() {
   const { schedules, loading } = useSchedules();
+  const asBoolean = (value) => value === 1 || value === true || value === "1";
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const { cartItems, selectedScheduleId, selectSchedule, clearCart } = useCart();
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [isBooking, setIsBooking] = useState(false);
   const [bookingEmail, setBookingEmail] = useState("");
+  const [scheduleSwitchConfirm, setScheduleSwitchConfirm] = useState(null);
 
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All");
-  const categories = ["All", "Pop-Ups", "Workshops", "Online Seminars"];
+  const [activeCategory, setActiveCategory] = useState("Order Available");
+  const categories = ["Happening Now", "Upcoming Events", "Coming Soon", "Order Available"];
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -33,27 +38,56 @@ function SchedulePage() {
   const [orderMessage, setOrderMessage] = useState("");
   const [showNotification, setShowNotification] = useState(false);
 
-  const isOrderable = (eventDate) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const event = new Date(eventDate);
-  event.setHours(0, 0, 0, 0);
-  const daysUntil = (event - today) / (1000 * 60 * 60 * 24);
-  return daysUntil <= 7 && daysUntil > 3;
-};
+  const normalizeDate = (value) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    date.setHours(0, 0, 0, 0);
+    return date;
+  };
 
-const getOrderLabel = (eventDate) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const event = new Date(eventDate);
-  event.setHours(0, 0, 0, 0);
-  const daysUntil = (event - today) / (1000 * 60 * 60 * 24);
+  const getDaysUntilEvent = (eventDate) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const event = normalizeDate(eventDate);
 
-  if (daysUntil < 0) return "This Event Has Passed";
-  if (daysUntil <= 3) return "Pre-orders Closed";
-  if (daysUntil <= 7) return "Order Flowers for This Event";
-  return "Pre-order Opens in " + Math.ceil(daysUntil - 7) + " Day(s)";
-};
+    if (!event) return null;
+
+    return (event - today) / (1000 * 60 * 60 * 24);
+  };
+
+  const isFutureSchedule = (schedule) => {
+    const daysUntil = getDaysUntilEvent(schedule.event_date);
+    return daysUntil !== null && daysUntil >= 0;
+  };
+
+  const isActiveSchedule = (schedule) =>
+    !asBoolean(schedule.isArchived) &&
+    asBoolean(schedule.isAvailable) &&
+    isFutureSchedule(schedule);
+
+  const isInactiveSchedule = (schedule) =>
+    !asBoolean(schedule.isArchived) &&
+    !asBoolean(schedule.isAvailable) &&
+    isFutureSchedule(schedule);
+
+  const isHappeningNowSchedule = (schedule) => {
+    const daysUntil = getDaysUntilEvent(schedule.event_date);
+    return isActiveSchedule(schedule) && daysUntil <= 7;
+  };
+
+  const isUpcomingSchedule = (schedule) => {
+    const daysUntil = getDaysUntilEvent(schedule.event_date);
+    return isActiveSchedule(schedule) && daysUntil > 7;
+  };
+
+  const isOrderable = (schedule) => isActiveSchedule(schedule);
+
+  const getOrderLabel = (schedule) => {
+    if (!schedule) return "Select An Event";
+    if (!isFutureSchedule(schedule)) return "This Event Has Passed";
+    if (isOrderable(schedule)) return "Order Flowers for This Event";
+    return "This Event Is Coming Soon";
+  };
 
   // Smooth fade-out logic
   useEffect(() => {
@@ -78,6 +112,13 @@ const getOrderLabel = (eventDate) => {
     }
   }, [bookingStatus, orderStatus]);
 
+  useEffect(() => {
+    if (location.state?.orderNotice) {
+      setOrderStatus(location.state.orderNoticeType || "error");
+      setOrderMessage(location.state.orderNotice);
+    }
+  }, [location.state]);
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#fcfaf9]">
@@ -86,16 +127,19 @@ const getOrderLabel = (eventDate) => {
     );
   }
 
-  // Only show available schedules
-  const availableSchedules = schedules.filter((s) => s.isAvailable === 1 || s.isAvailable === true);
+  const visibleSchedules = schedules.filter(
+    (schedule) => !asBoolean(schedule.isArchived) && isFutureSchedule(schedule)
+  );
 
   // Filter logic
-  const filteredSchedules = availableSchedules.filter(schedule => {
+  const filteredSchedules = visibleSchedules.filter((schedule) => {
     const matchesSearch = schedule.schedule_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    // Basic mock category logic (since real db table may be purely title based)
-    const matchesCategory = activeCategory === "All" || 
-                            schedule.schedule_name?.toLowerCase().includes(activeCategory.toLowerCase()) || 
-                            schedule.schedule_description?.toLowerCase().includes(activeCategory.toLowerCase());
+    const matchesCategory =
+      (activeCategory === "Happening Now" && isHappeningNowSchedule(schedule)) ||
+      (activeCategory === "Upcoming Events" && isUpcomingSchedule(schedule)) ||
+      (activeCategory === "Coming Soon" && isInactiveSchedule(schedule)) ||
+      (activeCategory === "Order Available" && isOrderable(schedule));
+
     return matchesSearch && matchesCategory;
   });
 
@@ -116,6 +160,17 @@ const getOrderLabel = (eventDate) => {
 
   const handleOrderNow = () => {
     if (!selectedSchedule) return;
+
+    if (
+      cartItems.length > 0 &&
+      selectedScheduleId &&
+      selectedScheduleId !== selectedSchedule.id
+    ) {
+      setScheduleSwitchConfirm(selectedSchedule);
+      return;
+    }
+
+    selectSchedule(selectedSchedule.id);
     navigate("/order", { state: { schedule: selectedSchedule } });
     handleCloseModal();
   };
@@ -139,6 +194,16 @@ const getOrderLabel = (eventDate) => {
         setBookingMessage("Something went wrong. Please try again.");
       }
     }
+  };
+
+  const confirmScheduleSwitch = () => {
+    if (!scheduleSwitchConfirm) return;
+
+    clearCart();
+    selectSchedule(scheduleSwitchConfirm.id);
+    setScheduleSwitchConfirm(null);
+    navigate("/order", { state: { schedule: scheduleSwitchConfirm } });
+    handleCloseModal();
   };
 
   return (
@@ -174,7 +239,7 @@ const getOrderLabel = (eventDate) => {
            {/* Categories Pills */}
            <div className="flex overflow-x-auto hide-scrollbar gap-2 pb-2 w-full md:w-auto">
              {categories.map(cat => (
-               <button 
+             <button 
                  key={cat}
                  onClick={() => { setActiveCategory(cat); setCurrentPage(1); }}
                  className={`whitespace-nowrap px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider border transition-all duration-200 ${activeCategory === cat ? 'bg-gray-900 text-white border-gray-900' : 'bg-white border-gray-300 text-gray-600 hover:border-gray-900 hover:text-gray-900'}`}
@@ -271,7 +336,7 @@ const getOrderLabel = (eventDate) => {
           <div className="py-32 text-center text-gray-500">
              <Search className="w-12 h-12 mx-auto text-gray-300 mb-4" />
              <p className="text-lg font-playfair">No upcoming events found.</p>
-             <button onClick={() => {setSearchTerm(""); setActiveCategory("All");}} className="mt-4 text-[#4f6fa5] font-semibold hover:underline">Clear Filters</button>
+             <button onClick={() => {setSearchTerm(""); setActiveCategory("Order Available");}} className="mt-4 text-[#4f6fa5] font-semibold hover:underline">Clear Filters</button>
           </div>
         )}
 
@@ -416,15 +481,15 @@ const getOrderLabel = (eventDate) => {
                         </button>
 
                         <button
-  onClick={isOrderable(selectedSchedule.event_date) ? handleOrderNow : undefined}
-  disabled={!isOrderable(selectedSchedule.event_date)}
+  onClick={isOrderable(selectedSchedule) ? handleOrderNow : undefined}
+  disabled={!isOrderable(selectedSchedule)}
   className={`w-full border rounded-full py-4 text-xs font-bold tracking-widest uppercase transition-all ${
-    isOrderable(selectedSchedule.event_date)
+    isOrderable(selectedSchedule)
       ? "border-gray-200 text-gray-900 hover:border-gray-900 hover:bg-gray-50 hover:-translate-y-1 cursor-pointer"
       : "border-gray-100 text-gray-300 cursor-not-allowed"
   }`}
 >
-  {getOrderLabel(selectedSchedule.event_date)}
+  {getOrderLabel(selectedSchedule)}
 </button>
                       </div>
                     </motion.div>
@@ -443,6 +508,34 @@ const getOrderLabel = (eventDate) => {
           display: none;
         }
       `}</style>
+
+      {scheduleSwitchConfirm && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[220] p-4">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-500">
+              <Share size={28} />
+            </div>
+            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">Switch Event?</h3>
+            <p className="text-sm text-gray-500 mb-8 px-2">
+              Your cart is tied to a different event. Switching to <span className="font-semibold text-gray-700">{scheduleSwitchConfirm.schedule_name}</span> will clear your current cart.
+            </p>
+            <div className="flex justify-center gap-3">
+              <button
+                onClick={() => setScheduleSwitchConfirm(null)}
+                className="rounded-xl px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors"
+              >
+                Keep Current Event
+              </button>
+              <button
+                onClick={confirmScheduleSwitch}
+                className="rounded-xl bg-gray-900 px-5 py-2 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+              >
+                Switch Event
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Toast Notification */}
       {bookingStatus && (

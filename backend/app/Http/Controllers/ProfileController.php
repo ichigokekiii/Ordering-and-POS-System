@@ -10,7 +10,6 @@ use App\Mail\SendOtpMail;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use App\Models\User;
-use App\Models\Schedule;
 
 class ProfileController extends Controller
 {
@@ -32,24 +31,18 @@ public function profile()
     $user->load([
         'addresses',
         'orders' => function($query) {
-            $query->orderBy('created_at', 'desc');
+            $query->with('schedule')->orderBy('created_at', 'desc');
         }
     ]);
 
-    // Attach event_date to each order by finding the matching schedule
     $orders = $user->orders->map(function ($order) {
-    $orderDate = Carbon::parse($order->order_date);
+        $orderArray = $order->toArray();
+        $orderArray['event_date'] = $order->schedule?->event_date;
+        $orderArray['schedule_name'] = $order->schedule?->schedule_name;
+        $orderArray['schedule'] = $order->schedule;
 
-    // Find the nearest schedule on or after the order_date
-    $schedule = Schedule::where('event_date', '>=', $orderDate)
-        ->orderBy('event_date', 'asc')
-        ->first();
-
-    $orderArray = $order->toArray();
-    $orderArray['event_date'] = $schedule?->event_date;
-
-    return $orderArray;
-});
+        return $orderArray;
+    });
 
     return response()->json([
         'id'           => $user->id,
@@ -59,7 +52,7 @@ public function profile()
         'phone_number' => $user->phone_number,
         'role'         => $user->role,
         'addresses'    => $user->addresses,
-        'orders'       => $orders, // now includes event_date on each order
+        'orders'       => $orders,
     ]);
 }
     /**

@@ -3,11 +3,14 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../contexts/CartContext";
 import api from "../../services/api";
+import { useSchedules } from "../../contexts/ScheduleContext";
 
 function CheckoutPage() {
   const navigate = useNavigate();
-  const { cartItems, totalPrice, clearCart } = useCart();
+  const { cartItems, totalPrice, clearCart, selectedScheduleId } = useCart();
+  const { schedules } = useSchedules();
   const fileInputRef = useRef(null);
+  const selectedSchedule = schedules.find((schedule) => schedule.id === selectedScheduleId);
 
   const [deliveryMode, setDeliveryMode] = useState("pickup");
   const [paymentProof, setPaymentProof] = useState(null);
@@ -196,6 +199,7 @@ function CheckoutPage() {
     try {
       const formData = new FormData();
       formData.append("user_id",          userId);
+      formData.append("schedule_id",      selectedScheduleId);
       formData.append("address",          deliveryMode === "pickup" ? "Pickup" : resolvedAddress);
       formData.append("delivery_method",  deliveryMode);
       formData.append("payment_method",   paymentMethod);
@@ -257,6 +261,32 @@ function CheckoutPage() {
           <div className="flex-1 space-y-8">
 
             {/* 1. Delivery Method */}
+            {selectedSchedule && (
+              <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
+                <h2 className="mb-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-4">Selected Event</h2>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-lg font-playfair font-bold text-gray-900">{selectedSchedule.schedule_name}</p>
+                    <p className="mt-1 text-sm text-gray-500">
+                      {new Date(selectedSchedule.event_date).toLocaleDateString(undefined, {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/schedule")}
+                    className="rounded-full border border-gray-900 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-900 hover:bg-gray-900 hover:text-white transition-all"
+                  >
+                    Change
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
               <h2 className="mb-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-4">1. Delivery Method</h2>
               <div className="flex gap-4">

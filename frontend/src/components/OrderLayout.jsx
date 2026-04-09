@@ -1,10 +1,19 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Search, ShoppingCart, X } from "lucide-react";
 import { useCart } from "../contexts/CartContext";
+import { useSchedules } from "../contexts/ScheduleContext";
 
 function OrderLayout() {
-  const { totalItems, cartItems, totalPrice } = useCart();
+  const {
+    totalItems,
+    cartItems,
+    totalPrice,
+    selectedScheduleId,
+    clearCart,
+    clearSelectedSchedule,
+  } = useCart();
+  const { schedules, loading: schedulesLoading } = useSchedules();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -14,6 +23,54 @@ function OrderLayout() {
   const longPressTriggered = useRef(false);
 
   const shouldShowTools = !["/cart", "/checkout"].includes(location.pathname);
+  const guardedOrderRoutes = ["/order", "/ordercustom", "/orderpremade", "/cart", "/checkout"];
+  const isGuardedRoute = guardedOrderRoutes.includes(location.pathname);
+  const selectedSchedule = schedules.find((schedule) => schedule.id === selectedScheduleId);
+
+  useEffect(() => {
+    if (!isGuardedRoute || schedulesLoading) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const scheduleDate = selectedSchedule?.event_date ? new Date(selectedSchedule.event_date) : null;
+    if (scheduleDate) {
+      scheduleDate.setHours(0, 0, 0, 0);
+    }
+
+    const isInvalidSchedule =
+      !selectedSchedule ||
+      selectedSchedule.isArchived ||
+      !selectedSchedule.isAvailable ||
+      !scheduleDate ||
+      scheduleDate < today;
+
+    if (!isInvalidSchedule) return;
+
+    if (cartItems.length > 0) {
+      clearCart();
+    }
+
+    clearSelectedSchedule();
+    navigate("/schedule", {
+      replace: true,
+      state: {
+        orderNoticeType: "error",
+        orderNotice: selectedScheduleId
+          ? "Your selected event is no longer available for ordering. Please choose another event."
+          : "Choose an event before placing an order.",
+      },
+    });
+  }, [
+    cartItems.length,
+    clearCart,
+    clearSelectedSchedule,
+    isGuardedRoute,
+    navigate,
+    schedulesLoading,
+    selectedSchedule,
+    selectedScheduleId,
+  ]);
 
   const startPress = () => {
     longPressTriggered.current = false;

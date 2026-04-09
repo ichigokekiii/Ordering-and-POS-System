@@ -17,12 +17,14 @@ class CustomProduct extends Model
         'type',
         'price',
         'isAvailable',
+        'isArchived',
         'required_main_count',
         'required_filler_count',
     ];
 
     protected $casts = [
         'isAvailable' => 'boolean',
+        'isArchived' => 'boolean',
         'required_main_count' => 'integer',
         'required_filler_count' => 'integer',
     ];

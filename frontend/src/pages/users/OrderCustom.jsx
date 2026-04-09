@@ -9,6 +9,7 @@ import {
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { useProducts } from "../../contexts/ProductContext";
 import { useCart } from "../../contexts/CartContext";
+import { useSchedules } from "../../contexts/ScheduleContext";
 
 const MAX_GREETING_CHARS = 150;
 const GREETING_CARD_PRICE = 5;
@@ -110,7 +111,9 @@ function OrderCustom() {
   const navigate = useNavigate();
   const { searchTerm = "" } = useOutletContext() || {};
   const { products, loading } = useProducts();
-  const { addToCart } = useCart();
+  const { addToCart, selectedScheduleId } = useCart();
+  const { schedules } = useSchedules();
+  const selectedSchedule = schedules.find((schedule) => schedule.id === selectedScheduleId);
 
   const [selectedBouquet, setSelectedBouquet] = useState(null);
   const [mainCounts, setMainCounts] = useState({});
@@ -120,7 +123,7 @@ function OrderCustom() {
   const [greetingMessage, setGreetingMessage] = useState("");
   const [added, setAdded] = useState(false);
 
-  const availableProducts = products.filter((product) => product.isAvailable);
+  const availableProducts = products.filter((product) => !product.isArchived && product.isAvailable);
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
   const matchesSearch = (product) =>
@@ -259,6 +262,11 @@ function OrderCustom() {
             <h1 className="text-4xl font-playfair font-bold text-gray-900 md:text-5xl">
               Custom Bouquet Builder
             </h1>
+            {selectedSchedule && (
+              <p className="mt-3 text-sm text-gray-500">
+                For <span className="font-semibold text-gray-900">{selectedSchedule.schedule_name}</span>
+              </p>
+            )}
           </div>
           <div className="max-w-lg">
             <p className="text-sm leading-relaxed text-gray-500">

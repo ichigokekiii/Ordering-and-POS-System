@@ -35,6 +35,7 @@ const OrderStatusPill = ({ status }) => {
 };
 
 function AdminOverviewPage({ user }) {
+  const asBoolean = (value) => value === 1 || value === true || value === "1";
   const [data, setData] = useState({
     orders: [],
     users: [],
@@ -83,13 +84,15 @@ function AdminOverviewPage({ user }) {
     ).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)); // Oldest first (longest waiting)
 
     // 2. Inventory Alerts (Out of stock items)
-    const outOfStockItems = data.products.filter(p => !p.isAvailable);
+    const outOfStockItems = data.products.filter((p) => !asBoolean(p.isArchived) && !asBoolean(p.isAvailable));
 
     // 3. Newest Users
     const recentUsers = [...data.users].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 4);
     
     // 4. Active Schedules
-    const activeSchedules = data.schedules.filter(s => s.isAvailable).slice(0, 4);
+    const activeSchedules = data.schedules
+      .filter((s) => !asBoolean(s.isArchived) && asBoolean(s.isAvailable))
+      .slice(0, 4);
 
     return {
       pendingCount: actionRequiredOrders.filter(o => o.order_status === "Pending").length,
@@ -158,14 +161,14 @@ function AdminOverviewPage({ user }) {
       {/* KPI CARDS ROW (Action Oriented) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         {/* Pending Orders */}
-        <div className={`rounded-[1.5rem] border p-6 shadow-sm flex flex-col justify-between transition-colors ${stats.pendingCount > 0 ? "border-amber-200 bg-amber-50/50" : "border-gray-100 bg-white"}`}>
+        <div className="rounded-[1.5rem] border border-gray-100 bg-white p-6 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${stats.pendingCount > 0 ? "bg-amber-100 text-amber-600" : "bg-gray-100 text-gray-500"}`}><Clock className="w-5 h-5" /></div>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 text-gray-500"><Clock className="w-5 h-5" /></div>
               <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Pending Orders</p>
             </div>
           </div>
-          <p className={`text-3xl font-bold tracking-tight ${stats.pendingCount > 0 ? "text-amber-700" : "text-gray-900"}`}>{stats.pendingCount}</p>
+          <p className="text-3xl font-bold tracking-tight text-gray-900">{stats.pendingCount}</p>
         </div>
 
         {/* Processing Orders */}
@@ -180,14 +183,14 @@ function AdminOverviewPage({ user }) {
         </div>
 
         {/* Low Stock / Out of Stock Alerts */}
-        <div className={`rounded-[1.5rem] border p-6 shadow-sm flex flex-col justify-between transition-colors ${stats.outOfStockCount > 0 ? "border-rose-200 bg-rose-50/50" : "border-gray-100 bg-white"}`}>
+        <div className={`rounded-[1.5rem] border p-6 shadow-sm flex flex-col justify-between ${stats.outOfStockCount > 0 ? "border-gray-200 bg-gray-50/60" : "border-gray-100 bg-white"}`}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${stats.outOfStockCount > 0 ? "bg-rose-100 text-rose-600" : "bg-gray-100 text-gray-500"}`}><AlertCircle className="w-5 h-5" /></div>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 text-gray-500"><AlertCircle className="w-5 h-5" /></div>
               <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Out of Stock</p>
             </div>
           </div>
-          <p className={`text-3xl font-bold tracking-tight ${stats.outOfStockCount > 0 ? "text-rose-700" : "text-gray-900"}`}>{stats.outOfStockCount}</p>
+          <p className="text-3xl font-bold tracking-tight text-gray-900">{stats.outOfStockCount}</p>
         </div>
 
         {/* Total Users */}
@@ -210,10 +213,9 @@ function AdminOverviewPage({ user }) {
           <div className="p-6 border-b border-gray-50 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="relative flex h-3 w-3 mr-1">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-gray-300"></span>
               </span>
-              <h2 className="text-lg font-playfair font-bold text-gray-900">Needs Attention: Orders</h2>
+              <h2 className="text-lg font-playfair font-bold text-gray-900">Pending Orders</h2>
             </div>
             <span className="text-xs font-bold text-gray-400 hover:text-gray-900 cursor-pointer flex items-center gap-1">View All <ArrowRight className="w-3 h-3"/></span>
           </div>
@@ -259,7 +261,7 @@ function AdminOverviewPage({ user }) {
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-rose-500" />
-              <h2 className="text-lg font-playfair font-bold text-gray-900">Inventory Alerts</h2>
+              <h2 className="text-lg font-playfair font-bold text-gray-900">Product Alerts</h2>
             </div>
           </div>
           {stats.outOfStockItems.length === 0 ? (
@@ -270,13 +272,13 @@ function AdminOverviewPage({ user }) {
           ) : (
             <div className="space-y-4 flex-1">
               {stats.outOfStockItems.map((prod) => (
-                <div key={prod.id} className="flex items-center gap-3 p-3 bg-rose-50/50 border border-rose-100 rounded-xl">
+                <div key={prod.id} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
                   <div className="w-10 h-10 rounded-lg bg-gray-200 overflow-hidden shrink-0 grayscale opacity-80">
                     {prod.image ? <img src={`${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:8000'}${prod.image}`} className="w-full h-full object-cover" alt="" /> : null}
                   </div>
                   <div>
                     <p className="text-sm font-bold text-gray-900 tracking-tight line-clamp-1">{prod.name}</p>
-                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Out of Stock</p>
+                    <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">Out of Stock</p>
                   </div>
                 </div>
               ))}

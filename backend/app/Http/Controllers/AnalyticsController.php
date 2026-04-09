@@ -722,7 +722,7 @@ public function sendReportEmail(Request $request): JsonResponse
             'kpis' => [
                 ['label' => 'Total Bookings', 'value' => $scheduleBookings->count(), 'format' => 'number'],
                 ['label' => 'Upcoming Events', 'value' => $schedules->filter(fn ($schedule) => Carbon::parse($schedule->event_date ?? now())->gte($today))->count(), 'format' => 'number'],
-                ['label' => 'Available Schedules', 'value' => $schedules->where('isAvailable', true)->count(), 'format' => 'number'],
+                ['label' => 'Available Schedules', 'value' => $schedules->where('isArchived', false)->where('isAvailable', true)->count(), 'format' => 'number'],
                 ['label' => 'Most Popular Event', 'value' => $bookingsPerEvent->first()['name'] ?? 'None yet', 'format' => 'text'],
             ],
         ];

@@ -21,6 +21,7 @@ function LandingPage({ cmsPreview }) {
   const [premades, setPremades] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [heroIndex, setHeroIndex] = useState(0);
+  const asBoolean = (value) => value === 1 || value === true || value === "1";
 
   const getContentValue = (identifier, fallback = "") =>
     getCmsContentValue(contents, "home", identifier, fallback);
@@ -123,6 +124,12 @@ function LandingPage({ cmsPreview }) {
       </div>
     );
   }
+
+  const visibleProducts = products.filter((item) => !asBoolean(item.isArchived));
+  const visiblePremades = premades.filter((item) => !asBoolean(item.isArchived));
+  const visibleSchedules = schedules.filter(
+    (item) => !asBoolean(item.isArchived) && asBoolean(item.isAvailable)
+  );
 
   return (
     <div className="bg-[#fcfaf9] text-gray-900 min-h-screen pt-20 pb-12 overflow-x-hidden font-sans">
@@ -276,7 +283,7 @@ function LandingPage({ cmsPreview }) {
         </div>
 
         <div className="flex flex-wrap justify-center gap-8 py-12">
-          {[...products, ...premades].slice(0, 8).map((item) => (
+          {[...visibleProducts, ...visiblePremades].slice(0, 8).map((item) => (
             <div key={`${item.id}-${item.name || item.product_name}`} className="group cursor-pointer w-full sm:w-[48%] md:w-[30%] lg:w-[22%] max-w-[320px]">
               <div className="bg-white p-4 rounded-[2rem] hover:shadow-xl transition-all duration-500 border border-gray-100">
                 <div className="rounded-[1.5rem] relative bg-gray-100 overflow-hidden">
@@ -311,7 +318,7 @@ function LandingPage({ cmsPreview }) {
             </h2>
           </CmsEditableRegion>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 lg:px-12">
-            {schedules.slice(0, 3).map((schedule) => (
+            {visibleSchedules.slice(0, 3).map((schedule) => (
               <motion.div key={schedule.id} whileHover={{ y: -6 }} className="group relative rounded-[2.5rem] overflow-hidden hover:shadow-2xl transition-all duration-500 border border-gray-100">
                 <div className="relative w-full h-[420px] rounded-[2rem] overflow-hidden">
                   <img src={schedule.image ? `http://localhost:8000${schedule.image}` : "https://via.placeholder.com/600x300"} alt={schedule.schedule_name} className="w-full h-full object-cover transition-transform duration-1000 ease-out group-hover:scale-105" />

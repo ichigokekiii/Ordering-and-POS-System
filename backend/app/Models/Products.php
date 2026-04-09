@@ -18,10 +18,12 @@ class Products extends Model
         'price',
         'image',
         'isAvailable',
+        'isArchived',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'isAvailable' => 'boolean',
+        'isArchived' => 'boolean',
     ];
 }

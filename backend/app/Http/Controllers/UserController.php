@@ -56,6 +56,7 @@ public function register(Request $request)
         $user->failed_attempt_count = 0;
         $user->is_locked = false;
         $user->priority = 0;
+        $user->consecutive_cancellations = 0;
         $user->save();
 
         $otpCode = rand(100000, 999999);
@@ -110,6 +111,7 @@ public function store(Request $request)
         $user->failed_attempt_count = 0;
         $user->is_locked = false;
         $user->priority = 0;
+        $user->consecutive_cancellations = 0;
         $user->save();
 
         return response()->json([
@@ -244,11 +246,13 @@ public function store(Request $request)
             if ($isLocked === false) {
                 $user->failed_attempt_count = 0;
                 $user->last_failed_attempt_at = null;
+                $user->consecutive_cancellations = 0;
+                $user->status = 'Active';
             }
         }
 
         if ($request->filled('priority')) {
-            $user->priority = $request->input('priority');
+            $user->priority = min(max((int) $request->input('priority'), 0), 3);
         }
 
         $user->save();

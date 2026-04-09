@@ -2,16 +2,22 @@ import { useEffect, useMemo } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { Search } from "lucide-react";
 import { useProducts } from "../../contexts/ProductContext";
+import { useCart } from "../../contexts/CartContext";
+import { useSchedules } from "../../contexts/ScheduleContext";
 
 function OrderPage() {
   const navigate = useNavigate();
   const { premades, products } = useProducts();
+  const { selectedScheduleId } = useCart();
+  const { schedules } = useSchedules();
   const { searchTerm = "" } = useOutletContext() || {};
+  const isVisibleForOrdering = (product) => !product.isArchived && product.isAvailable;
+  const selectedSchedule = schedules.find((schedule) => schedule.id === selectedScheduleId);
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
   const matchProduct = (product) =>
-    product.isAvailable &&
+    isVisibleForOrdering(product) &&
     (product.name || "").toLowerCase().includes(normalizedSearch);
 
   const premadeMatches = useMemo(
@@ -102,6 +108,11 @@ function OrderPage() {
           <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#4f6fa5]">
             Begin Your Journey
           </p>
+          {selectedSchedule && (
+            <p className="mb-5 text-sm text-gray-500">
+              Ordering for <span className="font-semibold text-gray-900">{selectedSchedule.schedule_name}</span>
+            </p>
+          )}
           <h1 className="text-4xl font-playfair font-bold text-gray-900 md:text-6xl">
             What would you like
             <br />

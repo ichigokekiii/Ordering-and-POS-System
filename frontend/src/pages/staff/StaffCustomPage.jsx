@@ -5,7 +5,7 @@ import { useProducts } from "../../contexts/ProductContext";
 function StaffCustomPage() {
   const { products } = useProducts();
 
-  const available = products.filter((p) => p.isAvailable);
+  const available = products.filter((p) => !p.isArchived && p.isAvailable);
   const bouquets = available.filter((p) => p.category === "Bouquets");
   const mainProducts = available.filter(
     (p) => p.category === "Additional" && p.type === "Main Flowers"

@@ -531,6 +531,15 @@ export default function ProfilePage() {
                               <div>
                                 <p className="font-bold text-gray-900 text-sm mb-1">Order #{order.order_id || order.id}</p>
                                 <p className="text-xs text-gray-500 mb-3">Placed on {new Date(order.created_at).toLocaleDateString()}</p>
+                                <div className="mb-3 rounded-xl border border-gray-200 bg-white px-3 py-2">
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Schedule</p>
+                                  <p className="text-sm font-semibold text-gray-800">
+                                    {order.schedule_name || order.schedule?.schedule_name || "Legacy / Unlinked event"}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {order.event_date ? new Date(order.event_date).toLocaleDateString() : "No linked event date"}
+                                  </p>
+                                </div>
                                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${getStatusStyle(order.order_status)}`}>
                                   {order.order_status || "Pending"}
                                 </span>
@@ -576,13 +585,13 @@ export default function ProfilePage() {
         </svg>
       </div>
       <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
-        Account Temporarily Disabled
+        Account Locked
       </h3>
       <p className="text-sm text-gray-500 mb-2 px-2">
-        Your account has been temporarily disabled due to excessive order cancellations.
+        Your account has been locked because our system flagged repeated cancellations as fraudulent buying behavior.
       </p>
       <p className="text-sm text-gray-500 mb-8 px-2">
-        Please check your email for further instructions on how to reactivate your account.
+        Please check your email for recovery steps, then contact IT support to restore access.
       </p>
       <button
         onClick={() => {
@@ -612,7 +621,7 @@ export default function ProfilePage() {
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6 text-left">
               <p className="text-xs text-amber-700 font-semibold mb-0.5">⚠️ Please be mindful</p>
               <p className="text-xs text-amber-600 leading-relaxed">
-                We noticed a few recent cancellations.Be careful as more cancellations may result in a temporary account suspension.
+                Repeated cancellations increase your priority risk level. Every 2 consecutive cancellations raises the flag, and reaching Priority 3 locks the account.
               </p>
             </div>
             <div className="flex justify-center gap-3">

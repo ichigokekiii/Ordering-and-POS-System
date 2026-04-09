@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -12,17 +13,48 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 use App\Mail\OrderStatusUpdated;
+use App\Support\ScheduleService;
 
 class OrderController extends Controller
 {
+    private function normalizeUserPriority(?User $user): ?User
+    {
+        if ($user) {
+            $role = strtolower((string) $user->role);
+            $user->priority = in_array($role, ['user', 'customer'], true)
+                ? min(max((int) $user->priority, 0), 3)
+                : 0;
+        }
+
+        return $user;
+    }
+
+    private function normalizeOrderForResponse(Order $order): Order
+    {
+        if ($order->relationLoaded('user')) {
+            $this->normalizeUserPriority($order->user);
+        }
+
+        return $order;
+    }
+
     public function index()
     {
         try {
-            $orders = Order::with([
-                'user',
-                'payment',
-                'orderItems'
-            ])->orderBy('created_at', 'desc')->get();
+            $orders = Order::query()
+                ->select('orders.*')
+                ->leftJoin('users', 'orders.user_id', '=', 'users.id')
+                ->with([
+                    'user',
+                    'payment',
+                    'schedule',
+                    'orderItems.product',
+                ])
+                ->orderByRaw('COALESCE(users.priority, 0) asc')
+                ->orderBy('orders.created_at', 'desc')
+                ->get();
+
+            $orders->each(fn (Order $order) => $this->normalizeOrderForResponse($order));
 
             return response()->json($orders);
         } catch (\Exception $e) {
@@ -33,10 +65,56 @@ class OrderController extends Controller
         }
     }
 
+    public function show($id)
+    {
+        try {
+            $order = Order::with([
+                'user',
+                'payment',
+                'schedule',
+                'orderItems.product',
+            ])->where('order_id', $id)->firstOrFail();
+
+            $this->normalizeOrderForResponse($order);
+
+            return response()->json($order);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to fetch order',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function userOrders($userId)
+    {
+        try {
+            $orders = Order::with([
+                'user',
+                'payment',
+                'schedule',
+                'orderItems.product',
+            ])
+                ->where('user_id', $userId)
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            $orders->each(fn (Order $order) => $this->normalizeOrderForResponse($order));
+
+            return response()->json($orders);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to fetch user orders',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function store(Request $request)
     {
         $request->validate([
             'user_id'          => 'required|integer|exists:users,id',
+            'schedule_id'      => 'required|integer|exists:schedules,id',
             'address'          => 'required|string',
             'delivery_method'  => 'required|in:pickup,delivery',
             'payment_method'   => 'required|string',
@@ -48,6 +126,13 @@ class OrderController extends Controller
 
         $now = Carbon::now();
         $datePart = $now->format('Ymd');
+        $schedule = ScheduleService::findOrderableSchedule((int) $request->input('schedule_id'));
+
+        if (!$schedule) {
+            return response()->json([
+                'message' => 'The selected event is not available for ordering.',
+            ], 422);
+        }
 
         $orderId   = 'ORD-' . $datePart . '-' . strtoupper(substr(uniqid(), -4));
         $paymentId = 'PAY-' . $datePart . '-' . strtoupper(substr(uniqid(), -4));
@@ -56,14 +141,15 @@ class OrderController extends Controller
         $imagePath = $request->file('reference_image')->store('payments', 'public');
 
         try {
-            DB::transaction(function () use ($request, $now, $orderId, $paymentId, $imagePath) {
+            DB::transaction(function () use ($request, $now, $orderId, $paymentId, $imagePath, $schedule) {
 
                 // 1. Create order with payment_id null
                 $order = new Order();
                 $order->order_id        = $orderId;
                 $order->user_id         = $request->input('user_id');
+                $order->schedule_id     = $schedule->id;
                 $order->payment_id      = null;
-                $order->order_date      = $now->toDateString();
+                $order->order_date      = $now->toDateTimeString();
                 $order->total_amount    = $request->total_amount;
                 $order->order_status    = 'pending';
                 $order->special_message = $request->special_message;
@@ -112,6 +198,7 @@ class OrderController extends Controller
             ]);
 
             $order = Order::where('order_id', $id)->firstOrFail();
+            $previousStatus = strtolower((string) $order->order_status);
 
             $status = $request->input('status') ?? $request->input('order_status');
 
@@ -125,8 +212,15 @@ class OrderController extends Controller
             $order->order_status = $status;
             $order->save();
 
+            if (in_array(strtolower($status), ['delivered', 'completed'], true) && !in_array($previousStatus, ['delivered', 'completed'], true)) {
+                User::query()
+                    ->whereKey($order->user_id)
+                    ->update(['consecutive_cancellations' => 0]);
+            }
+
             // Reload relationships so frontend receives full order data
-            $order->load(['user', 'payment', 'orderItems.product']);
+            $order->load(['user', 'payment', 'schedule', 'orderItems.product']);
+            $this->normalizeOrderForResponse($order);
 
             // ── Send status update email ──────────────────────────────────
             try {

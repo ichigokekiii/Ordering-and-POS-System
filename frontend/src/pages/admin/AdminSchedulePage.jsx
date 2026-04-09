@@ -28,6 +28,7 @@ function AdminSchedulePage({ user }) {
 
   // Replaced Toast with Modal System
   const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', message: '' });
+  const asBoolean = (value) => value === 1 || value === true || value === "1";
 
   useEffect(() => {
     fetchSchedules();
@@ -134,7 +135,7 @@ function AdminSchedulePage({ user }) {
     setLocation(schedule.location || "");
     setEventDate(schedule.event_date ? schedule.event_date.split(" ")[0] : "");
     setImage(null);
-    setIsAvailable(schedule.isAvailable ?? 1);
+    setIsAvailable(asBoolean(schedule.isAvailable) ? 1 : 0);
     setShowModal(true);
     setErrors({});
   };
@@ -142,10 +143,10 @@ function AdminSchedulePage({ user }) {
   const handleToggleArchive = async (schedule) => {
     try {
       await updateSchedule(schedule.id, {
-        isAvailable: schedule.isAvailable ? 0 : 1,
+        isArchived: asBoolean(schedule.isArchived) ? 0 : 1,
       });
 
-      showModalAlert("success", schedule.isAvailable ? "Schedule archived successfully." : "Schedule restored successfully.");
+      showModalAlert("success", asBoolean(schedule.isArchived) ? "Schedule restored successfully." : "Schedule archived successfully.");
       fetchSchedules();
     } catch (error) {
       console.error("Failed to update schedule status", error);
@@ -153,8 +154,10 @@ function AdminSchedulePage({ user }) {
     }
   };
 
-  const activeSchedules = schedules.filter((s) => s.isAvailable);
-  const archivedSchedules = schedules.filter((s) => !s.isAvailable);
+  const activeSchedules = schedules.filter((s) => !asBoolean(s.isArchived));
+  const liveSchedules = activeSchedules.filter((s) => asBoolean(s.isAvailable));
+  const inactiveSchedules = activeSchedules.filter((s) => !asBoolean(s.isAvailable));
+  const archivedSchedules = schedules.filter((s) => asBoolean(s.isArchived));
 
   const getImageUrl = (imagePath) => {
     if (!imagePath) return "https://via.placeholder.com/600x400?text=No+Image";
@@ -199,18 +202,18 @@ function AdminSchedulePage({ user }) {
         <div className="mb-6 flex items-end justify-between border-b border-gray-100 pb-4">
           <h3 className="text-2xl font-playfair font-bold text-gray-900">Active Events</h3>
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-600 uppercase tracking-widest border border-emerald-100">
-            {activeSchedules.length} Live
+            {liveSchedules.length} Live
           </span>
         </div>
 
-        {activeSchedules.length === 0 ? (
+        {liveSchedules.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-gray-400 border-2 border-dashed border-gray-100 rounded-[2rem]">
             <CalendarClock size={48} className="mb-4 opacity-20" />
             <p className="text-sm font-bold text-gray-500">No active events currently scheduled.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {activeSchedules.map((schedule) => (
+            {liveSchedules.map((schedule) => (
               <div 
                 key={schedule.id} 
                 onClick={() => canEdit && handleEdit(schedule)}
@@ -221,6 +224,79 @@ function AdminSchedulePage({ user }) {
                   <div className="absolute top-3 left-3">
                     <span className="rounded-full bg-white/90 backdrop-blur-sm px-2.5 py-1 text-[9px] font-bold text-gray-900 uppercase tracking-widest shadow-sm">
                       {new Date(schedule.event_date).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric'})}
+                    </span>
+                  </div>
+                  <div className="absolute top-3 right-3">
+                    <span className="rounded-full bg-emerald-500/90 px-2.5 py-1 text-[9px] font-bold text-white uppercase tracking-widest shadow-sm">
+                      Active
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-5 flex flex-col flex-1">
+                  <h3 className="text-lg font-playfair font-bold text-gray-900 mb-1 line-clamp-1">{schedule.schedule_name}</h3>
+                  <p className="text-xs text-gray-500 line-clamp-2 mb-4 leading-relaxed">{schedule.schedule_description}</p>
+                  
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#4f6fa5] mb-4 mt-auto">
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span className="truncate">{schedule.location}</span>
+                  </div>
+                  
+                  {canEdit && (
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleEdit(schedule); }}
+                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                      >
+                        <Pencil className="w-3.5 h-3.5" /> Edit
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleToggleArchive(schedule); }}
+                        className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-bold text-white border-2 border-amber-500 hover:bg-transparent hover:text-amber-500 transition-all duration-300 shadow-sm"
+                      >
+                        <Archive className="w-3.5 h-3.5" /> Archive
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* INACTIVE SCHEDULES SECTION */}
+      <div className="mb-16">
+        <div className="mb-6 flex items-end justify-between border-b border-gray-100 pb-4">
+          <h3 className="text-2xl font-playfair font-bold text-gray-900">Inactive Events</h3>
+          <span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-bold text-amber-600 uppercase tracking-widest border border-amber-100">
+            {inactiveSchedules.length} Coming Soon
+          </span>
+        </div>
+
+        {inactiveSchedules.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-gray-400 border-2 border-dashed border-gray-100 rounded-[2rem]">
+            <CalendarClock size={48} className="mb-4 opacity-20" />
+            <p className="text-sm font-bold text-gray-500">No inactive events currently listed.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {inactiveSchedules.map((schedule) => (
+              <div 
+                key={schedule.id} 
+                onClick={() => canEdit && handleEdit(schedule)}
+                className={`flex flex-col bg-white rounded-[1.5rem] border border-gray-200 shadow-sm hover:shadow-lg hover:border-[#4f6fa5] transition-all overflow-hidden group ${canEdit ? 'cursor-pointer' : ''}`}
+              >
+                <div className="h-48 bg-gray-100 border-b border-gray-100 relative overflow-hidden">
+                  <img src={getImageUrl(schedule.image)} alt={schedule.schedule_name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 grayscale-[0.1]" />
+                  <div className="absolute top-3 left-3">
+                    <span className="rounded-full bg-white/90 backdrop-blur-sm px-2.5 py-1 text-[9px] font-bold text-gray-900 uppercase tracking-widest shadow-sm">
+                      {new Date(schedule.event_date).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric'})}
+                    </span>
+                  </div>
+                  <div className="absolute top-3 right-3">
+                    <span className="rounded-full bg-amber-500/90 px-2.5 py-1 text-[9px] font-bold text-white uppercase tracking-widest shadow-sm">
+                      Inactive
                     </span>
                   </div>
                 </div>
@@ -405,6 +481,36 @@ function AdminSchedulePage({ user }) {
                     {errors.schedule_description[0]}
                   </p>
                 )}
+              </div>
+
+              <div className="pt-2 border-t border-gray-100">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3 block">Availability</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsAvailable(1)}
+                    className={`rounded-2xl border px-4 py-4 text-left transition-all ${
+                      isAvailable === 1
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm"
+                        : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                    }`}
+                  >
+                    <p className="text-xs font-bold uppercase tracking-widest">Active</p>
+                    <p className="mt-1 text-xs font-medium">Customers can place orders for this event.</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAvailable(0)}
+                    className={`rounded-2xl border px-4 py-4 text-left transition-all ${
+                      isAvailable === 0
+                        ? "border-amber-500 bg-amber-50 text-amber-700 shadow-sm"
+                        : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                    }`}
+                  >
+                    <p className="text-xs font-bold uppercase tracking-widest">Inactive</p>
+                    <p className="mt-1 text-xs font-medium">Visible for updates only. Ordering stays disabled.</p>
+                  </button>
+                </div>
               </div>
 
               <div className="pt-2 border-t border-gray-100">

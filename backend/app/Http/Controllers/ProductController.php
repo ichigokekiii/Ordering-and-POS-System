@@ -25,6 +25,7 @@ class ProductController extends Controller
             'type'                  => 'nullable|string',
             'price'                 => 'required|numeric',
             'isAvailable'           => 'required|boolean',
+            'isArchived'            => 'sometimes|boolean',
             'required_main_count'   => 'nullable|integer|min:0',
             'required_filler_count' => 'nullable|integer|min:0',
         ]);
@@ -47,7 +48,8 @@ class ProductController extends Controller
                 'category'              => $request->category,
                 'type'                  => $request->type,
                 'price'                 => $request->price,
-                'isAvailable'           => $request->boolean('isAvailable'), // <-- FIXED: Safe Boolean Cast
+                'isAvailable'           => $request->boolean('isAvailable'),
+                'isArchived'            => $request->boolean('isArchived'),
                 'required_main_count'   => $isBouquet ? (int) $request->input('required_main_count', 1) : null,
                 'required_filler_count' => $isBouquet ? (int) $request->input('required_filler_count', 2) : null,
             ]);
@@ -70,6 +72,7 @@ class ProductController extends Controller
             'type'                  => 'nullable|string',
             'price'                 => 'sometimes|required|numeric',
             'isAvailable'           => 'sometimes|required|boolean',
+            'isArchived'            => 'sometimes|required|boolean',
             'required_main_count'   => 'nullable|integer|min:0',
             'required_filler_count' => 'nullable|integer|min:0',
         ]);
@@ -86,9 +89,12 @@ class ProductController extends Controller
             'required_filler_count',
         ]);
 
-        // <-- FIXED: Safe Boolean Cast for Updates
         if ($request->has('isAvailable')) {
             $data['isAvailable'] = $request->boolean('isAvailable'); 
+        }
+
+        if ($request->has('isArchived')) {
+            $data['isArchived'] = $request->boolean('isArchived');
         }
 
         $resolvedCategory = $request->input('category', $product->category);
@@ -113,7 +119,7 @@ class ProductController extends Controller
         $product->update($data);
         ProductService::syncCustomProduct($product->fresh());
 
-        return response()->json($product);
+        return response()->json($product->fresh());
     }
 
     public function destroy($id)

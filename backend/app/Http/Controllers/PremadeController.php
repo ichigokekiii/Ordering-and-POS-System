@@ -25,6 +25,7 @@ class PremadeController extends Controller
             'type'        => 'nullable|string',
             'price'       => 'required|numeric',
             'isAvailable' => 'required|boolean',
+            'isArchived'  => 'sometimes|boolean',
         ]);
 
         // Store file in storage/app/public/premades
@@ -38,7 +39,8 @@ class PremadeController extends Controller
                 'category'    => $request->category,
                 'type'        => $request->type,
                 'price'       => $request->price,
-                'isAvailable' => $request->isAvailable,
+                'isAvailable' => $request->boolean('isAvailable'),
+                'isArchived'  => $request->boolean('isArchived'),
             ]);
 
             ProductService::syncPremadeProduct($premade);
@@ -59,11 +61,20 @@ class PremadeController extends Controller
             'type'        => 'sometimes|nullable|string',
             'price'       => 'sometimes|required|numeric',
             'isAvailable' => 'sometimes|required|boolean',
+            'isArchived'  => 'sometimes|required|boolean',
         ]);
 
         $premade = PremadeProduct::findOrFail($id);
 
-        $data = $request->only(['name', 'description', 'category', 'type', 'price', 'isAvailable']);
+        $data = $request->only(['name', 'description', 'category', 'type', 'price']);
+
+        if ($request->has('isAvailable')) {
+            $data['isAvailable'] = $request->boolean('isAvailable');
+        }
+
+        if ($request->has('isArchived')) {
+            $data['isArchived'] = $request->boolean('isArchived');
+        }
 
         if ($request->hasFile('image')) {
             // Delete old image from storage
@@ -78,7 +89,7 @@ class PremadeController extends Controller
         $premade->update($data);
         ProductService::syncPremadeProduct($premade->fresh());
 
-        return response()->json($premade);
+        return response()->json($premade->fresh());
     }
 
     public function destroy($id)

@@ -1,11 +1,24 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import api from "../services/api";
 
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
   const [cartItems, setCartItems] = useState([]);
+  const [selectedScheduleId, setSelectedScheduleId] = useState(() => {
+    const storedValue = localStorage.getItem("selectedScheduleId");
+    return storedValue ? Number(storedValue) : null;
+  });
+
+  useEffect(() => {
+    if (selectedScheduleId) {
+      localStorage.setItem("selectedScheduleId", String(selectedScheduleId));
+      return;
+    }
+
+    localStorage.removeItem("selectedScheduleId");
+  }, [selectedScheduleId]);
 
   const addToCart = (product, quantity) => {
     setCartItems((prev) => {
@@ -56,15 +69,23 @@ export function CartProvider({ children }) {
   };
 
   const clearCart = () => setCartItems([]);
+  const selectSchedule = (scheduleId) => setSelectedScheduleId(Number(scheduleId));
+  const clearSelectedSchedule = () => setSelectedScheduleId(null);
 
   const checkout = async (userId, scheduleId) => {
     if (!cartItems.length) {
       throw new Error("Cart is empty");
     }
 
+    const resolvedScheduleId = scheduleId ?? selectedScheduleId;
+
+    if (!resolvedScheduleId) {
+      throw new Error("No event selected for this order");
+    }
+
     const payload = {
       user_id: userId,
-      schedule_id: scheduleId,
+      schedule_id: resolvedScheduleId,
       items: cartItems.map((item) => ({
         product_id: item._productId ?? item.id,
         quantity: item.quantity,
@@ -91,6 +112,9 @@ export function CartProvider({ children }) {
         removeFromCart,
         updateQuantity,
         clearCart,
+        selectedScheduleId,
+        selectSchedule,
+        clearSelectedSchedule,
         checkout,
         totalItems,
         totalPrice,

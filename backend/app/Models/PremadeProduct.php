@@ -8,10 +8,11 @@ class PremadeProduct extends Model
 {
     protected $table = 'premade_products';
     
-    protected $fillable = ['product_id', 'name', 'image', 'description', 'type', 'category', 'price', 'isAvailable'];
+    protected $fillable = ['product_id', 'name', 'image', 'description', 'type', 'category', 'price', 'isAvailable', 'isArchived'];
 
 protected $casts = [
     'isAvailable' => 'boolean',
+    'isArchived' => 'boolean',
 ];
 
     public function product()

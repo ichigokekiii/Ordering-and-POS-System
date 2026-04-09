@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProductService
 {
+    protected const ACTIVE_CATALOG_SOURCES = ['custom', 'premade'];
+
     public static function syncCustomProduct(CustomProduct $product): Products
     {
         return self::syncSourceProduct($product);
@@ -21,19 +23,34 @@ class ProductService
 
     public static function resolveCatalogId(?int $productId, ?string $productName = null): ?int 
     {
-        // 1. If we have a product name, we look it up directly in the catalog
         if ($productName !== null && trim($productName) !== '') {
-            $catalog = Products::where('name', $productName)->first();
-            
+            $catalog = Products::query()
+                ->whereIn('product_source', self::ACTIVE_CATALOG_SOURCES)
+                ->where('name', $productName)
+                ->first();
+
             if ($catalog) {
                 return $catalog->id;
             }
         }
 
-        // 2. If we only have an ID and no name, we assume the ID provided 
-        // IS the catalog ID, since we no longer track source origins.
         if ($productId !== null) {
-            return $productId;
+            $catalog = Products::query()
+                ->whereIn('product_source', self::ACTIVE_CATALOG_SOURCES)
+                ->where('source_product_id', $productId)
+                ->first();
+
+            if ($catalog) {
+                return $catalog->id;
+            }
+
+            $catalog = Products::query()
+                ->whereIn('product_source', self::ACTIVE_CATALOG_SOURCES)
+                ->find($productId);
+
+            if ($catalog) {
+                return $catalog->id;
+            }
         }
 
         return null;
@@ -41,26 +58,48 @@ class ProductService
 
     protected static function syncSourceProduct(Model $product): Products
     {
-        // SYNC STRICTLY BY PRODUCT NAME (No product_source columns used)
+        $source = self::resolveSourceMetadata($product);
+
         $catalog = Products::updateOrCreate(
             [
-                'name' => $product->name, 
+                'product_source' => $source['product_source'],
+                'source_product_id' => $source['source_product_id'],
             ],
             [
+                'name'        => $product->name,
                 'description' => $product->description,
                 'category'    => $product->category,
                 'type'        => $product->type ?? null,
                 'price'       => $product->price,
                 'image'       => $product->image,
                 'isAvailable' => (bool) $product->isAvailable,
+                'isArchived'  => (bool) $product->isArchived,
             ]
         );
 
-        // Optional: If your custom/premade tables have a 'product_id' column, update it.
         if (isset($product->product_id) && $product->product_id !== $catalog->id) {
             $product->forceFill(['product_id' => $catalog->id])->saveQuietly();
         }
 
         return $catalog;
+    }
+
+    protected static function resolveSourceMetadata(Model $product): array
+    {
+        if ($product instanceof CustomProduct) {
+            return [
+                'product_source' => 'custom',
+                'source_product_id' => $product->id,
+            ];
+        }
+
+        if ($product instanceof PremadeProduct) {
+            return [
+                'product_source' => 'premade',
+                'source_product_id' => $product->id,
+            ];
+        }
+
+        throw new \InvalidArgumentException('Unsupported source product model.');
     }
 }

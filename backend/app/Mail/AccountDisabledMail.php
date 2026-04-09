@@ -23,7 +23,7 @@ class AccountDisabledMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Your Petal Express Account Has Been Temporarily Disabled',
+            subject: 'Your Petal Express Account Has Been Locked',
         );
     }
 

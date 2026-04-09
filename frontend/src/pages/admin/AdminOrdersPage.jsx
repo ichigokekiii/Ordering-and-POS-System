@@ -30,6 +30,31 @@ const OrderStatusPill = ({ status }) => {
   );
 };
 
+const normalizePriority = (priority, role) => {
+  const normalizedRole = String(role || "").toLowerCase();
+  if (normalizedRole && !["user", "customer"].includes(normalizedRole)) {
+    return 0;
+  }
+
+  return Math.min(Math.max(Number(priority) || 0, 0), 3);
+};
+
+const PriorityPill = ({ priority = 0, role }) => {
+  const safePriority = normalizePriority(priority, role);
+  const colors = {
+    0: "bg-slate-100 text-slate-700 border-slate-200",
+    1: "bg-amber-100 text-amber-700 border-amber-200",
+    2: "bg-orange-100 text-orange-700 border-orange-200",
+    3: "bg-rose-100 text-rose-700 border-rose-200",
+  };
+
+  return (
+    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${colors[safePriority] || colors[0]}`}>
+      Priority {safePriority}
+    </span>
+  );
+};
+
 function AdminOrdersPage({ user }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,9 +68,10 @@ function AdminOrdersPage({ user }) {
 
   // Search, Sort, Filter state
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("created_at");
+  const [sortBy, setSortBy] = useState("priority");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterDelivery, setFilterDelivery] = useState("all");
+  const [filterPriority, setFilterPriority] = useState("all");
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
 
@@ -59,7 +85,13 @@ function AdminOrdersPage({ user }) {
   const fetchOrders = async () => {
     try {
       const res = await api.get("/orders");
-      const data = Array.isArray(res.data) ? res.data : res.data.orders ?? res.data.data ?? [];
+      const data = (Array.isArray(res.data) ? res.data : res.data.orders ?? res.data.data ?? []).map((order) => ({
+        ...order,
+        user: order.user
+          ? { ...order.user, priority: normalizePriority(order.user.priority, order.user.role) }
+          : order.user,
+        order_items: order.order_items || order.orderItems || [],
+      }));
       setOrders(data);
     } catch (err) {
       console.error("Failed to fetch orders:", err);
@@ -89,7 +121,8 @@ function AdminOrdersPage({ user }) {
         const orderId = String(o.order_id || o.id || "");
         const fullName = `${o.user?.first_name || ""} ${o.user?.last_name || ""}`.toLowerCase();
         const email = (o.user?.email || "").toLowerCase();
-        return orderId.includes(q) || fullName.includes(q) || email.includes(q);
+        const scheduleName = (o.schedule?.schedule_name || "").toLowerCase();
+        return orderId.includes(q) || fullName.includes(q) || email.includes(q) || scheduleName.includes(q);
       });
     }
 
@@ -107,8 +140,19 @@ function AdminOrdersPage({ user }) {
       );
     }
 
+    if (filterPriority !== "all") {
+      result = result.filter(
+        (o) => String(normalizePriority(o.user?.priority, o.user?.role)) === filterPriority
+      );
+    }
+
     // Sort
     result.sort((a, b) => {
+      if (sortBy === "priority") {
+        const priorityDiff = normalizePriority(a.user?.priority, a.user?.role) - normalizePriority(b.user?.priority, b.user?.role);
+        if (priorityDiff !== 0) return priorityDiff;
+        return new Date(b.created_at) - new Date(a.created_at);
+      }
       if (sortBy === "created_at") return new Date(b.created_at) - new Date(a.created_at);
       if (sortBy === "created_at_asc") return new Date(a.created_at) - new Date(b.created_at);
       if (sortBy === "total_amount") return Number(b.total_amount) - Number(a.total_amount);
@@ -117,7 +161,7 @@ function AdminOrdersPage({ user }) {
     });
 
     return result;
-  }, [orders, searchQuery, filterStatus, filterDelivery, sortBy]);
+  }, [orders, searchQuery, filterStatus, filterDelivery, filterPriority, sortBy]);
 
   const promptDelete = (id) => setDeleteConfirm({ isOpen: true, orderId: id });
 
@@ -138,12 +182,16 @@ function AdminOrdersPage({ user }) {
   const handleUpdateStatus = async () => {
     if (!editingOrder) return;
     try {
-      await api.put(`/orders/${editingOrder.order_id || editingOrder.id}`, { order_status: status });
+      const res = await api.put(`/orders/${editingOrder.order_id || editingOrder.id}`, { order_status: status });
+      const updatedOrder = {
+        ...res.data,
+        order_items: res.data.order_items || res.data.orderItems || [],
+      };
       setOrders((prev) =>
         prev.map((order) => {
           const id = order.order_id || order.id;
           const editingId = editingOrder.order_id || editingOrder.id;
-          return id === editingId ? { ...order, order_status: status } : order;
+          return id === editingId ? updatedOrder : order;
         })
       );
       setEditingOrder(null);
@@ -166,6 +214,7 @@ function AdminOrdersPage({ user }) {
   };
 
   const sortOptions = [
+    { key: "priority", label: "Priority first" },
     { key: "created_at", label: "Newest first" },
     { key: "created_at_asc", label: "Oldest first" },
     { key: "total_amount", label: "Highest total" },
@@ -265,6 +314,18 @@ function AdminOrdersPage({ user }) {
                     </button>
                   ))}
                 </div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 mt-4">Filter by Priority</p>
+                <div className="space-y-1">
+                  {["all", "0", "1", "2", "3"].map((priority) => (
+                    <button
+                      key={priority}
+                      onClick={() => setFilterPriority(priority)}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold capitalize transition-colors ${filterPriority === priority ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
+                    >
+                      {priority === "all" ? "All Priorities" : `Priority ${priority}`}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -286,7 +347,7 @@ function AdminOrdersPage({ user }) {
             </span>
             {orders.length > 0 && (
               <button
-                onClick={() => { setSearchQuery(""); setFilterStatus("all"); setFilterDelivery("all"); }}
+                onClick={() => { setSearchQuery(""); setFilterStatus("all"); setFilterDelivery("all"); setFilterPriority("all"); }}
                 className="text-xs font-bold text-[#4f6fa5] hover:underline mt-1"
               >
                 Clear filters
@@ -300,10 +361,12 @@ function AdminOrdersPage({ user }) {
                 <tr className="border-b border-gray-50 bg-[#f8fafc]">
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap w-32">Order ID</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Customer / User ID</th>
+                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Event</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Delivery</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Date Placed</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Status</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Total</th>
+                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Priority</th>
                   {canEdit && <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Actions</th>}
                 </tr>
               </thead>
@@ -328,10 +391,20 @@ function AdminOrdersPage({ user }) {
                             <p className="font-bold text-gray-900 tracking-tight truncate text-sm">
                               {order.user?.first_name ? `${order.user.first_name} ${order.user.last_name}` : `User ID: ${order.user_id}`}
                             </p>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 truncate">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 truncate mt-2">
                               {order.user?.email || "No Email provided"}
                             </p>
                           </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-5">
+                        <div className="max-w-[180px] lg:max-w-[220px]">
+                          <p className="text-sm font-semibold text-gray-700 truncate">
+                            {order.schedule?.schedule_name || "Legacy / Unlinked"}
+                          </p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1">
+                            {order.schedule?.event_date ? new Date(order.schedule.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "No linked event"}
+                          </p>
                         </div>
                       </td>
                       <td className="px-5 py-5">
@@ -347,6 +420,9 @@ function AdminOrdersPage({ user }) {
                       </td>
                       <td className="px-5 py-5">
                         <p className="text-sm font-bold text-[#4f6fa5] whitespace-nowrap">₱{order.total_amount}</p>
+                      </td>
+                      <td className="px-5 py-5">
+                        <PriorityPill priority={order.user?.priority ?? 0} role={order.user?.role} />
                       </td>
                       {canEdit && (
                         <td className="px-5 py-5">
@@ -403,7 +479,10 @@ function AdminOrdersPage({ user }) {
                   <div className="space-y-3 text-sm">
                     <div className="flex justify-between"><span className="text-gray-500">Date Placed</span><span className="font-semibold text-gray-900">{new Date(activeOrder.created_at).toLocaleDateString()}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500">Delivery</span><span className="font-semibold text-gray-900 capitalize">{activeOrder.delivery_method}</span></div>
+                    <div className="flex justify-between gap-4"><span className="text-gray-500">Event</span><span className="font-semibold text-gray-900 text-right">{activeOrder.schedule?.schedule_name || "Legacy / Unlinked event"}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">Event Date</span><span className="font-semibold text-gray-900">{activeOrder.schedule?.event_date ? new Date(activeOrder.schedule.event_date).toLocaleDateString() : "No linked date"}</span></div>
                     <div className="flex justify-between items-center"><span className="text-gray-500">Current Status</span><OrderStatusPill status={activeOrder.order_status} /></div>
+                    <div className="flex justify-between items-center"><span className="text-gray-500">Priority</span><PriorityPill priority={activeOrder.user?.priority ?? 0} role={activeOrder.user?.role} /></div>
                   </div>
                 </div>
                 <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
@@ -412,6 +491,7 @@ function AdminOrdersPage({ user }) {
                     <p className="font-semibold text-gray-900">{activeOrder.user?.first_name ? `${activeOrder.user.first_name} ${activeOrder.user.last_name}` : "Guest/Unknown"}</p>
                     <p className="text-gray-600 truncate">{activeOrder.user?.email || "No email"}</p>
                     <p className="text-gray-600">{activeOrder.user?.phone_number || "No phone"}</p>
+                    <p className="text-gray-600">User ID: {activeOrder.user_id}</p>
                   </div>
                 </div>
               </div>

@@ -1,3 +1,5 @@
+import { createPortal } from "react-dom";
+
 import { getTermsConfig } from "../utils/termsAndConditions";
 
 function TermsAndConditionsModal({ open, scope, onClose, onAcknowledge }) {
@@ -5,8 +7,8 @@ function TermsAndConditionsModal({ open, scope, onClose, onAcknowledge }) {
 
   const terms = getTermsConfig(scope);
 
-  return (
-    <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
+  const modal = (
+    <div className="fixed inset-0 z-[800] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
       <div className="flex max-h-[84vh] w-full max-w-xl flex-col rounded-3xl border border-gray-100 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
         <div className="mb-5 flex items-start justify-between gap-4 border-b border-gray-100 pb-4 dark:border-slate-700">
           <div className="min-w-0">
@@ -54,6 +56,10 @@ function TermsAndConditionsModal({ open, scope, onClose, onAcknowledge }) {
       </div>
     </div>
   );
+
+  if (typeof document === "undefined") return modal;
+
+  return createPortal(modal, document.body);
 }
 
 export default TermsAndConditionsModal;

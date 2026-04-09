@@ -1,7 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { LogOut } from "lucide-react";
 
-function Sidebar({ isOpen, dm }) {
+function Sidebar({ isOpen, dm, onLogout }) {
   return (
     <div
       className={`w-64 flex flex-col z-20 absolute top-0 left-0 h-full transition-transform duration-200 ease-out transform ${
@@ -55,7 +56,7 @@ function Sidebar({ isOpen, dm }) {
           Custom Orders
         </Link>
 
-        <div className="mt-auto pt-4">
+        <div className="mt-auto pt-4 flex flex-col gap-3">
           <Link
             to="/admin"
             className={`w-full p-3 rounded-lg font-semibold transition shadow-sm border border-transparent text-center block ${
@@ -66,6 +67,18 @@ function Sidebar({ isOpen, dm }) {
           >
             Go to Admin Dashboard
           </Link>
+          
+          <button
+            onClick={onLogout}
+            className={`w-full p-3 flex items-center justify-center gap-2 rounded-lg font-bold transition shadow-sm border ${
+              dm
+                ? "bg-gray-800 text-rose-400 border-gray-700 hover:bg-rose-900/20 hover:border-rose-500/50"
+                : "bg-white text-rose-500 border-gray-200 hover:bg-rose-50 hover:border-rose-200"
+            }`}
+          >
+            <LogOut className="w-4 h-4" />
+            Log Out
+          </button>
         </div>
       </div>
     </div>

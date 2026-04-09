@@ -7,6 +7,8 @@ import api from "../../services/api";
 import { Search, ChevronLeft, ChevronRight, Share } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../../contexts/CartContext";
+import { useNavbar } from "../../contexts/NavbarContext";
+
 
 function SchedulePage() {
   const { schedules, loading } = useSchedules();
@@ -19,6 +21,7 @@ function SchedulePage() {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingEmail, setBookingEmail] = useState("");
   const [scheduleSwitchConfirm, setScheduleSwitchConfirm] = useState(null);
+  const { currentUser } = useNavbar();
 
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState("");
@@ -61,33 +64,38 @@ function SchedulePage() {
   };
 
   const isActiveSchedule = (schedule) =>
-    !asBoolean(schedule.isArchived) &&
-    asBoolean(schedule.isAvailable) &&
-    isFutureSchedule(schedule);
+  !asBoolean(schedule.isArchived) && asBoolean(schedule.isAvailable);
 
-  const isInactiveSchedule = (schedule) =>
-    !asBoolean(schedule.isArchived) &&
-    !asBoolean(schedule.isAvailable) &&
-    isFutureSchedule(schedule);
+const isInactiveSchedule = (schedule) =>
+  !asBoolean(schedule.isArchived) && !asBoolean(schedule.isAvailable);
 
-  const isHappeningNowSchedule = (schedule) => {
-    const daysUntil = getDaysUntilEvent(schedule.event_date);
-    return isActiveSchedule(schedule) && daysUntil <= 7;
-  };
+const isHappeningNowSchedule = (schedule) => {
+  const daysUntil = getDaysUntilEvent(schedule.event_date);
+  return !asBoolean(schedule.isArchived) && daysUntil !== null && daysUntil <= 7 && daysUntil >= 0;
+};
 
-  const isUpcomingSchedule = (schedule) => {
-    const daysUntil = getDaysUntilEvent(schedule.event_date);
-    return isActiveSchedule(schedule) && daysUntil > 7;
-  };
+const isUpcomingSchedule = (schedule) => {
+  const daysUntil = getDaysUntilEvent(schedule.event_date);
+  return !asBoolean(schedule.isArchived) && daysUntil !== null && daysUntil > 7;
+};
 
-  const isOrderable = (schedule) => isActiveSchedule(schedule);
+console.log(schedules[0]);
 
-  const getOrderLabel = (schedule) => {
-    if (!schedule) return "Select An Event";
-    if (!isFutureSchedule(schedule)) return "This Event Has Passed";
-    if (isOrderable(schedule)) return "Order Flowers for This Event";
-    return "This Event Is Coming Soon";
-  };
+  const isOrderable = (schedule) => {
+  if (!schedule) return false;
+  if (!isFutureSchedule(schedule)) return false;
+  return !!schedule.is_orderable;
+};
+
+const getOrderLabel = (schedule) => {
+  if (!schedule) return "Select An Event";
+  
+  if (isOrderable(schedule)) {
+    return "Order Flowers for This Event";
+  }
+  
+  return "Orders Not Yet Open"; 
+};
 
   // Smooth fade-out logic
   useEffect(() => {
@@ -128,17 +136,17 @@ function SchedulePage() {
   }
 
   const visibleSchedules = schedules.filter(
-    (schedule) => !asBoolean(schedule.isArchived) && isFutureSchedule(schedule)
-  );
+  (schedule) => !asBoolean(schedule.isArchived)
+);
 
   // Filter logic
   const filteredSchedules = visibleSchedules.filter((schedule) => {
     const matchesSearch = schedule.schedule_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory =
-      (activeCategory === "Happening Now" && isHappeningNowSchedule(schedule)) ||
-      (activeCategory === "Upcoming Events" && isUpcomingSchedule(schedule)) ||
-      (activeCategory === "Coming Soon" && isInactiveSchedule(schedule)) ||
-      (activeCategory === "Order Available" && isOrderable(schedule));
+  (activeCategory === "Happening Now" && isHappeningNowSchedule(schedule)) ||
+  (activeCategory === "Upcoming Events" && isUpcomingSchedule(schedule)) ||
+  (activeCategory === "Coming Soon" && isInactiveSchedule(schedule)) ||
+  (activeCategory === "Order Available" && isActiveSchedule(schedule) && isOrderable(schedule));
 
     return matchesSearch && matchesCategory;
   });
@@ -159,21 +167,26 @@ function SchedulePage() {
   };
 
   const handleOrderNow = () => {
-    if (!selectedSchedule) return;
+  if (!selectedSchedule) return;
 
-    if (
-      cartItems.length > 0 &&
-      selectedScheduleId &&
-      selectedScheduleId !== selectedSchedule.id
-    ) {
-      setScheduleSwitchConfirm(selectedSchedule);
-      return;
-    }
+  if (!currentUser) {
+    navigate("/login", { state: { from: "/schedule" } });
+    return;
+  }
 
-    selectSchedule(selectedSchedule.id);
-    navigate("/order", { state: { schedule: selectedSchedule } });
-    handleCloseModal();
-  };
+  if (
+    cartItems.length > 0 &&
+    selectedScheduleId &&
+    selectedScheduleId !== selectedSchedule.id
+  ) {
+    setScheduleSwitchConfirm(selectedSchedule);
+    return;
+  }
+
+  selectSchedule(selectedSchedule.id);
+  navigate("/order", { state: { schedule: selectedSchedule } });
+  handleCloseModal();
+};
 
   const handleBookClick = () => setIsBooking(true);
 

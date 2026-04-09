@@ -805,7 +805,7 @@ function AdminProductPage({ user }) {
                         onChange={() => setIsAvailable(0)}
                         className="w-4 h-4 text-rose-500 bg-gray-50 border-gray-300 focus:ring-rose-100 focus:ring-2"
                       />
-                      <span className="text-sm font-bold text-rose-500">Out of Stock</span>
+                      <span className="text-sm font-bold text-rose-500">Unavailable</span>
                     </label>
                   </div>
                 </div>

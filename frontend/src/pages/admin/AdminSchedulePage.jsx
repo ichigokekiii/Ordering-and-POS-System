@@ -456,7 +456,7 @@ function AdminSchedulePage({ user }) {
               <fieldset disabled={!canEdit} className="space-y-5 disabled:opacity-100">
               <div className="flex gap-4 items-end">
                 <div className="flex-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Event Name</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Event Name <span className="text-rose-500">*</span></label>
                   <input
                     type="text"
                     value={scheduleName}
@@ -469,7 +469,7 @@ function AdminSchedulePage({ user }) {
                   />
                 </div>
                 <div className="w-[140px]">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Event Date</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Event Date <span className="text-rose-500">*</span></label>
                   <input
                     type="date"
                     value={eventDate}
@@ -496,7 +496,7 @@ function AdminSchedulePage({ user }) {
               </div>
 
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Location</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Location <span className="text-rose-500">*</span></label>
                 <input
                   type="text"
                   value={location}
@@ -515,7 +515,7 @@ function AdminSchedulePage({ user }) {
               </div>
 
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Description</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Description <span className="text-rose-500">*</span></label>
                 <textarea
                   value={scheduleDescription}
                   onChange={(e) => {
@@ -563,7 +563,7 @@ function AdminSchedulePage({ user }) {
               </div>
 
               <div className="pt-2 border-t border-gray-100">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Cover Image</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Cover Image {!editingSchedule && <span className="text-rose-500">*</span>}</label>
                 {editingSchedule?.image && !image && (
                   <div className="mb-3 h-24 w-full rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
                     <img src={getImageUrl(editingSchedule.image)} alt="Current cover" className="h-full w-full object-cover opacity-70" />

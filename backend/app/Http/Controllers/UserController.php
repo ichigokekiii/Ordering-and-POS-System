@@ -58,7 +58,7 @@ class UserController extends Controller
     }
 
     // Public Registration (with OTP)
-public function register(Request $request)
+    public function register(Request $request)
     {
         $this->normalizeUserInput($request);
 
@@ -66,19 +66,21 @@ public function register(Request $request)
             'first_name'   => ['required', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
             'last_name'    => ['required', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
             'email'        => 'required|string|email|max:255|unique:users,email',
-            'password'     => 'required|string|min:6',
+            'password'     => ['required', 'string', 'min:6', 'not_regex:/^\s*$/'],
             'phone_number' => ['required', 'string', 'regex:/^\d{11}$/'],
             'terms_accepted' => 'accepted',
             'terms_scope'    => 'required|string|in:customer',
         ], [
             'first_name.regex'   => 'First name can only contain letters and spaces.',
             'last_name.regex'    => 'Last name can only contain letters and spaces.',
+            'password.required'  => 'Password is required.',
+            'password.not_regex' => 'Password is required.',
             'phone_number.regex' => 'Phone number must be exactly 11 digits.',
             'terms_accepted.accepted' => 'Please review and accept the Customer Terms & Conditions.',
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()->first()], 400);
+            return $this->validationErrorResponse($validator->errors());
         }
 
         $user = new User();
@@ -111,7 +113,7 @@ public function register(Request $request)
     }
 
     // Admin Create User (NO OTP)
-public function store(Request $request)
+    public function store(Request $request)
     {
         if (!Auth::check() || Auth::user()->role !== 'admin') {
             return response()->json(['error' => 'Unauthorized'], 403);
@@ -123,7 +125,7 @@ public function store(Request $request)
             'first_name'   => ['required', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
             'last_name'    => ['required', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
             'email'        => 'required|string|email|max:255|unique:users,email',
-            'password'     => 'required|string|min:6',
+            'password'     => ['required', 'string', 'min:6', 'not_regex:/^\s*$/'],
             'phone_number' => ['required', 'string', 'regex:/^\d{11}$/'],
             'role'         => 'nullable|string|in:user,staff,admin,owner',
             'status'       => 'nullable|string',
@@ -132,12 +134,14 @@ public function store(Request $request)
         ], [
             'first_name.regex'   => 'First name can only contain letters and spaces.',
             'last_name.regex'    => 'Last name can only contain letters and spaces.',
+            'password.required'  => 'Password is required.',
+            'password.not_regex' => 'Password is required.',
             'phone_number.regex' => 'Phone number must be exactly 11 digits.',
             'terms_accepted.accepted' => 'Please review and accept the applicable Terms & Conditions.',
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()->first()], 400);
+            return $this->validationErrorResponse($validator->errors());
         }
 
         $expectedTermsScope = in_array(Auth::user()->role, ['admin', 'owner', 'staff'], true)
@@ -145,9 +149,7 @@ public function store(Request $request)
             : 'customer';
 
         if ($request->input('terms_scope') !== $expectedTermsScope) {
-            return response()->json([
-                'error' => 'The selected terms do not match the assigned role.'
-            ], 400);
+            return $this->fieldErrorResponse('terms_scope', 'The selected terms do not match the assigned role.');
         }
 
         $user = new User();
@@ -231,7 +233,7 @@ public function store(Request $request)
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()->first()], 400);
+            return $this->validationErrorResponse($validator->errors());
         }
 
         // Handle email change with OTP
@@ -239,7 +241,7 @@ public function store(Request $request)
             if ($request->input('email') !== $user->email) {
                 // Email is being changed, require OTP
                 if (!$request->filled('email_otp')) {
-                    return response()->json(['error' => 'OTP required for email change'], 400);
+                    return $this->fieldErrorResponse('email_otp', 'OTP required for email change');
                 }
 
                 // Verify OTP
@@ -249,7 +251,7 @@ public function store(Request $request)
                          ->first();
 
                 if (!$otp) {
-                    return response()->json(['error' => 'Invalid or expired OTP'], 400);
+                    return $this->fieldErrorResponse('email_otp', 'Invalid or expired OTP');
                 }
 
                 // Delete the OTP after use
@@ -263,7 +265,7 @@ public function store(Request $request)
         // Handle password change with OTP
         if ($request->filled('password')) {
             if (!$request->filled('password_otp')) {
-                return response()->json(['error' => 'OTP required for password change'], 400);
+                return $this->fieldErrorResponse('password_otp', 'OTP required for password change');
             }
 
             // Verify OTP
@@ -273,7 +275,7 @@ public function store(Request $request)
                      ->first();
 
             if (!$otp) {
-                return response()->json(['error' => 'Invalid or expired OTP'], 400);
+                return $this->fieldErrorResponse('password_otp', 'Invalid or expired OTP');
             }
 
             // Delete the OTP after use
@@ -372,11 +374,11 @@ public function store(Request $request)
 
         $email = $request->input('email');
         if (empty($email)) {
-            return response()->json(['error' => 'Email is required'], 400);
+            return $this->fieldErrorResponse('email', 'Email is required');
         }
 
         if (User::where('email', $email)->where('id', '!=', $id)->exists()) {
-            return response()->json(['error' => 'Email already exists'], 400);
+            return $this->fieldErrorResponse('email', 'Email already exists');
         }
 
         $otpCode = rand(100000, 999999);

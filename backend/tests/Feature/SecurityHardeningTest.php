@@ -25,7 +25,11 @@ class SecurityHardeningTest extends TestCase
             'otp' => '123456',
             'password' => 'new-password',
             'password_confirmation' => 'new-password',
-        ])->assertStatus(400);
+        ])->assertStatus(422)
+            ->assertJson([
+                'message' => 'Invalid or expired OTP',
+            ])
+            ->assertJsonPath('errors.otp.0', 'Invalid or expired OTP');
 
         Otp::query()->create([
             'user_id' => $user->id,
@@ -45,6 +49,34 @@ class SecurityHardeningTest extends TestCase
             'user_id' => $user->id,
             'code' => '654321',
         ]);
+    }
+
+    public function test_login_rejects_a_whitespace_only_password(): void
+    {
+        $user = $this->createUser('whitespace-login@example.com');
+
+        $this->postJson('/api/login', [
+            'email' => $user->email,
+            'password' => '   ',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['password']);
+    }
+
+    public function test_register_rejects_a_whitespace_only_password(): void
+    {
+        $this->postJson('/api/register', [
+            'first_name' => 'Test',
+            'last_name' => 'Customer',
+            'email' => 'whitespace-register@example.com',
+            'password' => '      ',
+            'phone_number' => '09123456789',
+            'terms_accepted' => true,
+            'terms_scope' => 'customer',
+        ])->assertStatus(422)
+            ->assertJson([
+                'message' => 'The given data was invalid.',
+            ])
+            ->assertJsonPath('errors.password.0', 'Password is required.');
     }
 
     public function test_customer_cannot_view_another_customers_orders(): void

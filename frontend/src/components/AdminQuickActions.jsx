@@ -51,6 +51,7 @@ function AdminQuickActions({ user }) {
   
   const buttonSize = 56; // 14 * 4px (h-14 w-14)
   const padding = 24; // 6 * 4px (bottom-6 right-6)
+  const getMaxY = () => window.innerHeight - buttonSize - padding;
 
   const canUseQuickActions = hasAdminDashboardAccess(user);
   const isStaffRoute = location.pathname.startsWith("/staff");
@@ -83,8 +84,8 @@ function AdminQuickActions({ user }) {
 
     const handleResize = () => {
       setPosition((prev) => ({
-        x: Math.min(prev.x, window.innerWidth - buttonSize - padding),
-        y: Math.min(prev.y, window.innerHeight - buttonSize - padding),
+        x: Math.min(Math.max(padding, prev.x), window.innerWidth - buttonSize - padding),
+        y: Math.min(Math.max(padding, prev.y), getMaxY()),
       }));
     };
 
@@ -146,7 +147,7 @@ function AdminQuickActions({ user }) {
       dragInfo.current.hasMoved = true;
       setPosition((prev) => ({
         x: Math.max(0, Math.min(window.innerWidth - buttonSize, prev.x + dx)),
-        y: Math.max(0, Math.min(window.innerHeight - buttonSize, prev.y + dy)),
+        y: Math.max(padding, Math.min(getMaxY(), prev.y + dy)),
       }));
       
       dragInfo.current.startX = e.clientX;
@@ -168,22 +169,13 @@ function AdminQuickActions({ user }) {
   const snapToEdge = () => {
     setPosition((prev) => {
       const centerX = prev.x + buttonSize / 2;
-      const centerY = prev.y + buttonSize / 2;
-
       const distLeft = centerX;
       const distRight = window.innerWidth - centerX;
-      const distTop = centerY;
-      const distBottom = window.innerHeight - centerY;
-
-      const min = Math.min(distLeft, distRight, distTop, distBottom);
-
-      let newX = prev.x;
-      let newY = prev.y;
-
-      if (min === distLeft) newX = padding;
-      else if (min === distRight) newX = window.innerWidth - buttonSize - padding;
-      else if (min === distTop) newY = padding;
-      else if (min === distBottom) newY = window.innerHeight - buttonSize - padding;
+      const newX =
+        distLeft <= distRight
+          ? padding
+          : window.innerWidth - buttonSize - padding;
+      const newY = Math.min(Math.max(padding, prev.y), getMaxY());
 
       // Save the new position to localStorage
       try {

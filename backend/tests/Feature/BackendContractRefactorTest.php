@@ -273,10 +273,11 @@ class BackendContractRefactorTest extends TestCase
             'email' => 'customer@example.com',
         ]);
 
-        $secondResponse->assertStatus(400)
+        $secondResponse->assertStatus(422)
             ->assertJson([
                 'message' => 'You have already booked this event.',
-            ]);
+            ])
+            ->assertJsonPath('errors.email.0', 'You have already booked this event.');
 
         $this->assertDatabaseCount('schedule_bookings', 1);
     }

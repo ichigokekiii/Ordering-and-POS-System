@@ -4,6 +4,10 @@ import { useAuth } from "../../contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import api from "../../services/api";
 import { getPostLoginPath } from "../../utils/adminAccess";
+import FormFieldHeader from "../../components/form/FormFieldHeader";
+import { getValidationInputClassName } from "../../components/form/fieldStyles";
+import { normalizeOtp, validateOtp } from "../../utils/authValidation";
+import { clearFieldError, normalizeApiValidationErrors } from "../../utils/formValidation";
 
 // CMS IMPORTS
 import { useContents } from "../../contexts/ContentContext";
@@ -13,7 +17,8 @@ import { getCmsField, getCmsAssetUrl, getContentValue as getCmsContentValue } fr
 function VerifyOtpPage({ cmsPreview }) {
   const [otpArray, setOtpArray] = useState(["", "", "", "", "", ""]);
   const [otp, setOtp] = useState("");
-  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({ otp: "" });
+  const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [countdown, setCountdown] = useState(60);
@@ -51,6 +56,8 @@ function VerifyOtpPage({ cmsPreview }) {
       });
       setOtpArray(newOtp);
       setOtp(newOtp.join(""));
+      clearFieldError(setFieldErrors, "otp");
+      setFormError("");
       const nextIndex = Math.min(index + pasted.length, 5);
       inputRefs.current[nextIndex]?.focus();
       return;
@@ -58,6 +65,8 @@ function VerifyOtpPage({ cmsPreview }) {
     newOtp[index] = value;
     setOtpArray(newOtp);
     setOtp(newOtp.join(""));
+    clearFieldError(setFieldErrors, "otp");
+    setFormError("");
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -74,14 +83,31 @@ function VerifyOtpPage({ cmsPreview }) {
   const handleVerify = async (e) => {
     e.preventDefault();
     if (cmsPreview?.enabled) return;
-    setError("");
+    const normalizedOtp = otp.trim();
+
+    if (!email) {
+      setFormError("Your verification session expired. Please request a new OTP.");
+      return;
+    }
+
+    const nextFieldErrors = {
+      otp: validateOtp(normalizedOtp),
+    };
+
+    setFieldErrors(nextFieldErrors);
+    setFormError("");
+
+    if (Object.values(nextFieldErrors).some(Boolean)) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await api.post("/verify-otp", { email, otp });
+      const res = await api.post("/verify-otp", { email, otp: normalizedOtp });
       if (res.data.token) window.sessionStorage.setItem("token", res.data.token);
       if (!res.data.token) {
-        setError("Authentication failed. Please try logging in again.");
+        setFormError("Authentication failed. Please try logging in again.");
         setLoading(false);
         return;
       }
@@ -99,7 +125,7 @@ function VerifyOtpPage({ cmsPreview }) {
         setModalMessage("OTP verified! Redirecting to reset password...");
         setShowModal(true);
         setTimeout(() => {
-          navigate("/reset-password", { state: { email, otp } });
+          navigate("/reset-password", { state: { email, otp: normalizedOtp } });
         }, 1500);
         return;
       }
@@ -110,7 +136,9 @@ function VerifyOtpPage({ cmsPreview }) {
         navigate(getPostLoginPath(userData));
       }, 1500);
     } catch (err) {
-      setError(err.response?.data?.message || "Invalid or expired OTP.");
+      const normalizedError = normalizeApiValidationErrors(err);
+      setFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+      setFormError(normalizedError.formError || "Invalid or expired OTP.");
     } finally {
       setLoading(false);
     }
@@ -118,8 +146,14 @@ function VerifyOtpPage({ cmsPreview }) {
 
   const handleResend = async () => {
     if (countdown > 0 || cmsPreview?.enabled) return;
+
+    if (!email) {
+      setFormError("Your verification session expired. Please start again.");
+      return;
+    }
+
     setResendLoading(true);
-    setError("");
+    setFormError("");
     try {
       await api.post("/resend-otp", { email });
       setCountdown(60);
@@ -127,7 +161,7 @@ function VerifyOtpPage({ cmsPreview }) {
       setShowModal(true);
       setTimeout(() => setShowModal(false), 2000);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to resend OTP.");
+      setFormError(err.response?.data?.message || "Failed to resend OTP.");
     } finally {
       setResendLoading(false);
     }
@@ -181,28 +215,36 @@ function VerifyOtpPage({ cmsPreview }) {
             <strong className="text-gray-700">{email}</strong>
           </p>
 
-          {error && <p className="mb-6 text-sm text-red-500 bg-red-50 py-3 px-4 rounded-lg border border-red-100">{error}</p>}
+          {formError && <p className="mb-6 text-sm text-red-500 bg-red-50 py-3 px-4 rounded-lg border border-red-100">{formError}</p>}
 
           <form onSubmit={handleVerify} className="space-y-8">
-            <div className="flex gap-2 justify-between w-full max-w-sm mx-auto">
+            <div className="max-w-sm mx-auto">
+              <FormFieldHeader label="OTP Code" required error={fieldErrors.otp} />
+              <div className="flex gap-2 justify-between w-full">
               {otpArray.map((digit, index) => (
                 <input
                   key={index}
                   type="text"
                   maxLength="1"
+                  inputMode="numeric"
                   ref={(el) => (inputRefs.current[index] = el)}
                   value={digit}
-                  onChange={(e) => handleOtpChange(index, e.target.value)}
+                  onChange={(e) => handleOtpChange(index, normalizeOtp(e.target.value))}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   disabled={loading}
-                  className="w-11 h-14 sm:w-12 sm:h-16 rounded-xl border border-gray-300 text-center text-xl font-bold focus:bg-white bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#4f6fa5] focus:border-transparent transition-all shadow-sm mx-auto"
+                  className={getValidationInputClassName({
+                    hasError: !!fieldErrors.otp,
+                    baseClassName:
+                      "w-11 h-14 sm:w-12 sm:h-16 rounded-xl border text-center text-xl font-bold focus:bg-white focus:outline-none focus:ring-2 transition-all shadow-sm mx-auto",
+                  })}
                 />
               ))}
+              </div>
             </div>
 
             <button
               type="submit"
-              disabled={loading || otp.length < 6}
+              disabled={loading || otp.trim().length < 6}
               className="w-full rounded-xl bg-[#4f6fa5] py-3.5 text-white font-semibold hover:bg-[#3f5b89] disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-md flex items-center justify-center gap-2"
             >
               {loading && <Loader2 className="h-5 w-5 animate-spin" />}

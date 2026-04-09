@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 
 use App\Mail\OrderStatusUpdated;
@@ -127,19 +128,46 @@ class OrderController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'user_id'          => 'nullable|integer|exists:users,id',
             'schedule_id'      => 'required|integer|exists:schedules,id',
-            'address'          => 'required|string',
+            'address'          => 'required|string|max:200',
             'delivery_method'  => 'required|in:pickup,delivery',
-            'payment_method'   => 'required|string',
-            'reference_number' => 'required|string',
+            'payment_method'   => 'required|string|max:50',
+            'reference_number' => ['required', 'string', 'regex:/^[A-Za-z0-9]{4,30}$/'],
             'reference_image'  => 'required|image|mimes:jpeg,png,jpg|max:2048',
             'total_amount'     => 'required|numeric',
-            'special_message'  => 'nullable|string',
+            'special_message'  => 'nullable|string|max:150',
             'terms_accepted'   => 'accepted',
             'terms_scope'      => 'required|string|in:customer,internal',
+        ], [
+            'address.required' => 'Delivery address is required.',
+            'address.max' => 'Delivery address must not exceed 200 characters.',
+            'payment_method.required' => 'Payment method is required.',
+            'payment_method.max' => 'Payment method must not exceed 50 characters.',
+            'reference_number.required' => 'Reference code is required.',
+            'reference_number.regex' => 'Reference code must be 4 to 30 letters or numbers only.',
+            'reference_image.required' => 'Payment proof image is required.',
+            'reference_image.image' => 'Payment proof must be an image.',
+            'reference_image.mimes' => 'Payment proof must be a JPG or PNG image.',
+            'reference_image.max' => 'Payment proof image must be 2MB or smaller.',
+            'special_message.max' => 'Greeting card message must not exceed 150 characters.',
+            'terms_accepted.accepted' => 'Please review and accept the Customer Terms & Conditions.',
         ]);
+
+        $validator->after(function ($validator) use ($request) {
+            if ($request->input('delivery_method') === 'delivery') {
+                $address = trim((string) $request->input('address'));
+
+                if (mb_strlen($address) < 10) {
+                    $validator->errors()->add('address', 'Delivery address must be at least 10 characters.');
+                }
+            }
+        });
+
+        if ($validator->fails()) {
+            return $this->validationErrorResponse($validator->errors());
+        }
 
         $actor = $request->user();
         $isPrivilegedActor = $this->canManageOrders($actor);
@@ -152,18 +180,14 @@ class OrderController extends Controller
         }
 
         if (!$isPrivilegedActor && $requestedUserId !== (int) $actor->id) {
-            return response()->json([
-                'message' => 'You can only place orders for your own account.',
-            ], 403);
+            return $this->fieldErrorResponse('user_id', 'You can only place orders for your own account.', 403);
         }
 
         $resolvedUserId = $isPrivilegedActor ? $requestedUserId : (int) $actor->id;
         $orderUser = User::find($resolvedUserId);
 
         if (!$orderUser) {
-            return response()->json([
-                'message' => 'The selected customer account was not found.',
-            ], 404);
+            return $this->fieldErrorResponse('user_id', 'The selected customer account was not found.', 404);
         }
 
         $expectedTermsScope = in_array(strtolower((string) optional($orderUser)->role), ['user', 'customer'], true)
@@ -171,9 +195,7 @@ class OrderController extends Controller
             : 'internal';
 
         if ($request->input('terms_scope') !== $expectedTermsScope) {
-            return response()->json([
-                'message' => 'The selected terms do not match this account role.',
-            ], 422);
+            return $this->fieldErrorResponse('terms_scope', 'The selected terms do not match this account role.');
         }
 
         $now = Carbon::now();
@@ -181,9 +203,7 @@ class OrderController extends Controller
         $schedule = ScheduleService::findOrderableSchedule((int) $request->input('schedule_id'));
 
         if (!$schedule) {
-            return response()->json([
-                'message' => 'The selected event is not available for ordering.',
-            ], 422);
+            return $this->fieldErrorResponse('schedule_id', 'The selected event is not available for ordering.');
         }
 
         $orderId   = 'ORD-' . $datePart . '-' . strtoupper(substr(uniqid(), -4));

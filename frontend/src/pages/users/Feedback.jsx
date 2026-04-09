@@ -2,6 +2,10 @@ import React, { useState, useContext } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import FormFieldHeader from "../../components/form/FormFieldHeader";
+import { getValidationInputClassName } from "../../components/form/fieldStyles";
+import { FEEDBACK_MAX_LENGTH, validateFeedbackText } from "../../utils/authValidation";
+import { normalizeApiValidationErrors } from "../../utils/formValidation";
 
 function Feedback() {
   const { user } = useContext(AuthContext);
@@ -11,15 +15,23 @@ function Feedback() {
   const [hovered, setHovered] = useState(0);
   const [text, setText]       = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
+  const [fieldErrors, setFieldErrors] = useState({ feedback_rating: '', feedback_text: '' });
+  const [formError, setFormError]     = useState('');
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!rating || !text.trim()) return;
+    const nextFieldErrors = {
+      feedback_rating: !rating ? 'A rating is required.' : '',
+      feedback_text: validateFeedbackText(text),
+    };
+
+    setFieldErrors(nextFieldErrors);
+    setFormError('');
+
+    if (Object.values(nextFieldErrors).some(Boolean)) return;
 
     setLoading(true);
-    setError('');
 
     try {
       await api.post('/feedbacks', {
@@ -29,7 +41,9 @@ function Feedback() {
       setSubmitted(true);
       setTimeout(() => navigate('/'), 2500);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to submit feedback.');
+      const normalizedError = normalizeApiValidationErrors(err);
+      setFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+      setFormError(normalizedError.formError || 'Failed to submit feedback.');
     } finally {
       setLoading(false);
     }
@@ -58,16 +72,22 @@ function Feedback() {
 
             {/* Star Rating */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                How would you rate your experience?
-              </label>
-              <p className="text-xs text-gray-400 mb-2">Tap a star to leave your rating</p>
+              <FormFieldHeader
+                label="How would you rate your experience?"
+                required
+                error={fieldErrors.feedback_rating}
+                hint="Tap a star to leave your rating"
+                className="mb-2"
+              />
               <div className="flex gap-2">
                 {Array.from({ length: 5 }, (_, i) => (
                   <button
                     key={i}
                     type="button"
-                    onClick={() => setRating(i + 1)}
+                    onClick={() => {
+                      setRating(i + 1);
+                      setFieldErrors((prev) => ({ ...prev, feedback_rating: '' }));
+                    }}
                     onMouseEnter={() => setHovered(i + 1)}
                     onMouseLeave={() => setHovered(0)}
                     className="text-3xl transition-transform hover:scale-110 focus:outline-none"
@@ -87,21 +107,35 @@ function Feedback() {
 
             {/* Feedback Text */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Tell us more !
-              </label>
-              <p className="text-xs text-gray-400 mb-2">
-                What did you love? What could we do better?
-              </p>
+              <FormFieldHeader
+                label="Tell us more!"
+                required
+                error={fieldErrors.feedback_text}
+                hint="What did you love? What could we do better?"
+                count={text.length}
+                max={FEEDBACK_MAX_LENGTH}
+                className="mb-2"
+              />
               <textarea
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => {
+                  setText(e.target.value.slice(0, FEEDBACK_MAX_LENGTH));
+                  setFieldErrors((prev) => ({ ...prev, feedback_text: '' }));
+                  setFormError('');
+                }}
                 placeholder="e.g. The flowers were amazing and the staff was so friendly..."
-                className="w-full p-3 border border-gray-200 rounded-xl resize-none h-32 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                maxLength={FEEDBACK_MAX_LENGTH}
+                className={getValidationInputClassName({
+                  hasError: !!fieldErrors.feedback_text,
+                  baseClassName:
+                    "w-full p-3 border rounded-xl resize-none h-32 text-sm focus:outline-none focus:ring-2",
+                  validClassName: "border-gray-200 bg-white focus:border-blue-300 focus:ring-blue-200",
+                  invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500 focus:ring-rose-100",
+                })}
               />
             </div>
 
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {formError && <p className="text-red-500 text-sm">{formError}</p>}
 
             <div className="text-right">
               <button

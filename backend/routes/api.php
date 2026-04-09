@@ -117,7 +117,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/orders/{id}', [OrderController::class, 'update']);
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/{id}', [UserController::class, 'show']);
+    Route::get('/pos-transactions', [PosTransactionsController::class, 'index']);
     Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
+    Route::put('/pos-transactions/{id}', [PosTransactionsController::class, 'update']);
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);

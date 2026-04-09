@@ -10,6 +10,7 @@ import {
   Search, 
   ChevronDown, 
   Filter, 
+  Store,
   SlidersHorizontal, 
   Pencil, 
   Trash2, 
@@ -65,19 +66,27 @@ const PriorityPill = ({ priority = 0 }) => {
   );
 };
 
+const ORDER_VIEW_OPTIONS = [
+  { id: "preorder", label: "Preorder", icon: PackageSearch },
+  { id: "pos", label: "POS", icon: Store },
+];
+
 // --- MAIN COMPONENT ---
 function AdminOrdersPage({ user }) {
   const [orders, setOrders] = useState([]);
+  const [posTransactions, setPosTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeView, setActiveView] = useState("preorder");
 
   const [viewingOrder, setViewingOrder] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
   const [viewingPayment, setViewingPayment] = useState(null);
+  const [viewingPosTransaction, setViewingPosTransaction] = useState(null);
   const [status, setStatus] = useState("");
 
   const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', message: '' });
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, orderId: null });
-  const [archiveConfirm, setArchiveConfirm] = useState({ isOpen: false, order: null });
+  const [archiveConfirm, setArchiveConfirm] = useState({ isOpen: false, item: null, recordType: "preorder" });
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("priority");
@@ -85,10 +94,13 @@ function AdminOrdersPage({ user }) {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterDelivery, setFilterDelivery] = useState("all");
   const [filterEvent, setFilterEvent] = useState("all");
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState("all");
   
+  const [showViewMenu, setShowViewMenu] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
 
+  const viewRef = useRef(null);
   const sortRef = useRef(null);
   const filterRef = useRef(null);
 
@@ -113,19 +125,51 @@ function AdminOrdersPage({ user }) {
     } catch (err) {
       console.error("Failed to fetch orders:", err);
       showModalAlert("error", "Failed to load orders database.");
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const fetchPosTransactions = async () => {
+    try {
+      const res = await api.get("/pos-transactions");
+      const data = (Array.isArray(res.data) ? res.data : res.data.transactions ?? res.data.data ?? []).map((transaction) => ({
+        ...transaction,
+        total_amount: Number(transaction.total_amount) || 0,
+        cash_received: Number(transaction.cash_received) || 0,
+        isArchived: Boolean(transaction.isArchived),
+        items: transaction.items || [],
+      }));
+      setPosTransactions(data);
+    } catch (err) {
+      console.error("Failed to fetch POS transactions:", err);
+      showModalAlert("error", "Failed to load POS transactions.");
     }
   };
 
   useEffect(() => {
-    fetchOrders();
+    let isMounted = true;
+
+    const loadPageData = async () => {
+      setLoading(true);
+      await Promise.allSettled([fetchOrders(), fetchPosTransactions()]);
+
+      if (isMounted) {
+        setLoading(false);
+      }
+    };
+
+    loadPageData();
+
     const handleClickOutside = (event) => {
+      if (viewRef.current && !viewRef.current.contains(event.target)) setShowViewMenu(false);
       if (filterRef.current && !filterRef.current.contains(event.target)) setShowFilterMenu(false);
       if (sortRef.current && !sortRef.current.contains(event.target)) setShowSortMenu(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      isMounted = false;
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   // Extract unique events for the filter dropdown
@@ -172,12 +216,115 @@ function AdminOrdersPage({ user }) {
     return result;
   }, [orders, searchQuery, filterArchive, filterStatus, filterDelivery, filterEvent, sortBy]);
 
+  const filteredPosTransactions = useMemo(() => {
+    let result = [...posTransactions];
+    const showingArchived = filterArchive === "archived";
+
+    result = result.filter((transaction) => Boolean(transaction.isArchived) === showingArchived);
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((transaction) => {
+        const transactionId = String(transaction.id || "");
+        const paymentMethod = (transaction.payment_method || "").toLowerCase();
+        const itemNames = (transaction.items || [])
+          .map((item) => item.product_name || item.product?.name || "")
+          .join(" ")
+          .toLowerCase();
+
+        return transactionId.includes(q) || paymentMethod.includes(q) || itemNames.includes(q);
+      });
+    }
+
+    if (filterPaymentMethod !== "all") {
+      result = result.filter((transaction) => (
+        (transaction.payment_method || "").toLowerCase() === filterPaymentMethod.toLowerCase()
+      ));
+    }
+
+    result.sort((a, b) => {
+      if (sortBy === "created_at_asc") return new Date(a.created_at) - new Date(b.created_at);
+      if (sortBy === "total_amount") return Number(b.total_amount) - Number(a.total_amount);
+      if (sortBy === "id") return Number(b.id) - Number(a.id);
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+
+    return result;
+  }, [posTransactions, searchQuery, filterArchive, filterPaymentMethod, sortBy]);
+
+  const activeViewOption = useMemo(
+    () => ORDER_VIEW_OPTIONS.find((option) => option.id === activeView) || ORDER_VIEW_OPTIONS[0],
+    [activeView]
+  );
+
+  const sortOptions = activeView === "preorder"
+    ? [
+        { key: "priority", label: "Priority (High to Low)" },
+        { key: "created_at", label: "Newest Orders" },
+        { key: "created_at_asc", label: "Oldest Orders" },
+        { key: "total_amount", label: "Highest Value" },
+        { key: "id", label: "Order ID" },
+      ]
+    : [
+        { key: "created_at", label: "Newest Transactions" },
+        { key: "created_at_asc", label: "Oldest Transactions" },
+        { key: "total_amount", label: "Highest Value" },
+        { key: "id", label: "Transaction ID" },
+      ];
+
+  const activeRecords = activeView === "preorder" ? filteredOrders : filteredPosTransactions;
+  const totalRecords = activeView === "preorder" ? orders.length : posTransactions.length;
+
   const promptDelete = (id) => setDeleteConfirm({ isOpen: true, orderId: id });
-  const promptToggleArchive = (order) => setArchiveConfirm({ isOpen: true, order });
+  const promptToggleArchive = (item, recordType = "preorder") => setArchiveConfirm({ isOpen: true, item, recordType });
+
+  const handleViewChange = (nextView) => {
+    setActiveView(nextView);
+    setShowViewMenu(false);
+    setShowSortMenu(false);
+    setShowFilterMenu(false);
+    setSearchQuery("");
+    setViewingOrder(null);
+    setEditingOrder(null);
+    setViewingPayment(null);
+    setViewingPosTransaction(null);
+
+    if (nextView === "preorder") {
+      setSortBy("priority");
+      setFilterArchive("active");
+      setFilterStatus("all");
+      setFilterDelivery("all");
+      setFilterEvent("all");
+      return;
+    }
+
+    setSortBy("created_at");
+    setFilterArchive("active");
+    setFilterPaymentMethod("all");
+  };
 
   const handleArchiveFilterChange = (nextFilter) => {
     setFilterArchive(nextFilter);
     setShowFilterMenu(false);
+  };
+
+  const clearActiveFilters = () => {
+    setSearchQuery("");
+    setShowSortMenu(false);
+    setShowFilterMenu(false);
+
+    if (activeView === "preorder") {
+      setSortBy("priority");
+      setFilterArchive("active");
+      setFilterStatus("all");
+      setFilterDelivery("all");
+      setFilterEvent("all");
+      return;
+    }
+
+    setSortBy("created_at");
+    setFilterArchive("active");
+    setFilterPaymentMethod("all");
   };
 
   const confirmDelete = async () => {
@@ -195,28 +342,55 @@ function AdminOrdersPage({ user }) {
   };
 
   const confirmToggleArchive = async () => {
-    const order = archiveConfirm.order;
-    if (!order) return;
+    const item = archiveConfirm.item;
+    if (!item) return;
 
-    const orderId = order.order_id || order.id;
-    const isRestoring = Boolean(order.isArchived);
+    const isPosRecord = archiveConfirm.recordType === "pos";
+    const itemId = isPosRecord ? item.id : (item.order_id || item.id);
+    const isRestoring = Boolean(item.isArchived);
 
     try {
-      const res = await api.put(`/orders/${orderId}`, { isArchived: !isRestoring });
-      const updatedOrder = {
-        ...res.data,
-        order_items: res.data.order_items || res.data.orderItems || [],
-      };
+      if (isPosRecord) {
+        const res = await api.put(`/pos-transactions/${itemId}`, { isArchived: !isRestoring });
+        const updatedTransaction = {
+          ...res.data,
+          total_amount: Number(res.data.total_amount) || 0,
+          cash_received: Number(res.data.cash_received) || 0,
+          isArchived: Boolean(res.data.isArchived),
+          items: res.data.items || [],
+        };
 
-      setOrders((prev) => prev.map((item) => (
-        (item.order_id || item.id) === orderId ? updatedOrder : item
-      )));
-      setArchiveConfirm({ isOpen: false, order: null });
-      showModalAlert("success", isRestoring ? "Order restored successfully." : "Order archived successfully.");
+        setPosTransactions((prev) => prev.map((transaction) => (
+          transaction.id === itemId ? updatedTransaction : transaction
+        )));
+      } else {
+        const res = await api.put(`/orders/${itemId}`, { isArchived: !isRestoring });
+        const updatedOrder = {
+          ...res.data,
+          order_items: res.data.order_items || res.data.orderItems || [],
+        };
+
+        setOrders((prev) => prev.map((order) => (
+          (order.order_id || order.id) === itemId ? updatedOrder : order
+        )));
+      }
+
+      setArchiveConfirm({ isOpen: false, item: null, recordType: "preorder" });
+      showModalAlert(
+        "success",
+        isRestoring
+          ? `${isPosRecord ? "POS transaction" : "Order"} restored successfully.`
+          : `${isPosRecord ? "POS transaction" : "Order"} archived successfully.`
+      );
     } catch (err) {
       console.error("Archive update failed:", err.response?.data || err.message);
-      setArchiveConfirm({ isOpen: false, order: null });
-      showModalAlert("error", isRestoring ? "Failed to restore order." : "Failed to archive order.");
+      setArchiveConfirm({ isOpen: false, item: null, recordType: "preorder" });
+      showModalAlert(
+        "error",
+        isRestoring
+          ? `Failed to restore ${isPosRecord ? "POS transaction" : "order"}.`
+          : `Failed to archive ${isPosRecord ? "POS transaction" : "order"}.`
+      );
     }
   };
 
@@ -254,14 +428,6 @@ function AdminOrdersPage({ user }) {
     return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8000'}${imagePath}`;
   };
 
-  const sortOptions = [
-    { key: "priority", label: "Priority (High to Low)" },
-    { key: "created_at", label: "Newest Orders" },
-    { key: "created_at_asc", label: "Oldest Orders" },
-    { key: "total_amount", label: "Highest Value" },
-    { key: "id", label: "Order ID" },
-  ];
-
   return (
     <div className="min-h-screen flex flex-col px-8 py-8 bg-white rounded-lg relative font-sans">
 
@@ -270,8 +436,37 @@ function AdminOrdersPage({ user }) {
         <div>
           <h1 className="text-3xl font-playfair font-bold text-gray-900 tracking-tight">Orders</h1>
           <p className="mt-1.5 max-w-2xl text-sm font-medium text-gray-500">
-            Manage customer orders, track delivery statuses, and oversee transactions.
+            Manage customer preorders, review POS transactions, and track activity from one workspace.
           </p>
+        </div>
+        <div className="relative w-full max-w-[200px]" ref={viewRef}>
+          <button
+            type="button"
+            onClick={() => setShowViewMenu((prev) => !prev)}
+            className="flex w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm transition-all hover:border-gray-900 focus:outline-none focus:ring-2 focus:ring-[#eaf2ff]"
+          >
+            <div className="flex items-center gap-2">
+              <activeViewOption.icon className="h-4 w-4 text-[#4f6fa5]" />
+              {activeViewOption.label}
+            </div>
+            <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${showViewMenu ? "rotate-180" : ""}`} />
+          </button>
+          {showViewMenu && (
+            <div className="absolute right-0 top-full z-50 mt-2 w-full rounded-2xl border border-gray-100 bg-white p-2 shadow-xl animate-in fade-in zoom-in duration-100">
+              {ORDER_VIEW_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => handleViewChange(option.id)}
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
+                    activeView === option.id ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  }`}
+                >
+                  <option.icon className="h-4 w-4 shrink-0" />
+                  <span className="text-sm font-bold tracking-tight">{option.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -281,7 +476,9 @@ function AdminOrdersPage({ user }) {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search by order ID, customer name, or email..."
+            placeholder={activeView === "preorder"
+              ? "Search by order ID, customer name, or email..."
+              : "Search by transaction ID, item name, or payment method..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-slate-50 border border-gray-100 rounded-2xl pl-11 pr-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#eaf2ff] transition-all"
@@ -326,72 +523,111 @@ function AdminOrdersPage({ user }) {
             </button>
             {showFilterMenu && (
               <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 p-4 animate-in fade-in zoom-in duration-100 max-h-[80vh] overflow-y-auto">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Filter by Archive</p>
-                <div className="space-y-1 mb-4">
-                  {[
-                    { key: "active", label: "Active Orders" },
-                    { key: "archived", label: "Archived Orders" },
-                  ].map(({ key, label }) => (
-                    <button
-                      key={key}
-                      onClick={() => handleArchiveFilterChange(key)}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-colors ${filterArchive === key ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                {activeView === "preorder" ? (
+                  <>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Filter by Archive</p>
+                    <div className="space-y-1 mb-4">
+                      {[
+                        { key: "active", label: "Active Orders" },
+                        { key: "archived", label: "Archived Orders" },
+                      ].map(({ key, label }) => (
+                        <button
+                          key={key}
+                          onClick={() => handleArchiveFilterChange(key)}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-colors ${filterArchive === key ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
 
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-t border-gray-50 pt-4">Filter by Status</p>
-                <div className="space-y-1 mb-4">
-                  {["all", "pending", "processing", "shipped", "delivered", "cancelled"].map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setFilterStatus(s)}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-colors ${filterStatus === s ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
-                    >
-                      {s === "all" ? "All Statuses" : formatOrderStatus(s)}
-                    </button>
-                  ))}
-                </div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-t border-gray-50 pt-4">Filter by Status</p>
+                    <div className="space-y-1 mb-4">
+                      {["all", "pending", "processing", "shipped", "delivered", "cancelled"].map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => setFilterStatus(s)}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-colors ${filterStatus === s ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
+                        >
+                          {s === "all" ? "All Statuses" : formatOrderStatus(s)}
+                        </button>
+                      ))}
+                    </div>
 
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-t border-gray-50 pt-4">Filter by Event</p>
-                <div className="space-y-1 mb-4 max-h-32 overflow-y-auto">
-                  <button
-                    onClick={() => setFilterEvent("all")}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold capitalize transition-colors ${filterEvent === "all" ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
-                  >
-                    All Events
-                  </button>
-                  <button
-                    onClick={() => setFilterEvent("Unlinked")}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold capitalize transition-colors ${filterEvent === "Unlinked" ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
-                  >
-                    No Event / Unlinked
-                  </button>
-                  {uniqueEvents.map((e) => (
-                    <button
-                      key={e}
-                      onClick={() => setFilterEvent(e)}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold truncate transition-colors ${filterEvent === e ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
-                    >
-                      {e}
-                    </button>
-                  ))}
-                </div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-t border-gray-50 pt-4">Filter by Event</p>
+                    <div className="space-y-1 mb-4 max-h-32 overflow-y-auto">
+                      <button
+                        onClick={() => setFilterEvent("all")}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold capitalize transition-colors ${filterEvent === "all" ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
+                      >
+                        All Events
+                      </button>
+                      <button
+                        onClick={() => setFilterEvent("Unlinked")}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold capitalize transition-colors ${filterEvent === "Unlinked" ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
+                      >
+                        No Event / Unlinked
+                      </button>
+                      {uniqueEvents.map((e) => (
+                        <button
+                          key={e}
+                          onClick={() => setFilterEvent(e)}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold truncate transition-colors ${filterEvent === e ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
+                        >
+                          {e}
+                        </button>
+                      ))}
+                    </div>
 
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-t border-gray-50 pt-4">Filter by Delivery</p>
-                <div className="space-y-1 mb-4">
-                  {["all", "delivery", "pickup"].map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => setFilterDelivery(d)}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold capitalize transition-colors ${filterDelivery === d ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
-                    >
-                      {d === "all" ? "All Methods" : d}
-                    </button>
-                  ))}
-                </div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-t border-gray-50 pt-4">Filter by Delivery</p>
+                    <div className="space-y-1 mb-4">
+                      {["all", "delivery", "pickup"].map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => setFilterDelivery(d)}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold capitalize transition-colors ${filterDelivery === d ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
+                        >
+                          {d === "all" ? "All Methods" : d}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Filter by Archive</p>
+                    <div className="space-y-1 mb-4">
+                      {[
+                        { key: "active", label: "Active Transactions" },
+                        { key: "archived", label: "Archived Transactions" },
+                      ].map(({ key, label }) => (
+                        <button
+                          key={key}
+                          onClick={() => handleArchiveFilterChange(key)}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-colors ${filterArchive === key ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-t border-gray-50 pt-4">Filter by Payment Method</p>
+                    <div className="space-y-1">
+                      {[
+                        { key: "all", label: "All Payments" },
+                        { key: "cash", label: "Cash" },
+                        { key: "qr", label: "QR" },
+                      ].map(({ key, label }) => (
+                        <button
+                          key={key}
+                          onClick={() => { setFilterPaymentMethod(key); setShowFilterMenu(false); }}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-colors ${filterPaymentMethod === key ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -403,17 +639,29 @@ function AdminOrdersPage({ user }) {
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 text-gray-400 py-40">
             <Loader2 className="w-8 h-8 animate-spin text-[#4f6fa5]" />
-            <span className="text-xs font-bold uppercase tracking-widest">Loading Orders...</span>
-          </div>
-        ) : filteredOrders.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-gray-400 py-40">
-            <PackageSearch className="w-10 h-10 opacity-20 mb-2" />
-            <span className="text-sm font-bold text-gray-500">
-              {orders.length === 0 ? "No orders have been placed yet." : "No orders match your search or filters."}
+            <span className="text-xs font-bold uppercase tracking-widest">
+              {activeView === "preorder" ? "Loading Orders..." : "Loading POS Transactions..."}
             </span>
-            {orders.length > 0 && (
+          </div>
+        ) : activeRecords.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-gray-400 py-40">
+            {activeView === "preorder" ? (
+              <PackageSearch className="w-10 h-10 opacity-20 mb-2" />
+            ) : (
+              <Store className="w-10 h-10 opacity-20 mb-2" />
+            )}
+            <span className="text-sm font-bold text-gray-500">
+              {totalRecords === 0
+                ? activeView === "preorder"
+                  ? "No preorders have been placed yet."
+                  : "No POS transactions have been recorded yet."
+                : activeView === "preorder"
+                  ? "No preorders match your search or filters."
+                  : "No POS transactions match your search or filters."}
+            </span>
+            {totalRecords > 0 && (
               <button
-                onClick={() => { setSearchQuery(""); setFilterArchive("active"); setFilterStatus("all"); setFilterDelivery("all"); setFilterEvent("all"); }}
+                onClick={clearActiveFilters}
                 className="text-xs font-bold text-[#4f6fa5] hover:underline mt-1"
               >
                 Clear filters
@@ -422,139 +670,222 @@ function AdminOrdersPage({ user }) {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[900px]">
-              <thead>
-                <tr className="border-b border-gray-50 bg-[#f8fafc]">
-                  <th className="w-2"></th>
-                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap w-28">Order ID</th>
-                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Customer Info</th>
-                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Event</th>
-                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Delivery</th>
-                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Date Placed</th>
-                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Status</th>
-                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap text-right">Total</th>
-                  {(canUpdateOrderStatus || canArchiveOrders || canDeleteOrders) && <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Actions</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filteredOrders.map((order) => {
-                  const orderId = order.order_id || order.id;
-                  const isArchivedOrder = Boolean(order.isArchived);
-                  const edgeColor = getPriorityEdgeColor(order.user?.priority);
+            {activeView === "preorder" ? (
+              <table className="w-full text-left border-collapse min-w-[900px]">
+                <thead>
+                  <tr className="border-b border-gray-50 bg-[#f8fafc]">
+                    <th className="w-2"></th>
+                    <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap w-28">Order ID</th>
+                    <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Customer Info</th>
+                    <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Event</th>
+                    <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Delivery</th>
+                    <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Date Placed</th>
+                    <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Status</th>
+                    <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap text-right">Total</th>
+                    {(canUpdateOrderStatus || canArchiveOrders || canDeleteOrders) && <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredOrders.map((order) => {
+                    const orderId = order.order_id || order.id;
+                    const isArchivedOrder = Boolean(order.isArchived);
+                    const edgeColor = getPriorityEdgeColor(order.user?.priority);
 
-                  return (
-                    <tr
-                      key={orderId}
-                      onClick={() => canUpdateOrderStatus ? openEditModal(order) : setViewingOrder(order)}
-                      className={`group transition-colors cursor-pointer relative ${isArchivedOrder ? "bg-gray-50 text-gray-500 hover:bg-gray-100/80" : "hover:bg-slate-50/80"}`}
-                    >
-                      {/* Priority Edge Accent Bar */}
-                      <td className="p-0">
-                        <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${edgeColor}`}></div>
-                      </td>
-
-                      {/* Order ID */}
-                      <td className="px-5 py-5 pl-8">
-                        <span className={`text-sm font-bold whitespace-nowrap ${isArchivedOrder ? "text-gray-500" : "text-gray-900"}`}>#{orderId}</span>
-                        {isArchivedOrder && (
-                          <span className="mt-2 block w-fit rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-500">
-                            Archived
-                          </span>
-                        )}
-                      </td>
-                      
-                      {/* Customer Info */}
-                      <td className="px-5 py-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-[#4f6fa5] font-bold shrink-0 text-xs">
-                            {order.user?.first_name ? order.user.first_name.charAt(0) : "U"}
-                          </div>
-                          <div className="min-w-0 max-w-[150px] lg:max-w-[200px]">
-                            <p className={`font-bold tracking-tight truncate text-sm ${isArchivedOrder ? "text-gray-500" : "text-gray-900"}`}>
-                              {order.user?.first_name ? `${order.user.first_name} ${order.user.last_name}` : `User ID: ${order.user_id}`}
-                            </p>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 truncate mt-1">
-                              {order.user?.email || "No Email provided"}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      
-                      {/* Event */}
-                      <td className="px-5 py-5">
-                        <div className="max-w-[160px] lg:max-w-[200px]">
-                          <p className={`text-sm font-semibold truncate ${isArchivedOrder ? "text-gray-500" : "text-gray-700"}`}>
-                            {order.schedule?.schedule_name || "Legacy / Unlinked"}
-                          </p>
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1 truncate">
-                            {order.schedule?.event_date ? new Date(order.schedule.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "No linked date"}
-                          </p>
-                        </div>
-                      </td>
-
-                      {/* Delivery */}
-                      <td className="px-5 py-5">
-                        <p className={`text-sm font-semibold capitalize whitespace-nowrap ${isArchivedOrder ? "text-gray-500" : "text-gray-700"}`}>{order.delivery_method}</p>
-                      </td>
-
-                      {/* Date Placed */}
-                      <td className="px-5 py-5">
-                        <p className="text-sm font-semibold text-gray-600 whitespace-nowrap">
-                          {new Date(order.created_at).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </p>
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-5 py-5">
-                        <OrderStatusPill status={order.order_status} />
-                      </td>
-
-                      {/* Total */}
-                      <td className="px-5 py-5 text-right">
-                        <p className="text-sm font-bold text-[#4f6fa5] whitespace-nowrap">₱{order.total_amount}</p>
-                      </td>
-
-                      {/* Actions */}
-                      {(canUpdateOrderStatus || canArchiveOrders || canDeleteOrders) && (
+                    return (
+                      <tr
+                        key={orderId}
+                        onClick={() => canUpdateOrderStatus ? openEditModal(order) : setViewingOrder(order)}
+                        className={`group transition-colors cursor-pointer relative ${isArchivedOrder ? "bg-gray-50 text-gray-500 hover:bg-gray-100/80" : "hover:bg-slate-50/80"}`}
+                      >
+                        <td className="p-0">
+                          <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${edgeColor}`}></div>
+                        </td>
+                        <td className="px-5 py-5 pl-8">
+                          <span className={`text-sm font-bold whitespace-nowrap ${isArchivedOrder ? "text-gray-500" : "text-gray-900"}`}>#{orderId}</span>
+                          {isArchivedOrder && (
+                            <span className="mt-2 block w-fit rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-500">
+                              Archived
+                            </span>
+                          )}
+                        </td>
                         <td className="px-5 py-5">
-                          <div className="flex items-center justify-end gap-2">
-                            {canUpdateOrderStatus && !isArchivedOrder && (
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-[#4f6fa5] font-bold shrink-0 text-xs">
+                              {order.user?.first_name ? order.user.first_name.charAt(0) : "U"}
+                            </div>
+                            <div className="min-w-0 max-w-[150px] lg:max-w-[200px]">
+                              <p className={`font-bold tracking-tight truncate text-sm ${isArchivedOrder ? "text-gray-500" : "text-gray-900"}`}>
+                                {order.user?.first_name ? `${order.user.first_name} ${order.user.last_name}` : `User ID: ${order.user_id}`}
+                              </p>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 truncate mt-1">
+                                {order.user?.email || "No Email provided"}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-5">
+                          <div className="max-w-[160px] lg:max-w-[200px]">
+                            <p className={`text-sm font-semibold truncate ${isArchivedOrder ? "text-gray-500" : "text-gray-700"}`}>
+                              {order.schedule?.schedule_name || "Legacy / Unlinked"}
+                            </p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1 truncate">
+                              {order.schedule?.event_date ? new Date(order.schedule.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "No linked date"}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-5 py-5">
+                          <p className={`text-sm font-semibold capitalize whitespace-nowrap ${isArchivedOrder ? "text-gray-500" : "text-gray-700"}`}>{order.delivery_method}</p>
+                        </td>
+                        <td className="px-5 py-5">
+                          <p className="text-sm font-semibold text-gray-600 whitespace-nowrap">
+                            {new Date(order.created_at).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </p>
+                        </td>
+                        <td className="px-5 py-5">
+                          <OrderStatusPill status={order.order_status} />
+                        </td>
+                        <td className="px-5 py-5 text-right">
+                          <p className="text-sm font-bold text-[#4f6fa5] whitespace-nowrap">₱{order.total_amount}</p>
+                        </td>
+                        {(canUpdateOrderStatus || canArchiveOrders || canDeleteOrders) && (
+                          <td className="px-5 py-5">
+                            <div className="flex items-center justify-end gap-2">
+                              {canUpdateOrderStatus && !isArchivedOrder && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); openEditModal(order); }}
+                                  className="flex items-center gap-1.5 rounded-lg border-2 border-amber-500 px-3 py-1.5 text-xs font-bold text-amber-500 transition-all duration-300 shadow-sm hover:bg-amber-500 hover:text-white"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" /> Edit
+                                </button>
+                              )}
+                              {canArchiveOrders && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); promptToggleArchive(order); }}
+                                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white border-2 transition-all duration-300 shadow-sm ${
+                                    isArchivedOrder
+                                      ? "bg-emerald-500 border-emerald-500 hover:bg-transparent hover:text-emerald-600"
+                                      : "bg-amber-500 border-amber-500 hover:bg-transparent hover:text-amber-500"
+                                  }`}
+                                >
+                                  {isArchivedOrder ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+                                  {isArchivedOrder ? "Restore" : "Archive"}
+                                </button>
+                              )}
+                              {canDeleteOrders && isArchivedOrder && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); promptDelete(orderId); }}
+                                  className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-xs font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-500 transition-all duration-300 shadow-sm"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full text-left border-collapse min-w-[900px]">
+                <thead>
+                  <tr className="border-b border-gray-50 bg-[#f8fafc]">
+                    <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Transaction ID</th>
+                    <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Items</th>
+                    <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Payment</th>
+                    <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Date Recorded</th>
+                    <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap text-right">Paid</th>
+                    <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap text-right">Total</th>
+                    {canArchiveOrders && <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredPosTransactions.map((transaction) => {
+                    const itemCount = (transaction.items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+                    const itemPreview = (transaction.items || [])
+                      .slice(0, 2)
+                      .map((item) => item.product_name || item.product?.name || "Item")
+                      .join(", ");
+                    const hasMoreItems = (transaction.items || []).length > 2;
+                    const paidAmount = transaction.payment_method === "CASH"
+                      ? transaction.cash_received || transaction.total_amount
+                      : transaction.total_amount;
+                    const isArchivedTransaction = Boolean(transaction.isArchived);
+
+                    return (
+                      <tr
+                        key={transaction.id}
+                        onClick={() => setViewingPosTransaction(transaction)}
+                        className={`cursor-pointer transition-colors ${isArchivedTransaction ? "bg-gray-50 text-gray-500 hover:bg-gray-100/80" : "hover:bg-slate-50/80"}`}
+                      >
+                        <td className="px-5 py-5">
+                          <span className={`text-sm font-bold whitespace-nowrap ${isArchivedTransaction ? "text-gray-500" : "text-gray-900"}`}>POS #{transaction.id}</span>
+                          {isArchivedTransaction && (
+                            <span className="mt-2 block w-fit rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-500">
+                              Archived
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-5">
+                          <div className="max-w-[280px]">
+                            <p className={`text-sm font-semibold truncate ${isArchivedTransaction ? "text-gray-500" : "text-gray-800"}`}>
+                              {itemPreview || "No items recorded"}
+                              {hasMoreItems ? ` +${transaction.items.length - 2} more` : ""}
+                            </p>
+                            <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                              {itemCount} total item{itemCount === 1 ? "" : "s"}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-5 py-5">
+                          <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
+                            (transaction.payment_method || "").toUpperCase() === "CASH"
+                              ? "border-amber-200 bg-amber-50 text-amber-600"
+                              : "border-violet-200 bg-violet-50 text-violet-600"
+                          }`}>
+                            {transaction.payment_method}
+                          </span>
+                        </td>
+                        <td className="px-5 py-5">
+                          <div className="whitespace-nowrap">
+                            <p className="text-sm font-semibold text-gray-700">
+                              {new Date(transaction.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                            </p>
+                            <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                              {new Date(transaction.created_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-5 py-5 text-right">
+                          <p className={`text-sm font-semibold whitespace-nowrap ${isArchivedTransaction ? "text-gray-500" : "text-gray-700"}`}>₱{paidAmount.toLocaleString()}</p>
+                        </td>
+                        <td className="px-5 py-5 text-right">
+                          <p className="text-sm font-bold text-[#4f6fa5] whitespace-nowrap">₱{transaction.total_amount.toLocaleString()}</p>
+                        </td>
+                        {canArchiveOrders && (
+                          <td className="px-5 py-5">
+                            <div className="flex items-center justify-end gap-2">
                               <button
-                                onClick={(e) => { e.stopPropagation(); openEditModal(order); }}
-                                className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white border-2 border-amber-500 hover:bg-transparent hover:text-amber-500 transition-all duration-300 shadow-sm"
-                              >
-                                <Pencil className="w-3.5 h-3.5" /> Status
-                              </button>
-                            )}
-                            {canArchiveOrders && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); promptToggleArchive(order); }}
+                                onClick={(e) => { e.stopPropagation(); promptToggleArchive(transaction, "pos"); }}
                                 className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white border-2 transition-all duration-300 shadow-sm ${
-                                  isArchivedOrder
+                                  isArchivedTransaction
                                     ? "bg-emerald-500 border-emerald-500 hover:bg-transparent hover:text-emerald-600"
                                     : "bg-amber-500 border-amber-500 hover:bg-transparent hover:text-amber-500"
                                 }`}
                               >
-                                {isArchivedOrder ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
-                                {isArchivedOrder ? "Restore" : "Archive"}
+                                {isArchivedTransaction ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+                                {isArchivedTransaction ? "Restore" : "Archive"}
                               </button>
-                            )}
-                            {canDeleteOrders && isArchivedOrder && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); promptDelete(orderId); }}
-                                className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-xs font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-500 transition-all duration-300 shadow-sm"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" /> Delete
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
       </div>
@@ -576,9 +907,6 @@ function AdminOrdersPage({ user }) {
                     {isEditingMode ? "Manage Order Status" : "Order Details"}
                   </h2>
                 </div>
-                {!isEditingMode && (
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-gray-500">Read Only</span>
-                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -623,17 +951,17 @@ function AdminOrdersPage({ user }) {
               {activeOrder.payment && (
                 <button
                   onClick={() => setViewingPayment(activeOrder.payment)}
-                  className="mb-6 w-full flex items-center justify-between rounded-2xl border border-[#4f6fa5]/20 bg-[#eaf2ff] px-5 py-4 hover:bg-[#dceeff] transition-colors group"
+                  className="mb-6 w-full flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-5 py-4 hover:bg-gray-50 transition-colors group shadow-sm"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-[#4f6fa5]/10 flex items-center justify-center">
-                      <CreditCard className="w-4 h-4 text-[#4f6fa5]" />
+                    <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+                      <CreditCard className="w-4 h-4 text-gray-600" />
                     </div>
                     <div className="text-left">
-                      <p className="text-xs font-bold uppercase tracking-widest text-[#4f6fa5]">Payment Record</p>
+                      <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Payment Record</p>
                     </div>
                   </div>
-                  <ChevronDown className="w-4 h-4 text-[#4f6fa5] -rotate-90 group-hover:translate-x-0.5 transition-transform" />
+                  <ChevronDown className="w-4 h-4 text-gray-400 -rotate-90 group-hover:translate-x-0.5 transition-transform" />
                 </button>
               )}
 
@@ -707,6 +1035,138 @@ function AdminOrdersPage({ user }) {
                     Save Status Changes
                   </button>
                 )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {viewingPosTransaction && (() => {
+        const paidAmount = viewingPosTransaction.payment_method === "CASH"
+          ? viewingPosTransaction.cash_received || viewingPosTransaction.total_amount
+          : viewingPosTransaction.total_amount;
+        const changeAmount = Math.max(
+          0,
+          (viewingPosTransaction.cash_received || 0) - (viewingPosTransaction.total_amount || 0)
+        );
+
+        return (
+          <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[320] p-4">
+            <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5] mb-3 inline-block">
+                    POS #{viewingPosTransaction.id}
+                  </span>
+                  <h2 className="text-2xl font-playfair font-bold text-gray-900">POS Transaction Details</h2>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-1.5">
+                    <Store className="w-3.5 h-3.5" /> Overview
+                  </h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-gray-500">Date Recorded</span>
+                      <span className="font-semibold text-gray-900 text-right">
+                        {new Date(viewingPosTransaction.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-gray-500">Time</span>
+                      <span className="font-semibold text-gray-900 text-right">
+                        {new Date(viewingPosTransaction.created_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">Payment Method</span>
+                      <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
+                        (viewingPosTransaction.payment_method || "").toUpperCase() === "CASH"
+                          ? "border-amber-200 bg-amber-50 text-amber-600"
+                          : "border-violet-200 bg-violet-50 text-violet-600"
+                      }`}>
+                        {viewingPosTransaction.payment_method}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">Status</span>
+                      <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                        Completed
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5" /> Payment Summary
+                  </h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Paid</span>
+                      <span className="font-semibold text-gray-900">₱{paidAmount.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Total</span>
+                      <span className="font-semibold text-gray-900">₱{Number(viewingPosTransaction.total_amount || 0).toLocaleString()}</span>
+                    </div>
+                    {viewingPosTransaction.payment_method === "CASH" && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Cash Received</span>
+                          <span className="font-semibold text-gray-900">₱{Number(viewingPosTransaction.cash_received || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Change</span>
+                          <span className="font-semibold text-gray-900">₱{changeAmount.toLocaleString()}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-8">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 ml-1 block">Line Items</h3>
+                <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm divide-y divide-gray-50">
+                  {(viewingPosTransaction.items || []).map((item, index) => (
+                    <div key={item.id || index} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden shrink-0">
+                          {item.product?.image ? (
+                            <img src={getImageUrl(item.product.image)} alt={item.product?.name || item.product_name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold">Img</div>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900 tracking-tight">{item.product?.name || item.product_name}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-0.5">
+                            Qty: {item.quantity} x ₱{Number(item.price || 0).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right pl-4">
+                        <p className="text-sm font-bold text-[#4f6fa5]">₱{(Number(item.quantity || 0) * Number(item.price || 0)).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="bg-gray-50 p-4 flex justify-between items-center">
+                    <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Transaction Total</span>
+                    <span className="text-lg font-bold text-gray-900">₱{Number(viewingPosTransaction.total_amount || 0).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4 border-t border-gray-100">
+                <button
+                  onClick={() => setViewingPosTransaction(null)}
+                  className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>
@@ -809,9 +1269,10 @@ function AdminOrdersPage({ user }) {
       )}
 
       {/* CONFIRM ARCHIVE/RESTORE MODAL */}
-      {archiveConfirm.isOpen && archiveConfirm.order && (() => {
-        const orderId = archiveConfirm.order.order_id || archiveConfirm.order.id;
-        const isRestoring = Boolean(archiveConfirm.order.isArchived);
+      {archiveConfirm.isOpen && archiveConfirm.item && (() => {
+        const isPosRecord = archiveConfirm.recordType === "pos";
+        const recordId = isPosRecord ? archiveConfirm.item.id : (archiveConfirm.item.order_id || archiveConfirm.item.id);
+        const isRestoring = Boolean(archiveConfirm.item.isArchived);
 
         return (
           <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
@@ -820,15 +1281,17 @@ function AdminOrdersPage({ user }) {
                 {isRestoring ? <ArchiveRestore size={28} /> : <Archive size={28} />}
               </div>
               <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
-                {isRestoring ? "Restore Order?" : "Archive Order?"}
+                {isRestoring
+                  ? `Restore ${isPosRecord ? "POS Transaction" : "Order"}?`
+                  : `Archive ${isPosRecord ? "POS Transaction" : "Order"}?`}
               </h3>
               <p className="text-sm text-gray-500 mb-8 px-2">
                 {isRestoring
-                  ? `Restore Order #${orderId} to the active orders list?`
-                  : `Archive Order #${orderId}? You can restore it from the Archived filter.`}
+                  ? `Restore ${isPosRecord ? "POS transaction" : "order"} #${recordId} to the active list?`
+                  : `Archive ${isPosRecord ? "POS transaction" : "order"} #${recordId}? You can restore it from the Archived filter.`}
               </p>
               <div className="flex justify-center gap-3">
-                <button onClick={() => setArchiveConfirm({ isOpen: false, order: null })} className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
+                <button onClick={() => setArchiveConfirm({ isOpen: false, item: null, recordType: "preorder" })} className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
                   Cancel
                 </button>
                 <button

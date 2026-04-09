@@ -1,5 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-
 import { useEffect, useRef, useState } from "react";
 import api from "../../services/api";
 import { useNavbar } from "../../contexts/NavbarContext";
@@ -7,6 +5,21 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { MapPin, Package, Plus, CheckCircle2, X, Loader2, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getAssetUrl } from "../../utils/assetUrl";
+import FormFieldHeader from "../../components/form/FormFieldHeader";
+import { getValidationInputClassName } from "../../components/form/fieldStyles";
+import {
+  EMAIL_MAX_LENGTH,
+  PHONE_MAX_LENGTH,
+  validateAddressField,
+  validateEmail,
+  validateName,
+  validateOptionalPhoneNumber,
+  validateOtp,
+  validatePassword,
+  validatePasswordConfirmation,
+  normalizePhoneNumber,
+} from "../../utils/authValidation";
+import { clearFieldError, normalizeApiValidationErrors } from "../../utils/formValidation";
 
 const MotionDiv = motion.div;
 
@@ -50,6 +63,26 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordOtp, setPasswordOtp] = useState("");
   const [passwordOtpSent, setPasswordOtpSent] = useState(false);
+  const [profileFieldErrors, setProfileFieldErrors] = useState({
+    first_name: "",
+    last_name: "",
+    phone_number: "",
+    profile_picture: "",
+  });
+  const [addressFieldErrors, setAddressFieldErrors] = useState({
+    house_number: "",
+    street: "",
+    barangay: "",
+    city: "",
+    zip_code: "",
+  });
+  const [emailFieldErrors, setEmailFieldErrors] = useState({ email: "", otp: "" });
+  const [passwordFieldErrors, setPasswordFieldErrors] = useState({
+    current_password: "",
+    new_password: "",
+    confirmPassword: "",
+    otp: "",
+  });
 
   // Helper to show status modal
   const showAlert = (type, message) => setStatusModal({ isOpen: true, type, message });
@@ -110,7 +143,14 @@ export default function ProfilePage() {
   // -------------------------------------------------------------
   // PROFILE LOGIC
   // -------------------------------------------------------------
-  const handleProfileChange = (e) => setProfile({ ...profile, [e.target.name]: e.target.value });
+  const handleProfileChange = (e) => {
+    const { name, value } = e.target;
+    const nextValue =
+      name === "phone_number" ? normalizePhoneNumber(value).slice(0, PHONE_MAX_LENGTH) : value;
+
+    setProfile({ ...profile, [name]: nextValue });
+    clearFieldError(setProfileFieldErrors, name);
+  };
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -119,10 +159,30 @@ export default function ProfilePage() {
       return;
     }
 
+    const allowedPhotoTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
+    if (!allowedPhotoTypes.includes(file.type)) {
+      setProfileFieldErrors((prev) => ({
+        ...prev,
+        profile_picture: "Only JPG, JPEG, PNG, and GIF files are allowed.",
+      }));
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileFieldErrors((prev) => ({
+        ...prev,
+        profile_picture: "Image must be 5MB or smaller.",
+      }));
+      e.target.value = "";
+      return;
+    }
+
     const formData = new FormData();
     formData.append("profile_picture", file);
 
     setUploadingPhoto(true);
+    setProfileFieldErrors((prev) => ({ ...prev, profile_picture: "" }));
 
     try {
       const res = await api.post("/profile/photo", formData, {
@@ -142,7 +202,12 @@ export default function ProfilePage() {
       await fetchProfile();
       showAlert("success", "Profile photo updated successfully.");
     } catch (err) {
-      showAlert("error", err.response?.data?.message || "Failed to upload profile photo.");
+      const normalizedError = normalizeApiValidationErrors(err);
+      setProfileFieldErrors((prev) => ({
+        ...prev,
+        profile_picture: normalizedError.fieldErrors.profile_picture || "",
+      }));
+      showAlert("error", normalizedError.formError || err.response?.data?.message || "Failed to upload profile photo.");
     } finally {
       setUploadingPhoto(false);
       e.target.value = "";
@@ -150,6 +215,19 @@ export default function ProfilePage() {
   };
 
   const saveProfile = async () => {
+    const nextFieldErrors = {
+      first_name: validateName(profile.first_name, "First name"),
+      last_name: validateName(profile.last_name, "Last name"),
+      phone_number: validateOptionalPhoneNumber(profile.phone_number || ""),
+      profile_picture: profileFieldErrors.profile_picture,
+    };
+
+    setProfileFieldErrors(nextFieldErrors);
+
+    if (Object.values(nextFieldErrors).some(Boolean)) {
+      return;
+    }
+
     try {
       const res = await api.put("/profile", {
         first_name: profile.first_name,
@@ -161,7 +239,9 @@ export default function ProfilePage() {
       fetchProfile();
       showAlert("success", "Personal information updated successfully.");
     } catch (err) {
-      showAlert("error", err.response?.data?.message || "Failed to update personal information.");
+      const normalizedError = normalizeApiValidationErrors(err);
+      setProfileFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+      showAlert("error", normalizedError.formError || "Failed to update personal information.");
     }
   };
 
@@ -180,11 +260,31 @@ export default function ProfilePage() {
   // -------------------------------------------------------------
   // ADDRESSES LOGIC
   // -------------------------------------------------------------
-  const handleAddressFormChange = (e) => setAddressForm({ ...addressForm, [e.target.name]: e.target.value });
+  const handleAddressFormChange = (e) => {
+    const { name, value } = e.target;
+    const nextValue =
+      name === "zip_code"
+        ? value.replace(/\D+/g, "").slice(0, 4)
+        : name === "house_number"
+          ? value.replace(/\D+/g, "").slice(0, 20)
+          : value;
+
+    setAddressForm({ ...addressForm, [name]: nextValue });
+    clearFieldError(setAddressFieldErrors, name);
+  };
 
   const saveAddress = async () => {
-    if (!addressForm.house_number || !addressForm.street || !addressForm.barangay || !addressForm.city || !addressForm.zip_code) {
-      showAlert("error", "All address fields are required.");
+    const nextFieldErrors = {
+      house_number: validateAddressField("house_number", addressForm.house_number),
+      street: validateAddressField("street", addressForm.street),
+      barangay: validateAddressField("barangay", addressForm.barangay),
+      city: validateAddressField("city", addressForm.city),
+      zip_code: validateAddressField("zip_code", addressForm.zip_code),
+    };
+
+    setAddressFieldErrors(nextFieldErrors);
+
+    if (Object.values(nextFieldErrors).some(Boolean)) {
       return;
     }
 
@@ -201,9 +301,12 @@ export default function ProfilePage() {
       setEditingAddressIndex(null);
       setShowAddressModal(false);
       fetchProfile();
+      setAddressFieldErrors({ house_number: "", street: "", barangay: "", city: "", zip_code: "" });
       showAlert("success", "Address saved successfully.");
     } catch (err) {
-      showAlert("error", err.response?.data?.message || "Failed to save address.");
+      const normalizedError = normalizeApiValidationErrors(err);
+      setAddressFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+      showAlert("error", normalizedError.formError || "Failed to save address.");
     }
   };
 
@@ -223,6 +326,7 @@ export default function ProfilePage() {
   };
 
   const openAddressEditor = (index) => {
+    setAddressFieldErrors({ house_number: "", street: "", barangay: "", city: "", zip_code: "" });
     if (index === -1) {
       setAddressForm({ house_number: "", street: "", barangay: "", city: "", zip_code: "" });
       setEditingAddressIndex(-1);
@@ -237,43 +341,108 @@ export default function ProfilePage() {
   // SECURITY LOGIC
   // -------------------------------------------------------------
   const sendEmailOtp = async () => {
-    if (!newEmail || newEmail === profile.email) return showAlert("error", "Enter a valid new email address.");
+    const nextFieldErrors = {
+      email: validateEmail(newEmail),
+      otp: "",
+    };
+
+    if (newEmail.trim().toLowerCase() === (profile.email || "").trim().toLowerCase()) {
+      nextFieldErrors.email = "New email must be different from current email.";
+    }
+
+    setEmailFieldErrors(nextFieldErrors);
+
+    if (Object.values(nextFieldErrors).some(Boolean)) {
+      return;
+    }
+
     try {
       await api.post("/profile/email-otp", { email: newEmail.trim() });
       setEmailOtpSent(true);
       showAlert("success", "OTP sent to your new email address.");
     } catch (err) {
-      showAlert("error", err.response?.data?.message || "Failed to send OTP.");
+      const normalizedError = normalizeApiValidationErrors(err);
+      setEmailFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+      showAlert("error", normalizedError.formError || "Failed to send OTP.");
     }
   };
 
   const verifyEmailOtp = async () => {
+    const nextFieldErrors = {
+      email: validateEmail(newEmail),
+      otp: validateOtp(emailOtp),
+    };
+
+    setEmailFieldErrors(nextFieldErrors);
+
+    if (Object.values(nextFieldErrors).some(Boolean)) {
+      return;
+    }
+
     try {
       const res = await api.post("/profile/email-verify", { email: newEmail.trim(), otp: emailOtp.trim() });
       setEmailChangeMode(false);
       setEmailOtpSent(false);
+      setNewEmail("");
+      setEmailOtp("");
+      setEmailFieldErrors({ email: "", otp: "" });
       fetchProfile();
       if (res.data?.email) updateUser({ ...profile, email: res.data.email });
       showAlert("success", "Email address updated successfully.");
     } catch (err) {
-      showAlert("error", err.response?.data?.message || "Failed to verify OTP.");
+      const normalizedError = normalizeApiValidationErrors(err, { otp: "otp", email: "email" });
+      setEmailFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+      showAlert("error", normalizedError.formError || "Failed to verify OTP.");
     }
   };
 
   const sendPasswordOtp = async () => {
-    if (!currentPassword || !newPassword || newPassword !== confirmPassword) {
-      return showAlert("error", "Please check your password inputs. Make sure new passwords match.");
+    const nextFieldErrors = {
+      current_password: validatePassword(currentPassword, { label: "Current password" }),
+      new_password: validatePassword(newPassword, { label: "New password" }),
+      confirmPassword: validatePasswordConfirmation(newPassword, confirmPassword),
+      otp: "",
+    };
+
+    if (!nextFieldErrors.new_password && currentPassword && newPassword && currentPassword === newPassword) {
+      nextFieldErrors.new_password = "New password must be different from current password.";
     }
+
+    setPasswordFieldErrors(nextFieldErrors);
+
+    if (Object.values(nextFieldErrors).some(Boolean)) {
+      return;
+    }
+
     try {
       await api.post("/profile/password-otp");
       setPasswordOtpSent(true);
       showAlert("success", "OTP sent to your email address.");
     } catch (err) {
-      showAlert("error", err.response?.data?.message || "Failed to send OTP.");
+      const normalizedError = normalizeApiValidationErrors(err);
+      setPasswordFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+      showAlert("error", normalizedError.formError || "Failed to send OTP.");
     }
   };
 
   const verifyPasswordOtp = async () => {
+    const nextFieldErrors = {
+      current_password: validatePassword(currentPassword, { label: "Current password" }),
+      new_password: validatePassword(newPassword, { label: "New password" }),
+      confirmPassword: validatePasswordConfirmation(newPassword, confirmPassword),
+      otp: validateOtp(passwordOtp),
+    };
+
+    if (!nextFieldErrors.new_password && currentPassword && newPassword && currentPassword === newPassword) {
+      nextFieldErrors.new_password = "New password must be different from current password.";
+    }
+
+    setPasswordFieldErrors(nextFieldErrors);
+
+    if (Object.values(nextFieldErrors).some(Boolean)) {
+      return;
+    }
+
     try {
       await api.post("/profile/password-verify", {
         otp: passwordOtp.trim(),
@@ -284,8 +453,16 @@ export default function ProfilePage() {
       showAlert("success", "Password changed successfully.");
       setPasswordOtpSent(false);
       setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setPasswordOtp("");
+      setPasswordFieldErrors({ current_password: "", new_password: "", confirmPassword: "", otp: "" });
     } catch (err) {
-      showAlert("error", err.response?.data?.message || "Failed to verify OTP.");
+      const normalizedError = normalizeApiValidationErrors(err, {
+        current_password: "current_password",
+        new_password: "new_password",
+        new_password_confirmation: "confirmPassword",
+        otp: "otp",
+      });
+      setPasswordFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+      showAlert("error", normalizedError.formError || "Failed to verify OTP.");
     }
   };
 
@@ -389,21 +566,26 @@ export default function ProfilePage() {
                           {uploadingPhoto ? "Uploading..." : profile?.profile_picture ? "Change Photo" : "Upload Photo"}
                         </button>
                       </div>
+                      {profileFieldErrors.profile_picture ? (
+                        <p className="mb-4 text-[10px] font-bold uppercase tracking-wide text-rose-500">
+                          {profileFieldErrors.profile_picture}
+                        </p>
+                      ) : null}
                       <div className="grid md:grid-cols-2 gap-6">
                         <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1.5">First Name</label>
-                          <input name="first_name" value={profile.first_name} onChange={handleProfileChange} disabled={!editingProfile} className={`w-full border ${editingProfile ? "border-gray-300 focus:border-[#3b82f6]" : "border-gray-200 bg-gray-50"} rounded-xl px-3 py-2 text-sm text-gray-800 outline-none transition-colors`} />
+                          <FormFieldHeader label="First Name" required error={profileFieldErrors.first_name} />
+                          <input name="first_name" value={profile.first_name} onChange={handleProfileChange} disabled={!editingProfile} maxLength={50} className={`w-full border ${editingProfile ? getValidationInputClassName({ hasError: !!profileFieldErrors.first_name, baseClassName: "rounded-xl px-3 py-2 text-sm text-gray-800 outline-none transition-colors", validClassName: "border-gray-300 bg-white focus:border-[#3b82f6]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" }) : "border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-sm text-gray-800 outline-none transition-colors"}`} />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1.5">Last Name</label>
-                          <input name="last_name" value={profile.last_name} onChange={handleProfileChange} disabled={!editingProfile} className={`w-full border ${editingProfile ? "border-gray-300 focus:border-[#3b82f6]" : "border-gray-200 bg-gray-50"} rounded-xl px-3 py-2 text-sm text-gray-800 outline-none transition-colors`} />
+                          <FormFieldHeader label="Last Name" required error={profileFieldErrors.last_name} />
+                          <input name="last_name" value={profile.last_name} onChange={handleProfileChange} disabled={!editingProfile} maxLength={50} className={`w-full border ${editingProfile ? getValidationInputClassName({ hasError: !!profileFieldErrors.last_name, baseClassName: "rounded-xl px-3 py-2 text-sm text-gray-800 outline-none transition-colors", validClassName: "border-gray-300 bg-white focus:border-[#3b82f6]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" }) : "border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-sm text-gray-800 outline-none transition-colors"}`} />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1.5">Phone Number</label>
-                          <input name="phone_number" value={profile.phone_number ?? ""} onChange={handleProfileChange} disabled={!editingProfile} className={`w-full border ${editingProfile ? "border-gray-300 focus:border-[#3b82f6]" : "border-gray-200 bg-gray-50"} rounded-xl px-3 py-2 text-sm text-gray-800 outline-none transition-colors`} />
+                          <FormFieldHeader label="Phone Number" error={profileFieldErrors.phone_number} />
+                          <input name="phone_number" value={profile.phone_number ?? ""} onChange={handleProfileChange} disabled={!editingProfile} inputMode="numeric" maxLength={PHONE_MAX_LENGTH} className={`w-full border ${editingProfile ? getValidationInputClassName({ hasError: !!profileFieldErrors.phone_number, baseClassName: "rounded-xl px-3 py-2 text-sm text-gray-800 outline-none transition-colors", validClassName: "border-gray-300 bg-white focus:border-[#3b82f6]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" }) : "border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-sm text-gray-800 outline-none transition-colors"}`} />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1.5">Email Address</label>
+                          <FormFieldHeader label="Email Address" required error={emailFieldErrors.email} />
                           {!emailChangeMode ? (
                             <div className="flex gap-2">
                               <input value={profile.email ?? ""} disabled className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-sm text-gray-800 outline-none" />
@@ -413,16 +595,19 @@ export default function ProfilePage() {
                             </div>
                           ) : (
                             <div className="space-y-2">
-                              <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="New Email Address" className="w-full border border-gray-300 focus:border-[#3b82f6] rounded-xl px-3 py-2 text-sm text-gray-800 outline-none" />
+                              <input type="email" value={newEmail} onChange={(e) => { setNewEmail(e.target.value); clearFieldError(setEmailFieldErrors, "email"); }} maxLength={EMAIL_MAX_LENGTH} placeholder="New Email Address" className={getValidationInputClassName({ hasError: !!emailFieldErrors.email, baseClassName: "w-full rounded-xl px-3 py-2 text-sm text-gray-800 outline-none", validClassName: "border border-gray-300 bg-white focus:border-[#3b82f6]", invalidClassName: "border border-rose-400 bg-rose-50 focus:border-rose-500" })} />
                               {!emailOtpSent ? (
                                 <div className="flex gap-2">
                                   <button onClick={sendEmailOtp} className="bg-[#0f1b2d] text-white border border-[#0f1b2d] px-3 py-1.5 rounded-full font-medium text-xs hover:bg-white hover:text-[#0f1b2d] transition-all duration-300 ease-out">Verify</button>
                                   <button onClick={() => setEmailChangeMode(false)} className="text-gray-500 font-medium text-xs border border-gray-900 px-4 py-2 rounded-full bg-white text-gray-900 hover:bg-[#0f1b2d] hover:text-white transition-all duration-300 ease-out">Cancel</button>
                                 </div>
                               ) : (
-                                <div className="flex gap-2 items-center">
-                                  <input type="text" value={emailOtp} onChange={(e) => setEmailOtp(e.target.value)} placeholder="000000" className="w-full flex-grow border border-gray-300 focus:border-[#3b82f6] rounded-xl px-3 py-1.5 text-center tracking-widest text-sm outline-none" maxLength="6" />
+                                <div className="space-y-2">
+                                  <FormFieldHeader label="Email OTP" required error={emailFieldErrors.otp} />
+                                  <div className="flex gap-2 items-center">
+                                  <input type="text" value={emailOtp} onChange={(e) => { setEmailOtp(e.target.value.replace(/\D+/g, "").slice(0, 6)); clearFieldError(setEmailFieldErrors, "otp"); }} placeholder="000000" className={getValidationInputClassName({ hasError: !!emailFieldErrors.otp, baseClassName: "w-full flex-grow rounded-xl px-3 py-1.5 text-center tracking-widest text-sm outline-none", validClassName: "border border-gray-300 bg-white focus:border-[#3b82f6]", invalidClassName: "border border-rose-400 bg-rose-50 focus:border-rose-500" })} maxLength="6" inputMode="numeric" />
                                   <button onClick={verifyEmailOtp} className="bg-[#0f1b2d] text-white border border-[#0f1b2d] px-3 py-1.5 rounded-full font-medium text-xs hover:bg-white hover:text-[#0f1b2d] transition-all duration-300 ease-out">Done</button>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -446,24 +631,27 @@ export default function ProfilePage() {
                     <div className="p-6">
                       <div className="grid md:grid-cols-3 gap-6 mb-6">
                         <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1.5">Old Password</label>
-                          <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Enter password" className="w-full border border-gray-200 focus:border-[#3b82f6] rounded-xl px-3 py-2 text-sm text-gray-800 outline-none" />
+                          <FormFieldHeader label="Current Password" required error={passwordFieldErrors.current_password} />
+                          <input type="password" value={currentPassword} onChange={(e) => { setCurrentPassword(e.target.value); clearFieldError(setPasswordFieldErrors, "current_password"); }} placeholder="Enter password" className={getValidationInputClassName({ hasError: !!passwordFieldErrors.current_password, baseClassName: "w-full rounded-xl px-3 py-2 text-sm text-gray-800 outline-none", validClassName: "border border-gray-200 bg-white focus:border-[#3b82f6]", invalidClassName: "border border-rose-400 bg-rose-50 focus:border-rose-500" })} />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1.5">New Password</label>
-                          <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Enter new password" className="w-full border border-gray-200 focus:border-[#3b82f6] rounded-xl px-3 py-2 text-sm text-gray-800 outline-none" />
+                          <FormFieldHeader label="New Password" required error={passwordFieldErrors.new_password} />
+                          <input type="password" value={newPassword} onChange={(e) => { setNewPassword(e.target.value); clearFieldError(setPasswordFieldErrors, "new_password"); }} placeholder="Enter new password" className={getValidationInputClassName({ hasError: !!passwordFieldErrors.new_password, baseClassName: "w-full rounded-xl px-3 py-2 text-sm text-gray-800 outline-none", validClassName: "border border-gray-200 bg-white focus:border-[#3b82f6]", invalidClassName: "border border-rose-400 bg-rose-50 focus:border-rose-500" })} />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1.5">Confirm Password</label>
-                          <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm password" className="w-full border border-gray-200 focus:border-[#3b82f6] rounded-xl px-3 py-2 text-sm text-gray-800 outline-none" />
+                          <FormFieldHeader label="Confirm Password" required error={passwordFieldErrors.confirmPassword} />
+                          <input type="password" value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); clearFieldError(setPasswordFieldErrors, "confirmPassword"); }} placeholder="Confirm password" className={getValidationInputClassName({ hasError: !!passwordFieldErrors.confirmPassword, baseClassName: "w-full rounded-xl px-3 py-2 text-sm text-gray-800 outline-none", validClassName: "border border-gray-200 bg-white focus:border-[#3b82f6]", invalidClassName: "border border-rose-400 bg-rose-50 focus:border-rose-500" })} />
                         </div>
                       </div>
                       {!passwordOtpSent ? (
                         <button onClick={sendPasswordOtp} className="bg-[#0f1b2d] text-white border border-[#0f1b2d] px-4 py-2 rounded-full font-medium text-xs hover:bg-white hover:text-[#0f1b2d] transition-all duration-300 ease-out">Send OTP</button>
                       ) : (
-                        <div className="flex gap-3 items-center mt-2 max-w-sm">
-                          <input type="text" placeholder="OTP" value={passwordOtp} onChange={(e) => setPasswordOtp(e.target.value)} className="w-32 border border-gray-300 rounded-xl px-3 py-2 tracking-widest text-center focus:border-[#3b82f6] outline-none text-sm" maxLength="6" />
+                        <div className="mt-2 max-w-sm space-y-2">
+                          <FormFieldHeader label="Password OTP" required error={passwordFieldErrors.otp} />
+                          <div className="flex gap-3 items-center">
+                          <input type="text" placeholder="OTP" value={passwordOtp} onChange={(e) => { setPasswordOtp(e.target.value.replace(/\D+/g, "").slice(0, 6)); clearFieldError(setPasswordFieldErrors, "otp"); }} className={getValidationInputClassName({ hasError: !!passwordFieldErrors.otp, baseClassName: "w-32 rounded-xl px-3 py-2 tracking-widest text-center outline-none text-sm", validClassName: "border border-gray-300 bg-white focus:border-[#3b82f6]", invalidClassName: "border border-rose-400 bg-rose-50 focus:border-rose-500" })} maxLength="6" inputMode="numeric" />
                           <button onClick={verifyPasswordOtp} className="bg-[#0f1b2d] text-white border border-[#0f1b2d] px-4 py-2 rounded-full font-medium text-xs hover:bg-white hover:text-[#0f1b2d] transition-all duration-300 ease-out">Verify & Update</button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -775,11 +963,26 @@ export default function ProfilePage() {
               {editingAddressIndex === -1 ? "Add Address" : "Edit Address"}
             </h3>
             <div className="grid md:grid-cols-2 gap-5 mb-6">
-              <input name="house_number" value={addressForm.house_number} onChange={handleAddressFormChange} placeholder="House / Unit No." className="w-full border-2 border-gray-900 rounded-xl px-3 py-2 text-sm focus:border-[#3b82f6] outline-none" />
-              <input name="street" value={addressForm.street} onChange={handleAddressFormChange} placeholder="Street" className="w-full border-2 border-gray-900 rounded-xl px-3 py-2 text-sm focus:border-[#3b82f6] outline-none" />
-              <input name="barangay" value={addressForm.barangay} onChange={handleAddressFormChange} placeholder="Barangay" className="w-full border-2 border-gray-900 rounded-xl px-3 py-2 text-sm focus:border-[#3b82f6] outline-none" />
-              <input name="city" value={addressForm.city} onChange={handleAddressFormChange} placeholder="City" className="w-full border-2 border-gray-900 rounded-xl px-3 py-2 text-sm focus:border-[#3b82f6] outline-none" />
-              <input name="zip_code" value={addressForm.zip_code} onChange={handleAddressFormChange} placeholder="Zip Code" className="w-full border-2 border-gray-900 rounded-xl px-3 py-2 text-sm md:col-span-2 focus:border-[#3b82f6] outline-none" />
+              <div>
+                <FormFieldHeader label="House / Unit No." required error={addressFieldErrors.house_number} />
+                <input name="house_number" value={addressForm.house_number} onChange={handleAddressFormChange} placeholder="House / Unit No." inputMode="numeric" maxLength={20} className={getValidationInputClassName({ hasError: !!addressFieldErrors.house_number, baseClassName: "w-full rounded-xl px-3 py-2 text-sm outline-none", validClassName: "border-2 border-gray-900 bg-white focus:border-[#3b82f6]", invalidClassName: "border-2 border-rose-400 bg-rose-50 focus:border-rose-500" })} />
+              </div>
+              <div>
+                <FormFieldHeader label="Street" required error={addressFieldErrors.street} />
+                <input name="street" value={addressForm.street} onChange={handleAddressFormChange} placeholder="Street" maxLength={255} className={getValidationInputClassName({ hasError: !!addressFieldErrors.street, baseClassName: "w-full rounded-xl px-3 py-2 text-sm outline-none", validClassName: "border-2 border-gray-900 bg-white focus:border-[#3b82f6]", invalidClassName: "border-2 border-rose-400 bg-rose-50 focus:border-rose-500" })} />
+              </div>
+              <div>
+                <FormFieldHeader label="Barangay" required error={addressFieldErrors.barangay} />
+                <input name="barangay" value={addressForm.barangay} onChange={handleAddressFormChange} placeholder="Barangay" maxLength={255} className={getValidationInputClassName({ hasError: !!addressFieldErrors.barangay, baseClassName: "w-full rounded-xl px-3 py-2 text-sm outline-none", validClassName: "border-2 border-gray-900 bg-white focus:border-[#3b82f6]", invalidClassName: "border-2 border-rose-400 bg-rose-50 focus:border-rose-500" })} />
+              </div>
+              <div>
+                <FormFieldHeader label="City" required error={addressFieldErrors.city} />
+                <input name="city" value={addressForm.city} onChange={handleAddressFormChange} placeholder="City" maxLength={255} className={getValidationInputClassName({ hasError: !!addressFieldErrors.city, baseClassName: "w-full rounded-xl px-3 py-2 text-sm outline-none", validClassName: "border-2 border-gray-900 bg-white focus:border-[#3b82f6]", invalidClassName: "border-2 border-rose-400 bg-rose-50 focus:border-rose-500" })} />
+              </div>
+              <div className="md:col-span-2">
+                <FormFieldHeader label="Zip Code" required error={addressFieldErrors.zip_code} />
+                <input name="zip_code" value={addressForm.zip_code} onChange={handleAddressFormChange} placeholder="Zip Code" inputMode="numeric" maxLength={4} className={getValidationInputClassName({ hasError: !!addressFieldErrors.zip_code, baseClassName: "w-full rounded-xl px-3 py-2 text-sm outline-none", validClassName: "border-2 border-gray-900 bg-white focus:border-[#3b82f6]", invalidClassName: "border-2 border-rose-400 bg-rose-50 focus:border-rose-500" })} />
+              </div>
             </div>
             <div className="flex justify-end gap-3">
               <button

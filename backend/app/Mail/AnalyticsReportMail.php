@@ -23,9 +23,12 @@ class AnalyticsReportMail extends Mailable
 
     public function build()
     {
+        $safeSectionName = preg_replace('/[^A-Za-z0-9]+/', '_', (string) $this->sectionName);
+        $safeSectionName = trim((string) $safeSectionName, '_') ?: 'Analytics_Report';
+
         return $this->subject("Petal Express: {$this->sectionName} Report")
                     ->view('emails.analytics_notification')
-                    ->attachData($this->pdfData, "Petal_Express_Report.pdf", [
+                    ->attachData($this->pdfData, "Petal_Express_{$safeSectionName}.pdf", [
                         'mime' => 'application/pdf',
                     ]);
     }

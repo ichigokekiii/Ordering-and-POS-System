@@ -73,7 +73,7 @@ class ScheduleController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return $this->validationErrorResponse($validator->errors());
         }
 
         $validated = $validator->validated();
@@ -113,7 +113,7 @@ class ScheduleController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return $this->validationErrorResponse($validator->errors());
         }
 
         $validated = $validator->validated();
@@ -149,16 +149,18 @@ class ScheduleController extends Controller
     // Email to Calendar
     public function book(Request $request, $id)
     {
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'email' => 'required|email'
         ]);
+
+        if ($validator->fails()) {
+            return $this->validationErrorResponse($validator->errors());
+        }
 
         $schedule = ScheduleService::findBookableSchedule((int) $id);
 
         if (!$schedule) {
-            return response()->json([
-                'message' => 'This event is no longer available for booking.',
-            ], 400);
+            return $this->fieldErrorResponse('schedule_id', 'This event is no longer available for booking.');
         }
 
         $existingBooking = ScheduleBooking::where('schedule_id', $schedule->id)
@@ -166,7 +168,7 @@ class ScheduleController extends Controller
             ->first();
 
         if ($existingBooking) {
-            return response()->json(['message' => 'You have already booked this event.'], 400);
+            return $this->fieldErrorResponse('email', 'You have already booked this event.');
         }
 
         ScheduleBooking::firstOrCreate([

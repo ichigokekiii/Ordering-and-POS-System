@@ -630,7 +630,7 @@ function AdminProductPage({ user }) {
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2">
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Product Name</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Product Name <span className="text-rose-500">*</span></label>
                     <CharCount value={name} max={VALIDATION.name.maxLength} />
                   </div>
                   <input
@@ -645,7 +645,7 @@ function AdminProductPage({ user }) {
 
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Price (₱)</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Price (₱) <span className="text-rose-500">*</span></label>
                   </div>
                   <input
                     type="text"
@@ -663,7 +663,7 @@ function AdminProductPage({ user }) {
               {/* Description */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Description</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Description <span className="text-rose-500">*</span></label>
                   <CharCount value={description} max={VALIDATION.description.maxLength} />
                 </div>
                 <textarea
@@ -680,7 +680,7 @@ function AdminProductPage({ user }) {
               {activeSection === "custom" && (
                 <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5 space-y-5">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3 block">Custom Products</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3 block">Custom Products <span className="text-rose-500">*</span></label>
                     <div className="flex gap-6">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -718,7 +718,7 @@ function AdminProductPage({ user }) {
 
                   {category === "Additional" && (
                     <div className="pt-4 border-t border-gray-200">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3 block">Flower Type</label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3 block">Flower Type <span className="text-rose-500">*</span></label>
                       <div className="flex gap-6">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
@@ -778,7 +778,7 @@ function AdminProductPage({ user }) {
 
               {activeSection === "premades" && (
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Collection Category</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Collection Category <span className="text-rose-500">*</span></label>
                   <select
                     className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
                     value={category}
@@ -823,7 +823,7 @@ function AdminProductPage({ user }) {
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Cover Image</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Cover Image {!isEditing && <span className="text-rose-500">*</span>}</label>
                   <input
                     type="file"
                     accept={ADMIN_IMAGE_ACCEPT}

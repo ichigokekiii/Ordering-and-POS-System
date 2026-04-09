@@ -12,11 +12,35 @@ use App\Mail\SendOtpMail;
 
 class AuthController extends Controller
 {
+    private function normalizeAuthInput(Request $request): void
+    {
+        $normalizedInput = [];
+
+        if ($request->has('email')) {
+            $normalizedInput['email'] = trim((string) $request->input('email'));
+        }
+
+        if ($request->has('otp')) {
+            $normalizedInput['otp'] = trim((string) $request->input('otp'));
+        }
+
+        if (!empty($normalizedInput)) {
+            $request->merge($normalizedInput);
+        }
+    }
+
     public function login(Request $request)
     {
+        $this->normalizeAuthInput($request);
+
         $request->validate([
             'email' => 'required|email',
-            'password' => 'required'
+            'password' => ['required', 'string', 'not_regex:/^\s*$/'],
+        ], [
+            'email.required' => 'Email is required.',
+            'email.email' => 'Please enter a valid email address.',
+            'password.required' => 'Password is required.',
+            'password.not_regex' => 'Password is required.',
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -158,9 +182,16 @@ class AuthController extends Controller
 
     public function verifyOtp(Request $request)
     {
+        $this->normalizeAuthInput($request);
+
         $request->validate([
             'email' => 'required|email',
             'otp' => 'required|digits:6',
+        ], [
+            'email.required' => 'Email is required.',
+            'email.email' => 'Please enter a valid email address.',
+            'otp.required' => 'OTP is required.',
+            'otp.digits' => 'OTP must be exactly 6 digits.',
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -175,7 +206,7 @@ class AuthController extends Controller
             ->first();
 
         if (!$otp) {
-            return response()->json(['message' => 'Invalid or expired OTP'], 400);
+            return $this->fieldErrorResponse('otp', 'Invalid or expired OTP');
         }
 
         $user->is_verified = true;
@@ -206,8 +237,13 @@ class AuthController extends Controller
 
     public function resendOtp(Request $request)
     {
+        $this->normalizeAuthInput($request);
+
         $request->validate([
             'email' => 'required|email'
+        ], [
+            'email.required' => 'Email is required.',
+            'email.email' => 'Please enter a valid email address.',
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -245,8 +281,13 @@ class AuthController extends Controller
 
     public function forgotPassword(Request $request)
     {
+        $this->normalizeAuthInput($request);
+
         $request->validate([
             'email' => 'required|email'
+        ], [
+            'email.required' => 'Email is required.',
+            'email.email' => 'Please enter a valid email address.',
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -268,10 +309,21 @@ class AuthController extends Controller
 
     public function resetPassword(Request $request)
     {
+        $this->normalizeAuthInput($request);
+
         $request->validate([
             'email' => 'required|email',
             'otp' => 'required|digits:6',
-            'password' => 'required|min:6|confirmed',
+            'password' => ['required', 'string', 'min:6', 'confirmed', 'not_regex:/^\s*$/'],
+        ], [
+            'email.required' => 'Email is required.',
+            'email.email' => 'Please enter a valid email address.',
+            'otp.required' => 'OTP is required.',
+            'otp.digits' => 'OTP must be exactly 6 digits.',
+            'password.required' => 'Password is required.',
+            'password.min' => 'Password must be at least 6 characters.',
+            'password.confirmed' => 'Password confirmation does not match.',
+            'password.not_regex' => 'Password is required.',
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -288,9 +340,7 @@ class AuthController extends Controller
             ->first();
 
         if (!$otp) {
-            return response()->json([
-                'message' => 'Invalid or expired OTP'
-            ], 400);
+            return $this->fieldErrorResponse('otp', 'Invalid or expired OTP');
         }
 
         $user->password = Hash::make($request->password);

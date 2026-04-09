@@ -1,4 +1,3 @@
-/* eslint-disable no-undef */
 /* eslint-disable no-unused-vars */
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -7,7 +6,28 @@ import { Loader2 } from "lucide-react";
 import api from "../../services/api";
 import TermsAndConditionsModal from "../../components/TermsAndConditionsModal";
 import TermsConsentField from "../../components/TermsConsentField";
+import FormFieldHeader from "../../components/form/FormFieldHeader";
+import { getValidationInputClassName } from "../../components/form/fieldStyles";
 import { TERMS_SCOPE } from "../../utils/termsAndConditions";
+import {
+  EMAIL_MAX_LENGTH,
+  NAME_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  PHONE_MAX_LENGTH,
+  normalizeEmail,
+  normalizeName,
+  normalizePhoneNumber,
+  validateEmail,
+  validateName,
+  validatePassword,
+  validatePasswordConfirmation,
+  validatePhoneNumber,
+} from "../../utils/authValidation";
+import {
+  clearFieldError,
+  focusFirstInvalidField,
+  normalizeApiValidationErrors,
+} from "../../utils/formValidation";
 
 // CMS IMPORTS
 import { useContents } from "../../contexts/ContentContext";
@@ -31,7 +51,8 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
   // =====================
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
+  const [loginFormError, setLoginFormError] = useState("");
+  const [loginFieldErrors, setLoginFieldErrors] = useState({ email: "", password: "" });
   const [loginLoading, setLoginLoading] = useState(false);
   const [attemptsLeft, setAttemptsLeft] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
@@ -50,9 +71,25 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
   const [showTerms, setShowTerms] = useState(false);
   const [regTermsAcknowledged, setRegTermsAcknowledged] = useState(false);
   const [regTermsAccepted, setRegTermsAccepted] = useState(false);
-  const [regTermsError, setRegTermsError] = useState("");
-  const [regError, setRegError] = useState("");
+  const [regFormError, setRegFormError] = useState("");
+  const [regFieldErrors, setRegFieldErrors] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone_number: "",
+    password: "",
+    confirmPassword: "",
+    terms: "",
+  });
   const [regLoading, setRegLoading] = useState(false);
+  const loginEmailRef = useRef(null);
+  const loginPasswordRef = useRef(null);
+  const regFirstNameRef = useRef(null);
+  const regLastNameRef = useRef(null);
+  const regEmailRef = useRef(null);
+  const regPhoneRef = useRef(null);
+  const regPasswordRef = useRef(null);
+  const regConfirmPasswordRef = useRef(null);
 
   // =====================
   // LOGIN COUNTDOWN TICKER
@@ -66,7 +103,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timerRef.current);
-          setLoginError("");
+          setLoginFormError("");
           return 0;
         }
         return prev - 1;
@@ -89,97 +126,132 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
     if (cmsPreview?.enabled) return; // Prevent API calls in CMS preview
     if (countdown > 0 || isLocked) return;
 
-    setLoginError("");
+    const normalizedEmail = normalizeEmail(loginEmail);
+    const nextFieldErrors = {
+      email: validateEmail(normalizedEmail),
+      password: validatePassword(loginPassword),
+    };
+
+    setLoginFieldErrors(nextFieldErrors);
+    setLoginFormError("");
     setAttemptsLeft(null);
+
+    if (Object.values(nextFieldErrors).some(Boolean)) {
+      focusFirstInvalidField(
+        {
+          email: loginEmailRef,
+          password: loginPasswordRef,
+        },
+        nextFieldErrors
+      );
+      return;
+    }
+
+    setLoginEmail(normalizedEmail);
     setLoginLoading(true);
 
     try {
       const res = await api.post("/login", {
-        email: loginEmail,
+        email: normalizedEmail,
         password: loginPassword,
       });
 
       const loggedInUser = res.data.user || res.data;
 
       localStorage.setItem("pendingUser", JSON.stringify(loggedInUser));
-      navigate("/verify-otp", { state: { email: loginEmail, from: 'login' } });
+      navigate("/verify-otp", { state: { email: normalizedEmail, from: 'login' } });
     } catch (err) {
       const data = err.response?.data;
       const status = err.response?.status;
 
       if (status === 423 || data?.locked) {
         setIsLocked(true);
-        setLoginError(data?.message || "Your account has been locked. Please contact an administrator.");
+        setLoginFormError(data?.message || "Your account has been locked. Please contact an administrator.");
         setAttemptsLeft(null);
       } else if (status === 429 || data?.cooldown) {
         const secs = data?.remaining_seconds ?? 120;
         setCountdown(secs);
         setAttemptsLeft(null);
-        setLoginError("");
+        setLoginFormError("");
       } else if (status === 401) {
-        setLoginError("Invalid email or password.");
+        setLoginFormError("Invalid email or password.");
         if (data?.attempts_left !== undefined) {
           setAttemptsLeft(Math.max(0, data.attempts_left));
         }
       } else {
-        setLoginError(data?.message || "Invalid credentials.");
+        const normalizedError = normalizeApiValidationErrors(err);
+        setLoginFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+        setLoginFormError(normalizedError.formError || data?.message || "Invalid credentials.");
       }
     } finally {
       setLoginLoading(false);
     }
   };
 
-const handleRegisterSubmit = async (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     if (cmsPreview?.enabled) return;
-    setRegError("");
-    setRegTermsError("");
+    const normalizedFirstName = normalizeName(regFirstName);
+    const normalizedLastName = normalizeName(regLastName);
+    const normalizedEmail = normalizeEmail(regEmail);
+    const normalizedPhone = normalizePhoneNumber(regPhone);
 
-    // 1. Validate Names (No Symbols or Numbers)
-    const nameRegex = /^[A-Za-z\s\-']+$/;
-    if (!nameRegex.test(regFirstName) || !nameRegex.test(regLastName)) {
-      setRegError("Names can only contain letters, spaces, and hyphens.");
+    const nextFieldErrors = {
+      first_name: validateName(normalizedFirstName, "First name"),
+      last_name: validateName(normalizedLastName, "Last name"),
+      email: validateEmail(normalizedEmail),
+      phone_number: validatePhoneNumber(normalizedPhone),
+      password: validatePassword(regPassword),
+      confirmPassword: validatePasswordConfirmation(regPassword, regConfirmPassword),
+      terms:
+        !regTermsAcknowledged || !regTermsAccepted
+          ? "Please review and accept the Customer Terms & Conditions before continuing."
+          : "",
+    };
+
+    setRegFormError("");
+    setRegFieldErrors(nextFieldErrors);
+
+    if (Object.values(nextFieldErrors).some(Boolean)) {
+      focusFirstInvalidField(
+        {
+          first_name: regFirstNameRef,
+          last_name: regLastNameRef,
+          email: regEmailRef,
+          phone_number: regPhoneRef,
+          password: regPasswordRef,
+          confirmPassword: regConfirmPasswordRef,
+        },
+        nextFieldErrors
+      );
       return;
     }
 
-    // 2. Validate Phone Number (Exactly 11 digits)
-    const phoneRegex = /^\d{11}$/;
-    if (!phoneRegex.test(regPhone)) {
-      setRegError("Phone number must be exactly 11 digits (e.g. 09123456789).");
-      return;
-    }
-
-    // 3. Validate Passwords
-    if (regPassword !== regConfirmPassword) {
-      setRegError("Passwords do not match.");
-      return;
-    }
-    if (regPassword.length < 6) {
-      setRegError("Password must be at least 6 characters.");
-      return;
-    }
-
-    if (!regTermsAcknowledged || !regTermsAccepted) {
-      setRegTermsError("Please review and accept the Customer Terms & Conditions before continuing.");
-      return;
-    }
-
+    setRegFirstName(normalizedFirstName);
+    setRegLastName(normalizedLastName);
+    setRegEmail(normalizedEmail);
+    setRegPhone(normalizedPhone);
     setRegLoading(true);
 
     try {
       await api.post("/register", {
-        first_name: regFirstName,
-        last_name: regLastName,
-        email: regEmail,
+        first_name: normalizedFirstName,
+        last_name: normalizedLastName,
+        email: normalizedEmail,
         password: regPassword,
-        phone_number: regPhone,
+        phone_number: normalizedPhone,
         terms_accepted: true,
         terms_scope: TERMS_SCOPE.CUSTOMER,
       });
 
-      navigate("/verify-otp", { state: { email: regEmail, from: 'register' } });
+      navigate("/verify-otp", { state: { email: normalizedEmail, from: 'register' } });
     } catch (err) {
-      setRegError(err.response?.data?.error || err.response?.data?.message || "Registration failed");
+      const normalizedError = normalizeApiValidationErrors(err, {
+        terms_accepted: "terms",
+      });
+
+      setRegFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+      setRegFormError(normalizedError.formError || "Registration failed");
     } finally {
       setRegLoading(false);
     }
@@ -197,57 +269,127 @@ const handleRegisterSubmit = async (e) => {
           <div className={`md:hidden ${!isSignIn ? 'block' : 'hidden'}`}></div>
           <div className="w-full pt-4 pb-8 md:pt-0" style={{ pointerEvents: !isSignIn ? 'auto' : 'none' }}>
             <h2 className="text-3xl font-bold mb-6 text-gray-800">Create Account</h2>
-            {regError && <p className="mb-4 text-sm text-red-500 bg-red-50 py-2 px-3 rounded border border-red-200">{regError}</p>}
+            {regFormError && <p className="mb-4 text-sm text-red-500 bg-red-50 py-2 px-3 rounded border border-red-200">{regFormError}</p>}
             
             <form onSubmit={handleRegisterSubmit} className="space-y-4">
               <div className="flex gap-2">
+                <div className="w-full">
+                  <FormFieldHeader label="First Name" required error={regFieldErrors.first_name} />
+                  <input
+                    ref={regFirstNameRef}
+                    className={getValidationInputClassName({
+                      hasError: !!regFieldErrors.first_name,
+                      baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all",
+                    })}
+                    placeholder="First Name"
+                    value={regFirstName}
+                    onChange={(e) => {
+                      setRegFirstName(e.target.value);
+                      clearFieldError(setRegFieldErrors, "first_name");
+                    }}
+                    maxLength={NAME_MAX_LENGTH}
+                    required
+                  />
+                </div>
+                <div className="w-full">
+                  <FormFieldHeader label="Last Name" required error={regFieldErrors.last_name} />
+                  <input
+                    ref={regLastNameRef}
+                    className={getValidationInputClassName({
+                      hasError: !!regFieldErrors.last_name,
+                      baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all",
+                    })}
+                    placeholder="Last Name"
+                    value={regLastName}
+                    onChange={(e) => {
+                      setRegLastName(e.target.value);
+                      clearFieldError(setRegFieldErrors, "last_name");
+                    }}
+                    maxLength={NAME_MAX_LENGTH}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <FormFieldHeader label="Email Address" required error={regFieldErrors.email} />
                 <input
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f6fa5] focus:border-transparent transition-all"
-                  placeholder="First Name"
-                  value={regFirstName}
-                  onChange={(e) => setRegFirstName(e.target.value)}
-                  required
-                />
-                <input
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f6fa5] focus:border-transparent transition-all"
-                  placeholder="Last Name"
-                  value={regLastName}
-                  onChange={(e) => setRegLastName(e.target.value)}
+                  ref={regEmailRef}
+                  type="email"
+                  className={getValidationInputClassName({
+                    hasError: !!regFieldErrors.email,
+                    baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all",
+                  })}
+                  placeholder="Email Address"
+                  value={regEmail}
+                  onChange={(e) => {
+                    setRegEmail(e.target.value);
+                    clearFieldError(setRegFieldErrors, "email");
+                  }}
+                  maxLength={EMAIL_MAX_LENGTH}
                   required
                 />
               </div>
-              <input
-                type="email"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f6fa5] focus:border-transparent transition-all"
-                placeholder="Email Address"
-                value={regEmail}
-                onChange={(e) => setRegEmail(e.target.value)}
-                required
-              />
-              <input
-                type="tel"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f6fa5] focus:border-transparent transition-all"
-                placeholder="Phone Number e.g. 09123456789"
-                value={regPhone}
-                onChange={(e) => setRegPhone(e.target.value)}
-                required
-              />
-              <input
-                type="password"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f6fa5] focus:border-transparent transition-all"
-                placeholder="Password"
-                value={regPassword}
-                onChange={(e) => setRegPassword(e.target.value)}
-                required
-              />
-              <input
-                type="password"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f6fa5] focus:border-transparent transition-all"
-                placeholder="Confirm Password"
-                value={regConfirmPassword}
-                onChange={(e) => setRegConfirmPassword(e.target.value)}
-                required
-              />
+              <div>
+                <FormFieldHeader label="Phone Number" required error={regFieldErrors.phone_number} />
+                <input
+                  ref={regPhoneRef}
+                  type="tel"
+                  inputMode="numeric"
+                  className={getValidationInputClassName({
+                    hasError: !!regFieldErrors.phone_number,
+                    baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all",
+                  })}
+                  placeholder="09123456789"
+                  value={regPhone}
+                  onChange={(e) => {
+                    setRegPhone(normalizePhoneNumber(e.target.value).slice(0, PHONE_MAX_LENGTH));
+                    clearFieldError(setRegFieldErrors, "phone_number");
+                  }}
+                  maxLength={PHONE_MAX_LENGTH}
+                  required
+                />
+              </div>
+              <div>
+                <FormFieldHeader
+                  label="Password"
+                  required
+                  error={regFieldErrors.password}
+                  hint={`Minimum ${PASSWORD_MIN_LENGTH} characters`}
+                />
+                <input
+                  ref={regPasswordRef}
+                  type="password"
+                  className={getValidationInputClassName({
+                    hasError: !!regFieldErrors.password,
+                    baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all",
+                  })}
+                  placeholder="Password"
+                  value={regPassword}
+                  onChange={(e) => {
+                    setRegPassword(e.target.value);
+                    clearFieldError(setRegFieldErrors, "password");
+                  }}
+                  required
+                />
+              </div>
+              <div>
+                <FormFieldHeader label="Confirm Password" required error={regFieldErrors.confirmPassword} />
+                <input
+                  ref={regConfirmPasswordRef}
+                  type="password"
+                  className={getValidationInputClassName({
+                    hasError: !!regFieldErrors.confirmPassword,
+                    baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all",
+                  })}
+                  placeholder="Confirm Password"
+                  value={regConfirmPassword}
+                  onChange={(e) => {
+                    setRegConfirmPassword(e.target.value);
+                    clearFieldError(setRegFieldErrors, "confirmPassword");
+                  }}
+                  required
+                />
+              </div>
 
               <TermsConsentField
                 scope={TERMS_SCOPE.CUSTOMER}
@@ -255,10 +397,10 @@ const handleRegisterSubmit = async (e) => {
                 acknowledged={regTermsAcknowledged}
                 onToggle={(checked) => {
                   setRegTermsAccepted(checked);
-                  setRegTermsError("");
+                  clearFieldError(setRegFieldErrors, "terms");
                 }}
                 onOpen={() => setShowTerms(true)}
-                error={regTermsError}
+                error={regFieldErrors.terms}
               />
 
               <button
@@ -292,9 +434,9 @@ const handleRegisterSubmit = async (e) => {
                 <p>Wait <span className="font-mono font-bold">{formatCountdown(countdown)}</span> before retrying.</p>
               </div>
             )}
-            {loginError && !isLocked && !isCoolingDown && (
+            {loginFormError && !isLocked && !isCoolingDown && (
               <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600 text-left">
-                <p>{loginError}</p>
+                <p>{loginFormError}</p>
                 {attemptsLeft !== null && attemptsLeft > 0 && (
                   <p className="mt-1 font-semibold text-xs text-red-800">
                     ⚠️ {attemptsLeft} attempt{attemptsLeft !== 1 ? "s" : ""} remaining.
@@ -304,21 +446,47 @@ const handleRegisterSubmit = async (e) => {
             )}
 
             <form onSubmit={handleLoginSubmit} className="space-y-5 text-left">
-              <input
-                className="w-full rounded-lg border border-gray-300 px-4 py-4 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f6fa5] focus:border-transparent transition-all disabled:opacity-60 disabled:bg-gray-100"
-                placeholder="Email Address"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                disabled={loginFormDisabled}
-              />
-              <input
-                type="password"
-                className="w-full rounded-lg border border-gray-300 px-4 py-4 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f6fa5] focus:border-transparent transition-all disabled:opacity-60 disabled:bg-gray-100"
-                placeholder="Password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                disabled={loginFormDisabled}
-              />
+              <div>
+                <FormFieldHeader label="Email Address" required error={loginFieldErrors.email} />
+                <input
+                  ref={loginEmailRef}
+                  type="email"
+                  className={getValidationInputClassName({
+                    hasError: !!loginFieldErrors.email,
+                    baseClassName: "w-full rounded-lg border px-4 py-4 focus:bg-white focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:bg-gray-100",
+                  })}
+                  placeholder="Email Address"
+                  value={loginEmail}
+                  onChange={(e) => {
+                    setLoginEmail(e.target.value);
+                    clearFieldError(setLoginFieldErrors, "email");
+                    setLoginFormError("");
+                  }}
+                  maxLength={EMAIL_MAX_LENGTH}
+                  disabled={loginFormDisabled}
+                  required
+                />
+              </div>
+              <div>
+                <FormFieldHeader label="Password" required error={loginFieldErrors.password} />
+                <input
+                  ref={loginPasswordRef}
+                  type="password"
+                  className={getValidationInputClassName({
+                    hasError: !!loginFieldErrors.password,
+                    baseClassName: "w-full rounded-lg border px-4 py-4 focus:bg-white focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:bg-gray-100",
+                  })}
+                  placeholder="Password"
+                  value={loginPassword}
+                  onChange={(e) => {
+                    setLoginPassword(e.target.value);
+                    clearFieldError(setLoginFieldErrors, "password");
+                    setLoginFormError("");
+                  }}
+                  disabled={loginFormDisabled}
+                  required
+                />
+              </div>
 
               <div className="text-right">
                 <Link to="/forgot-password" onClick={(event) => cmsPreview?.enabled && event.preventDefault()} className="text-sm text-[#4f6fa5] font-medium hover:underline">
@@ -423,7 +591,7 @@ const handleRegisterSubmit = async (e) => {
         onAcknowledge={() => {
           setRegTermsAcknowledged(true);
           setRegTermsAccepted(true);
-          setRegTermsError("");
+          clearFieldError(setRegFieldErrors, "terms");
           setShowTerms(false);
         }}
       />

@@ -5,11 +5,21 @@ import api from "../../services/api";
 import { useSchedules } from "../../contexts/ScheduleContext";
 import TermsAndConditionsModal from "../../components/TermsAndConditionsModal";
 import TermsConsentField from "../../components/TermsConsentField";
+import FormFieldHeader from "../../components/form/FormFieldHeader";
 import {
   formatCustomSelection,
   getCustomOrderSummary,
 } from "../../utils/customOrderSummary";
 import { resolveTermsScopeFromRole } from "../../utils/termsAndConditions";
+import {
+  PAYMENT_METHOD_MAX_LENGTH,
+  REFERENCE_CODE_MAX_LENGTH,
+  normalizeReferenceCode,
+  validateCheckoutAddress,
+  validatePaymentMethod,
+  validateReferenceCode,
+} from "../../utils/authValidation";
+import { normalizeApiValidationErrors } from "../../utils/formValidation";
 
 function CheckoutPage() {
   const navigate = useNavigate();
@@ -55,7 +65,14 @@ function CheckoutPage() {
 const [manualPaymentMethod, setManualPaymentMethod] = useState("");
 
   // Validation errors
-  const [errors, setErrors] = useState({ image: "", terms: "" });
+  const [errors, setErrors] = useState({
+    address: "",
+    paymentMethod: "",
+    referenceCode: "",
+    image: "",
+    terms: "",
+  });
+  const [formError, setFormError] = useState("");
 
   const GRAND_TOTAL = totalPrice;
   const termsScope = resolveTermsScopeFromRole(userRole);
@@ -112,30 +129,20 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
     const newErrors = {};
 
     if (deliveryMode === "delivery") {
-      const finalAddr = resolvedAddress.trim();
-      if (!finalAddr) {
-        newErrors.address = "Delivery address is required.";
-      } else if (finalAddr.length < 10) {
-        newErrors.address = "Please enter a more complete address (min 10 characters).";
-      }
+      newErrors.address = validateCheckoutAddress(resolvedAddress);
     }
 
-    if (!paymentMethod.trim()) {
-      newErrors.paymentMethod = "Payment method is required.";
-    }
-
-    if (!referenceCode.trim()) {
-      newErrors.referenceCode = "Reference code is required.";
-    } else if (!/^[a-zA-Z0-9]{4,30}$/.test(referenceCode)) {
-      newErrors.referenceCode = "Reference code must be 4–30 alphanumeric characters.";
-    }
+    newErrors.paymentMethod = validatePaymentMethod(paymentMethod);
+    newErrors.referenceCode = validateReferenceCode(referenceCode);
+    newErrors.image = paymentProof ? "" : "Payment screenshot is required.";
 
     if (!termsAcknowledged || !termsAccepted) {
       newErrors.terms = "Please review and accept the required Terms & Conditions before confirming your order.";
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setFormError("");
+    return !Object.values(newErrors).some(Boolean);
   };
 
   const handleFileChange = (e) => {
@@ -143,6 +150,7 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
     if (!file) {
       setPaymentProof(null);
       setPreviewUrl(null);
+      setErrors(prev => ({ ...prev, image: "Payment screenshot is required." }));
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
@@ -153,6 +161,7 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
       return;
     }
     setErrors(prev => ({ ...prev, image: "" }));
+    setFormError("");
     setPaymentProof(file);
     setPreviewUrl(URL.createObjectURL(file));
   };
@@ -217,7 +226,7 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
     const freshFile = paymentProof;
 
     if (!freshFile) {
-      alert("Please upload your payment screenshot to proceed.");
+      setErrors((prev) => ({ ...prev, image: "Payment screenshot is required." }));
       return;
     }
 
@@ -261,7 +270,14 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
     } catch (error) {
       console.error("Order failed", error);
       console.error("Validation errors:", error.response?.data);
-      alert("Something went wrong. Please try again.");
+      const normalizedError = normalizeApiValidationErrors(error, {
+        payment_method: "paymentMethod",
+        reference_number: "referenceCode",
+        reference_image: "image",
+      });
+
+      setErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+      setFormError(normalizedError.formError || "Something went wrong. Please try again.");
       resetFileInput();
     } finally {
       setIsSubmitting(false);
@@ -290,6 +306,11 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
 
           {/* LEFT COLUMN */}
           <div className="flex-1 space-y-8">
+            {formError ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+                {formError}
+              </div>
+            ) : null}
 
             {/* 1. Delivery Method */}
             {selectedSchedule && (
@@ -389,7 +410,7 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
                 {/* ── Delivery Address ── */}
                 {deliveryMode === "delivery" && (
                   <div className="space-y-4 pt-2">
-                    <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400">Delivery Address *</label>
+                    <FormFieldHeader label="Delivery Address" required error={errors.address} />
 
                     {!useManualAddress && (
                       <div className="relative">
@@ -449,10 +470,6 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
                       </div>
                     )}
 
-                    {errors.address && (
-                      <p className="text-xs text-red-500">{errors.address}</p>
-                    )}
-
                     {/* Toggle between saved and manual */}
                     <button
                       type="button"
@@ -497,8 +514,10 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
                 </div>
 
                 <div>
-  <div className="flex justify-between mb-2">
-    <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400">Payment Method *</label>
+  <div className="flex justify-between mb-2 items-start gap-3">
+    <div className="flex-1">
+      <FormFieldHeader label="Payment Method" required error={errors.paymentMethod} className="mb-0" />
+    </div>
     <button
       type="button"
       onClick={() => {
@@ -580,12 +599,13 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
         type="text"
         value={manualPaymentMethod}
         onChange={(e) => {
-          setManualPaymentMethod(e.target.value);
-          setPaymentMethod(e.target.value);
+          const nextValue = e.target.value.slice(0, PAYMENT_METHOD_MAX_LENGTH);
+          setManualPaymentMethod(nextValue);
+          setPaymentMethod(nextValue);
           setErrors(prev => ({ ...prev, paymentMethod: "" }));
         }}
         placeholder="e.g. Palawan Express, Cebuana, etc."
-        maxLength={50}
+        maxLength={PAYMENT_METHOD_MAX_LENGTH}
         className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-1 ${
           errors.paymentMethod
             ? "border-red-400 focus:border-red-400 focus:ring-red-400"
@@ -598,34 +618,34 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
     </div>
   )}
 
-  {errors.paymentMethod && (
-    <p className="mt-1 text-xs text-red-500 font-semibold">{errors.paymentMethod}</p>
-  )}
 </div>
 
                 <div>
-                  <div className="flex justify-between mb-2">
-                    <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400">Reference Code *</label>
-                    <span className="text-[10px] text-gray-400 font-bold">{referenceCode.length}/30</span>
-                  </div>
+                  <FormFieldHeader
+                    label="Reference Code"
+                    required
+                    error={errors.referenceCode}
+                    count={referenceCode.length}
+                    max={REFERENCE_CODE_MAX_LENGTH}
+                  />
                   <input
                     value={referenceCode}
                     onChange={(e) => {
-                      if (e.target.value.length <= 30) setReferenceCode(e.target.value);
+                      setReferenceCode(normalizeReferenceCode(e.target.value));
+                      setErrors(prev => ({ ...prev, referenceCode: "" }));
                     }}
                     placeholder="Transaction reference code"
-                    maxLength={30}
+                    maxLength={REFERENCE_CODE_MAX_LENGTH}
                     className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-1 ${
                       errors.referenceCode
                         ? "border-red-400 focus:border-red-400 focus:ring-red-400"
                         : "border-gray-200 bg-white focus:border-[#4f6fa5] focus:ring-[#4f6fa5]"
                     }`}
                   />
-                  {errors.referenceCode && <p className="mt-1 text-xs text-red-500 font-semibold">{errors.referenceCode}</p>}
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-[10px] uppercase tracking-widest font-bold text-gray-400">Payment Screenshot *</label>
+                  <FormFieldHeader label="Payment Screenshot" required error={errors.image} />
                   <label className="flex w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 py-8 transition-colors hover:bg-white hover:border-[#4f6fa5]/50 group">
                     <span className="text-3xl grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all">📎</span>
                     <p className="mt-3 mb-1 text-sm text-gray-600 font-medium">
@@ -641,8 +661,6 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
                       onChange={handleFileChange}
                     />
                   </label>
-
-                  {errors.image && <p className="mt-1 text-xs text-red-500">{errors.image}</p>}
 
                   {paymentProof && (
                     <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-200 bg-green-50 p-2">

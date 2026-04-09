@@ -86,7 +86,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
   // =====================
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    if (cmsPreview?.enabled) return; // Prevent API calls in CMS preview
+    if (cmsPreview?.enabled) return;
     if (countdown > 0 || isLocked) return;
 
     setLoginError("");
@@ -135,7 +135,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
     }
   };
 
-const handleRegisterSubmit = async (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     if (cmsPreview?.enabled) return;
     setRegError("");
@@ -155,13 +155,23 @@ const handleRegisterSubmit = async (e) => {
       return;
     }
 
-    // 3. Validate Passwords
-    if (regPassword !== regConfirmPassword) {
-      setRegError("Passwords do not match.");
+    // 3. Validate Password strength
+    if (regPassword.length < 8) {
+      setRegError("Password must be at least 8 characters.");
       return;
     }
-    if (regPassword.length < 6) {
-      setRegError("Password must be at least 6 characters.");
+    if (!/[A-Z]/.test(regPassword)) {
+      setRegError("Password must contain at least one uppercase letter.");
+      return;
+    }
+    if (!/[0-9]/.test(regPassword)) {
+      setRegError("Password must contain at least one number.");
+      return;
+    }
+
+    // 4. Validate Passwords match
+    if (regPassword !== regConfirmPassword) {
+      setRegError("Passwords do not match.");
       return;
     }
 
@@ -193,6 +203,14 @@ const handleRegisterSubmit = async (e) => {
 
   const isCoolingDown = countdown > 0;
   const loginFormDisabled = isCoolingDown || isLocked || loginLoading;
+
+  // Password strength indicators for register
+  const regPasswordStrength = {
+    length: regPassword.length >= 8,
+    uppercase: /[A-Z]/.test(regPassword),
+    number: /[0-9]/.test(regPassword),
+    match: regConfirmPassword.length > 0 && regPassword === regConfirmPassword,
+  };
 
   return (
     <div className="min-h-screen bg-[#fcfaf9] flex items-start justify-center pt-10 pb-4">
@@ -254,6 +272,28 @@ const handleRegisterSubmit = async (e) => {
                 onChange={(e) => setRegConfirmPassword(e.target.value)}
                 required
               />
+
+              {/* Password strength hints */}
+              {regPassword.length > 0 && (
+                <ul className="text-xs space-y-1 px-1">
+                  <li className={`flex items-center gap-1.5 ${regPasswordStrength.length ? "text-emerald-600" : "text-gray-400"}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${regPasswordStrength.length ? "bg-emerald-500" : "bg-gray-300"}`} />
+                    At least 8 characters
+                  </li>
+                  <li className={`flex items-center gap-1.5 ${regPasswordStrength.uppercase ? "text-emerald-600" : "text-gray-400"}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${regPasswordStrength.uppercase ? "bg-emerald-500" : "bg-gray-300"}`} />
+                    One uppercase letter
+                  </li>
+                  <li className={`flex items-center gap-1.5 ${regPasswordStrength.number ? "text-emerald-600" : "text-gray-400"}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${regPasswordStrength.number ? "bg-emerald-500" : "bg-gray-300"}`} />
+                    One number
+                  </li>
+                  <li className={`flex items-center gap-1.5 ${regPasswordStrength.match ? "text-emerald-600" : "text-gray-400"}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${regPasswordStrength.match ? "bg-emerald-500" : "bg-gray-300"}`} />
+                    Passwords match
+                  </li>
+                </ul>
+              )}
 
               <TermsConsentField
                 scope={TERMS_SCOPE.CUSTOMER}

@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import AuthPage from "../users/AuthPage";
@@ -18,9 +19,17 @@ import {
 } from "../../utils/adminAccess";
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
-const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png|gif)$/i;
-const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,.gif,image/jpeg,image/png,image/gif";
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
+const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png)$/i;
+const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,image/jpeg,image/png";
+
+function AdminModalPortal({ children }) {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(children, document.body);
+}
 
 // ISOLATED PREVIEWS
 function PreviewScene({ activePage, cmsPreview }) {
@@ -419,53 +428,56 @@ function AdminContentPage({ user }) {
 
       {/* CONFIRMATION MODAL */}
       {confirmModal.isOpen && canManageContent && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 transition-all">
-          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
-            
-            <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${
-              confirmModal.type === 'delete' ? 'bg-red-100 text-red-500' :
-              confirmModal.type === 'archive' ? 'bg-amber-100 text-amber-500' :
-              'bg-emerald-100 text-emerald-500'
-            }`}>
-              {confirmModal.type === 'delete' ? <Trash2 size={28} /> : 
-               confirmModal.type === 'archive' ? <Archive size={28} /> :
-               <ArchiveRestore size={28} />}
-            </div>
-
-            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
-              {confirmModal.type === "delete" ? "Delete Permanently?" : 
-               confirmModal.type === "archive" ? "Archive Content?" : 
-               "Restore Content?"}
-            </h3>
-            <p className="text-sm text-gray-500 mb-8 px-2">
-              {confirmModal.type === "delete" ? "This action cannot be undone. Are you sure you want to delete this forever?" :
-               confirmModal.type === "archive" ? "This will hide the content from the live website. You can restore it later." :
-               "This will restore the content back to the live website."}
-            </p>
-            
-            <div className="flex justify-center gap-3">
-              <button onClick={() => setConfirmModal({ isOpen: false, type: "", item: null })} className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
-                Cancel
-              </button>
-              <button 
-                onClick={executeConfirmAction} 
-                className={`rounded-lg px-5 py-2 text-sm font-bold text-white transition-all duration-300 shadow-sm hover:shadow-md ${
-                  confirmModal.type === "delete" ? "bg-red-500 hover:bg-red-600" :
-                  confirmModal.type === "archive" ? "bg-amber-500 hover:bg-amber-600" :
-                  "bg-emerald-500 hover:bg-emerald-600"
+        <AdminModalPortal>
+          <div className="fixed inset-0 z-[400] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 transition-all">
+            <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
+              
+              <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${
+                confirmModal.type === 'delete' ? 'bg-red-100 text-red-500' :
+                confirmModal.type === 'archive' ? 'bg-amber-100 text-amber-500' :
+                'bg-emerald-100 text-emerald-500'
               }`}>
-                {confirmModal.type === "delete" ? "Yes, Delete" : 
-                 confirmModal.type === "archive" ? "Yes, Archive" : 
-                 "Yes, Restore"}
-              </button>
+                {confirmModal.type === 'delete' ? <Trash2 size={28} /> : 
+                 confirmModal.type === 'archive' ? <Archive size={28} /> :
+                 <ArchiveRestore size={28} />}
+              </div>
+
+              <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
+                {confirmModal.type === "delete" ? "Delete Permanently?" : 
+                 confirmModal.type === "archive" ? "Archive Content?" : 
+                 "Restore Content?"}
+              </h3>
+              <p className="text-sm text-gray-500 mb-8 px-2">
+                {confirmModal.type === "delete" ? "This action cannot be undone. Are you sure you want to delete this forever?" :
+                 confirmModal.type === "archive" ? "This will hide the content from the live website. You can restore it later." :
+                 "This will restore the content back to the live website."}
+              </p>
+              
+              <div className="flex justify-center gap-3">
+                <button onClick={() => setConfirmModal({ isOpen: false, type: "", item: null })} className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
+                  Cancel
+                </button>
+                <button 
+                  onClick={executeConfirmAction} 
+                  className={`rounded-lg px-5 py-2 text-sm font-bold text-white transition-all duration-300 shadow-sm hover:shadow-md ${
+                    confirmModal.type === "delete" ? "bg-red-500 hover:bg-red-600" :
+                    confirmModal.type === "archive" ? "bg-amber-500 hover:bg-amber-600" :
+                    "bg-emerald-500 hover:bg-emerald-600"
+                }`}>
+                  {confirmModal.type === "delete" ? "Yes, Delete" : 
+                   confirmModal.type === "archive" ? "Yes, Archive" : 
+                   "Yes, Restore"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </AdminModalPortal>
       )}
 
       {/* WYSIWYG EDITOR MODAL */}
       {!confirmModal.isOpen && editorField && (
-         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 transition-all">
+        <AdminModalPortal>
+         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 transition-all">
           <div className="w-full max-w-lg rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 animate-in zoom-in-95 duration-200">
             <div className="mb-6 flex justify-between items-start">
               <div>
@@ -517,7 +529,7 @@ function AdminContentPage({ user }) {
                   const hasValidExtension = ALLOWED_IMAGE_NAME_REGEX.test(imageFile.name || "");
 
                   if (!hasValidMimeType || !hasValidExtension) {
-                    showModalAlert("error", "Only JPG, JPEG, PNG, and GIF files are allowed.");
+                    showModalAlert("error", "Only JPG, JPEG, and PNG files are allowed.");
                     return;
                   }
 
@@ -576,7 +588,7 @@ function AdminContentPage({ user }) {
                   <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Upload New Image</label>
                   <input type="file" name="content_image" disabled={!canManageContent} className="w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-gray-700 hover:file:bg-gray-200 transition-all disabled:cursor-not-allowed disabled:opacity-60" accept={ADMIN_IMAGE_ACCEPT} />
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                    JPG, JPEG, PNG, or GIF only. Max 5MB.
+                    {editingContent ? "Optional on edit. JPG, JPEG, or PNG only. Max 5MB." : "Required for new image content. JPG, JPEG, or PNG only. Max 5MB."}
                   </p>
                 </div>
               )}
@@ -620,29 +632,32 @@ function AdminContentPage({ user }) {
             </form>
           </div>
         </div>
+        </AdminModalPortal>
       )}
 
       {/* --- STATUS ALERT MODAL --- */}
       {statusModal.isOpen && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
-          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
-            <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${statusModal.type === 'success' ? 'bg-emerald-100 text-emerald-500' : 'bg-rose-100 text-rose-500'}`}>
-               {statusModal.type === 'success' ? <CheckCircle2 size={28} /> : <X size={28} />}
-            </div>
-            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
-              {statusModal.type === 'success' ? 'Success' : 'Action Failed'}
-            </h3>
-            <p className="text-sm text-gray-500 mb-8 px-2">{statusModal.message}</p>
-            <div className="flex justify-center">
-              <button 
-                onClick={() => setStatusModal({ isOpen: false, type: 'success', message: '' })} 
-                className="rounded-xl bg-gray-900 px-8 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
-              >
-                Okay
-              </button>
+        <AdminModalPortal>
+          <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[500] p-4">
+            <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
+              <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${statusModal.type === 'success' ? 'bg-emerald-100 text-emerald-500' : 'bg-rose-100 text-rose-500'}`}>
+                 {statusModal.type === 'success' ? <CheckCircle2 size={28} /> : <X size={28} />}
+              </div>
+              <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
+                {statusModal.type === 'success' ? 'Success' : 'Action Failed'}
+              </h3>
+              <p className="text-sm text-gray-500 mb-8 px-2">{statusModal.message}</p>
+              <div className="flex justify-center">
+                <button 
+                  onClick={() => setStatusModal({ isOpen: false, type: 'success', message: '' })} 
+                  className="rounded-xl bg-gray-900 px-8 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+                >
+                  Okay
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </AdminModalPortal>
       )}
 
     </div>

@@ -118,11 +118,14 @@ class AppServiceProvider extends ServiceProvider
 
         $request = request();
         $user = Auth::user();
+        $actorStillExists = $user && (!($user instanceof Model) || $user->exists);
         $this->writingLog = true;
 
         try {
             Log::create([
-                'user_id' => $data['user_id'] ?? ($user->id ?? null),
+                'user_id' => array_key_exists('user_id', $data)
+                    ? $data['user_id']
+                    : ($actorStillExists ? $user->id : null),
                 'user_name' => $data['user_name'] ?? $this->userName($user),
                 'user_role' => $data['user_role'] ?? ($user->role ?? null),
                 'event' => $data['event'],

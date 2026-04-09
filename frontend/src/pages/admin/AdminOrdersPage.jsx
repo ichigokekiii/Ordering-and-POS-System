@@ -226,7 +226,7 @@ function AdminOrdersPage({ user }) {
       {/* HEADER AREA */}
       <div className="mb-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-3xl font-playfair font-bold text-gray-900 tracking-tight">Order Fulfillment</h1>
+          <h1 className="text-3xl font-playfair font-bold text-gray-900 tracking-tight">Orders</h1>
           <p className="mt-1.5 max-w-2xl text-sm font-medium text-gray-500">
             Manage customer orders, track delivery statuses, and oversee transactions.
           </p>
@@ -484,7 +484,7 @@ function AdminOrdersPage({ user }) {
         const isEditingMode = !!editingOrder;
         const orderId = activeOrder.order_id || activeOrder.id;
         return (
-          <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+          <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
             <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
               <div className="flex justify-between items-start mb-6">
                 <div>
@@ -634,7 +634,7 @@ function AdminOrdersPage({ user }) {
 
       {/* PAYMENT DETAILS MODAL */}
 {viewingPayment && (
-  <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[500] p-4">
+  <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[600] p-4">
     <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
       
       <div className="flex justify-between items-start mb-6">
@@ -712,7 +712,7 @@ function AdminOrdersPage({ user }) {
 
       {/* CONFIRM DELETE MODAL */}
       {deleteConfirm.isOpen && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 text-rose-500">
               <Trash2 size={28} />
@@ -729,7 +729,7 @@ function AdminOrdersPage({ user }) {
 
       {/* STATUS ALERT MODAL */}
       {statusModal.isOpen && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[500] p-4">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
             <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${statusModal.type === 'success' ? 'bg-emerald-100 text-emerald-500' : 'bg-rose-100 text-rose-500'}`}>
               {statusModal.type === 'success' ? <CheckCircle2 size={28} /> : <X size={28} />}

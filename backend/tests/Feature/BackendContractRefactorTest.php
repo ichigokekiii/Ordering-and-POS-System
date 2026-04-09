@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Content;
 use App\Models\Schedule;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -110,6 +111,74 @@ class BackendContractRefactorTest extends TestCase
             'required_main_count' => null,
             'required_filler_count' => null,
         ]);
+    }
+
+    public function test_admin_product_creation_rejects_gif_images(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::query()->create([
+            'first_name' => 'Admin',
+            'last_name' => 'User',
+            'email' => 'admin-product-gif@example.com',
+            'password' => bcrypt('secret123'),
+            'role' => 'admin',
+            'is_verified' => true,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->post(
+            '/api/products',
+            [
+                'name' => 'GIF Bouquet',
+                'description' => 'GIF uploads should be rejected.',
+                'category' => 'Bouquets',
+                'type' => 'custom',
+                'price' => '999.00',
+                'isAvailable' => 1,
+                'required_main_count' => 2,
+                'required_filler_count' => 4,
+                'image' => UploadedFile::fake()->image('bouquet.gif'),
+            ],
+            ['Accept' => 'application/json']
+        );
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['image']);
+    }
+
+    public function test_admin_premade_creation_rejects_gif_images(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::query()->create([
+            'first_name' => 'Admin',
+            'last_name' => 'User',
+            'email' => 'admin-premade-gif@example.com',
+            'password' => bcrypt('secret123'),
+            'role' => 'admin',
+            'is_verified' => true,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->post(
+            '/api/premades',
+            [
+                'name' => 'GIF Premade',
+                'description' => 'GIF uploads should be rejected.',
+                'category' => 'Roses',
+                'type' => 'Mixed',
+                'price' => '899.00',
+                'isAvailable' => 1,
+                'image' => UploadedFile::fake()->image('premade.gif'),
+            ],
+            ['Accept' => 'application/json']
+        );
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['image']);
     }
 
     public function test_schedule_booking_duplicate_is_blocked_without_changing_api(): void
@@ -235,5 +304,92 @@ class BackendContractRefactorTest extends TestCase
                 'schedule_name' => 'Existing Event Updated',
                 'image' => '/storage/schedules/existing.jpg',
             ]);
+    }
+
+    public function test_admin_content_image_creation_requires_image_file(): void
+    {
+        $admin = User::query()->create([
+            'first_name' => 'Admin',
+            'last_name' => 'User',
+            'email' => 'admin-content-required@example.com',
+            'password' => bcrypt('secret123'),
+            'role' => 'admin',
+            'is_verified' => true,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->post(
+            '/api/contents',
+            [
+                'page' => 'home',
+                'identifier' => 'hero_image_test',
+                'type' => 'image',
+            ],
+            ['Accept' => 'application/json']
+        );
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['content_image']);
+    }
+
+    public function test_admin_content_image_creation_rejects_gif_images(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::query()->create([
+            'first_name' => 'Admin',
+            'last_name' => 'User',
+            'email' => 'admin-content-gif@example.com',
+            'password' => bcrypt('secret123'),
+            'role' => 'admin',
+            'is_verified' => true,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->post(
+            '/api/contents',
+            [
+                'page' => 'home',
+                'identifier' => 'hero_image_gif_test',
+                'type' => 'image',
+                'content_image' => UploadedFile::fake()->image('content.gif'),
+            ],
+            ['Accept' => 'application/json']
+        );
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['content_image']);
+    }
+
+    public function test_admin_content_image_update_allows_keeping_existing_image_without_uploading_new_one(): void
+    {
+        $admin = User::query()->create([
+            'first_name' => 'Admin',
+            'last_name' => 'User',
+            'email' => 'admin-content-update@example.com',
+            'password' => bcrypt('secret123'),
+            'role' => 'admin',
+            'is_verified' => true,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $content = Content::query()->create([
+            'page' => 'home',
+            'identifier' => 'hero_image_existing_test',
+            'type' => 'image',
+            'content_image' => '/storage/contents/existing.jpg',
+            'isArchived' => false,
+        ]);
+
+        $response = $this->put("/api/contents/{$content->id}", [
+            'identifier' => 'hero_image_existing_test_updated',
+            'page' => 'home',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('content.content_image', '/storage/contents/existing.jpg');
     }
 }

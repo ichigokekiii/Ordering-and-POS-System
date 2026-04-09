@@ -110,6 +110,22 @@
     background-color: #22304a !important;
   }
 
+  .dark .bg-slate-50 {
+    background-color: #111c33 !important;
+  }
+
+  .dark .bg-slate-50\/80 {
+    background-color: rgba(17, 28, 51, 0.82) !important;
+  }
+
+  .dark .bg-slate-50\/50 {
+    background-color: rgba(17, 28, 51, 0.58) !important;
+  }
+
+  .dark .bg-\[\#f8fafc\] {
+    background-color: #111c33 !important;
+  }
+
   .dark .text-\[\#4f6fa5\] {
     color: #93c5fd !important;
   }
@@ -194,6 +210,22 @@
     border-color: #475569 !important;
   }
 
+  .dark .border-slate-100 {
+    border-color: #334155 !important;
+  }
+
+  .dark .border-slate-200 {
+    border-color: #334155 !important;
+  }
+
+  .dark .divide-gray-50 > :not([hidden]) ~ :not([hidden]) {
+    border-color: #1e293b !important;
+  }
+
+  .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+    border-color: #334155 !important;
+  }
+
   .dark .ring-\[\#fcfaf9\] {
     --tw-ring-color: #0f172a !important;
   }
@@ -212,6 +244,18 @@
 
   .dark .hover\:bg-white:hover {
     background-color: #0f172a !important;
+  }
+
+  .dark .hover\:bg-slate-50:hover {
+    background-color: #182338 !important;
+  }
+
+  .dark .hover\:bg-slate-50\/80:hover {
+    background-color: rgba(24, 35, 56, 0.88) !important;
+  }
+
+  .dark .hover\:bg-slate-50\/50:hover {
+    background-color: rgba(24, 35, 56, 0.62) !important;
   }
 
   .dark .hover\:text-gray-900:hover {
@@ -236,6 +280,10 @@
 
   .dark .border-red-200 {
     border-color: rgba(248, 113, 113, 0.28) !important;
+  }
+
+  .dark .focus\:bg-white:focus {
+    background-color: #0f172a !important;
   }
 }
 

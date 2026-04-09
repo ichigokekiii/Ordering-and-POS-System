@@ -66,9 +66,9 @@ const FieldError = ({ error }) =>
   error ? <p className="mt-1.5 text-[10px] font-bold text-rose-500 uppercase tracking-wide">{error}</p> : null;
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
-const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png|gif)$/i;
-const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,.gif,image/jpeg,image/png,image/gif";
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
+const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png)$/i;
+const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,image/jpeg,image/png";
 
 const asBoolean = (value) => value === 1 || value === true || value === "1";
 
@@ -221,7 +221,7 @@ function AdminProductPage({ user }) {
     const hasValidExtension = ALLOWED_IMAGE_NAME_REGEX.test(file.name || "");
 
     if (!hasValidMimeType || !hasValidExtension) {
-      setErrors(prev => ({ ...prev, image: "Only JPG, JPEG, PNG, and GIF files are allowed." }));
+      setErrors(prev => ({ ...prev, image: "Only JPG, JPEG, and PNG files are allowed." }));
       setImage(null);
       e.target.value = "";
       return;
@@ -601,7 +601,7 @@ function AdminProductPage({ user }) {
 
       {/* ADD/EDIT MODAL */}
       {showModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
           <div className="w-full max-w-lg rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             
             <div className="mb-6 flex items-start justify-between gap-4">
@@ -827,7 +827,7 @@ function AdminProductPage({ user }) {
                     className="w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-gray-600 hover:file:bg-gray-200 transition-all cursor-pointer"
                   />
                   <p className="mt-2 text-[9px] font-bold text-gray-400 uppercase tracking-wider leading-tight">
-                    JPG, JPEG, PNG, or GIF only. Max 5MB.
+                    JPG, JPEG, or PNG only. Max 5MB.
                   </p>
                   {!image && isEditing && (
                     <p className="mt-2 text-[9px] font-bold text-amber-500 uppercase tracking-wider leading-tight">
@@ -885,7 +885,7 @@ function AdminProductPage({ user }) {
       )}
 
       {archiveConfirm.isOpen && (
-        <div className="fixed inset-0 z-[320] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[400] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
             <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${archiveConfirm.type === "archive" ? "bg-amber-100 text-amber-500" : "bg-emerald-100 text-emerald-500"}`}>
               {archiveConfirm.type === "archive" ? <Archive size={28} /> : <ArchiveRestore size={28} />}
@@ -918,7 +918,7 @@ function AdminProductPage({ user }) {
 
       {/* --- CONFIRM DELETE MODAL --- */}
       {deleteConfirm.isOpen && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 text-rose-500">
                <Trash2 size={28} />
@@ -945,7 +945,7 @@ function AdminProductPage({ user }) {
 
       {/* --- STATUS ALERT MODAL --- */}
       {statusModal.isOpen && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[500] p-4">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
             <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${statusModal.type === 'success' ? 'bg-emerald-100 text-emerald-500' : 'bg-rose-100 text-rose-500'}`}>
                {statusModal.type === 'success' ? <CheckCircle2 size={28} /> : <X size={28} />}

@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import api from "../../services/api";
-import { hasAdminDashboardAccess } from "../../utils/adminAccess";
+import { getPostLoginPath } from "../../utils/adminAccess";
 
 // CMS IMPORTS
 import { useContents } from "../../contexts/ContentContext";
@@ -124,6 +124,44 @@ function VerifyOtpPage({ cmsPreview }) {
     setLoading(false);
   }
 };
+    try {
+      const res = await api.post("/verify-otp", { email, otp });
+      if (res.data.token) localStorage.setItem("token", res.data.token);
+      if (!res.data.token) {
+        setError("Authentication failed. Please try logging in again.");
+        setLoading(false);
+        return;
+      }
+      let userData = null;
+      const pendingUser = localStorage.getItem("pendingUser");
+      if (pendingUser) {
+        userData = JSON.parse(pendingUser);
+        localStorage.removeItem("pendingUser");
+        setModalMessage("Login verified! Logging you in...");
+      } else {
+        userData = res.data.user;
+        setModalMessage("Account verified successfully! Logging you in...");
+      }
+      if (purpose === "reset-password") {
+        setModalMessage("OTP verified! Redirecting to reset password...");
+        setShowModal(true);
+        setTimeout(() => {
+          navigate("/reset-password", { state: { email, otp } });
+        }, 1500);
+        return;
+      }
+      handleLogin(userData);
+      localStorage.removeItem("otp_email");
+      setShowModal(true);
+      setTimeout(() => {
+        navigate(getPostLoginPath(userData));
+      }, 1500);
+    } catch (err) {
+      setError(err.response?.data?.message || "Invalid or expired OTP.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleResend = async () => {
     if (countdown > 0 || cmsPreview?.enabled) return;

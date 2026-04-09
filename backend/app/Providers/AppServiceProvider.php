@@ -122,16 +122,21 @@ class AppServiceProvider extends ServiceProvider
         $this->writingLog = true;
 
         try {
-            Log::create([
-                'user_id' => array_key_exists('user_id', $data)
-                    ? $data['user_id']
-                    : ($actorStillExists ? $user->id : null),
-                'user_name' => $data['user_name'] ?? $this->userName($user),
-                'user_role' => $data['user_role'] ?? ($user->role ?? null),
-                'event' => $data['event'],
-                'module' => $data['module'] ?? null,
-                'source' => $data['source'] ?? $this->detectSource($request),
-            ]);
+            try {
+                Log::create([
+                    'user_id' => array_key_exists('user_id', $data)
+                        ? $data['user_id']
+                        : ($actorStillExists ? $user->id : null),
+                    'user_name' => $data['user_name'] ?? $this->userName($user),
+                    'user_role' => $data['user_role'] ?? ($user->role ?? null),
+                    'event' => $data['event'],
+                    'module' => $data['module'] ?? null,
+                    'source' => $data['source'] ?? $this->detectSource($request),
+                ]);
+            } catch (\Throwable $e) {
+                // Audit logging should never block the primary action.
+                report($e);
+            }
         } finally {
             $this->writingLog = false;
         }

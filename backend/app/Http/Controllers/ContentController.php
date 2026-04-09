@@ -9,12 +9,52 @@ use Illuminate\Validation\Rule;
 
 class ContentController extends Controller
 {
+    private const CMS_IMAGE_UPLOAD_LIMIT_LABEL = '2MB';
+
+    private function canManageContent(Request $request): bool
+    {
+        $user = $request->user();
+
+        return $user && in_array(strtolower((string) $user->role), ['admin', 'owner', 'staff'], true);
+    }
+
+    private function imageValidationMessages(): array
+    {
+        return [
+            'content_image.required' => 'Please upload an image for this content.',
+            'content_image.uploaded' => 'Image upload failed. Please use an image under ' . self::CMS_IMAGE_UPLOAD_LIMIT_LABEL . '.',
+            'content_image.image' => 'Only image files can be uploaded.',
+            'content_image.mimes' => 'Only JPG, JPEG, and PNG files are allowed.',
+            'content_image.max' => 'Image must be ' . self::CMS_IMAGE_UPLOAD_LIMIT_LABEL . ' or smaller.',
+        ];
+    }
+
     // Get all content
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $contents = Content::orderBy('created_at', 'desc')->get();
+            $contents = Content::query()
+                ->when(!$this->canManageContent($request), fn ($query) => $query->where('isArchived', false))
+                ->orderBy('created_at', 'desc')
+                ->get();
+
             return response()->json($contents);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to fetch content',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function show(Request $request, $id)
+    {
+        try {
+            $content = Content::query()
+                ->when(!$this->canManageContent($request), fn ($query) => $query->where('isArchived', false))
+                ->findOrFail($id);
+
+            return response()->json($content);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to fetch content',
@@ -34,7 +74,7 @@ class ContentController extends Controller
                 Rule::requiredIf($request->input('type') === 'image'),
                 'image',
                 'mimes:jpg,jpeg,png',
-                'max:5120',
+                'max:2048',
             ],
             'identifier' => [
                 'required',
@@ -42,11 +82,7 @@ class ContentController extends Controller
                 'max:255',
                 Rule::unique('contents')->where(fn ($query) => $query->where('page', $request->page)->where('isArchived', false)),
             ],
-        ], [
-            'content_image.required' => 'Please upload an image for this content.',
-            'content_image.mimes' => 'Only JPG, JPEG, and PNG files are allowed.',
-            'content_image.max' => 'Image must be 5MB or smaller.',
-        ]);
+        ], $this->imageValidationMessages());
 
         try {
             $content = new Content();
@@ -70,8 +106,9 @@ class ContentController extends Controller
                 'message' => 'Content created successfully',
                 'content' => $content
             ], 201);
-
         } catch (\Exception $e) {
+            report($e);
+
             return response()->json([
                 'message' => 'Failed to create content',
                 'error' => $e->getMessage()
@@ -82,30 +119,27 @@ class ContentController extends Controller
     // Update content
     public function update(Request $request, $id)
     {
-        try {
-            $content = Content::findOrFail($id);
+        $content = Content::findOrFail($id);
 
-            if ($request->filled('identifier') || $request->filled('page')) {
-                $request->validate([
-                    'identifier' => [
-                        'nullable',
-                        'string',
-                        'max:255',
-                        Rule::unique('contents')
-                            ->ignore($content->id)
-                            ->where(fn ($query) => $query->where('page', $request->input('page', $content->page))->where('isArchived', false)),
-                    ],
-                    'page' => 'nullable|string|max:255',
-                ]);
-            }
-
+        if ($request->filled('identifier') || $request->filled('page')) {
             $request->validate([
-                'content_image' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
-            ], [
-                'content_image.mimes' => 'Only JPG, JPEG, and PNG files are allowed.',
-                'content_image.max' => 'Image must be 5MB or smaller.',
+                'identifier' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('contents')
+                        ->ignore($content->id)
+                        ->where(fn ($query) => $query->where('page', $request->input('page', $content->page))->where('isArchived', false)),
+                ],
+                'page' => 'nullable|string|max:255',
             ]);
+        }
 
+        $request->validate([
+            'content_image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        ], $this->imageValidationMessages());
+
+        try {
             if ($request->filled('identifier')) {
                 $content->identifier = $request->identifier;
             }
@@ -137,8 +171,9 @@ class ContentController extends Controller
                 'message' => 'Content updated successfully',
                 'content' => $content
             ]);
-
         } catch (\Exception $e) {
+            report($e);
+
             return response()->json([
                 'message' => 'Failed to update content',
                 'error' => $e->getMessage()

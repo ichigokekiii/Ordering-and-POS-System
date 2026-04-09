@@ -460,7 +460,7 @@ public function sendReportEmail(Request $request): JsonResponse
         foreach ($posTransactions as $transaction) {
             if (!$transaction->items) continue;
             foreach ($transaction->items as $item) {
-                $product = $products->get($item->catalog_product_id ?? null);
+                $product = $products->get($item->source_product_id ?? null);
 
                 $lineItems->push([
                     'name' => $item->product_name ?: $product?->name ?: 'Product',

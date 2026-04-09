@@ -266,9 +266,6 @@ function AdminSchedulePage({ user }) {
       <div className="mb-16">
         <div className="mb-6 flex items-end justify-between border-b border-gray-100 pb-4">
           <h3 className="text-2xl font-playfair font-bold text-gray-900">Active Events</h3>
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-600 uppercase tracking-widest border border-emerald-100">
-            {liveSchedules.length} Live
-          </span>
         </div>
 
         {liveSchedules.length === 0 ? (
@@ -334,9 +331,6 @@ function AdminSchedulePage({ user }) {
       <div className="mb-16">
         <div className="mb-6 flex items-end justify-between border-b border-gray-100 pb-4">
           <h3 className="text-2xl font-playfair font-bold text-gray-900">Inactive Events</h3>
-          <span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-bold text-amber-600 uppercase tracking-widest border border-amber-100">
-            {inactiveSchedules.length} Coming Soon
-          </span>
         </div>
 
         {inactiveSchedules.length === 0 ? (

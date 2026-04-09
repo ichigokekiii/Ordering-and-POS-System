@@ -23,9 +23,14 @@ class Order extends Model
         'order_date',
         'total_amount',
         'order_status',
+        'isArchived',
         'special_message',
         'delivery_method',
         'address',
+    ];
+
+    protected $casts = [
+        'isArchived' => 'boolean',
     ];
 
     // Define the relationship: An Order has one Payment

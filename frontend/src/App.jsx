@@ -14,7 +14,7 @@ import AdminLayout from "./components/AdminLayout";
 import Footer from "./components/Footer";
 import OrderLayout from "./components/OrderLayout";
 import AdminQuickActions from "./components/AdminQuickActions";
-import { hasAdminDashboardAccess } from "./utils/adminAccess";
+import { getPostLoginPath, hasAdminDashboardAccess } from "./utils/adminAccess";
 
 // USER PAGES
 import LandingPage from "./pages/users/LandingPage";
@@ -33,6 +33,7 @@ import OrderCustomAdditional from "./pages/users/OrderCustomAdditional";
 import OrderPremade from "./pages/users/OrderPremade";
 import CartPage from "./pages/users/CartPage";
 import CheckoutPage from "./pages/users/CheckoutPage";
+import ResetPasswordPage from "./pages/users/ResetPasswordPage";
 
 // ADMIN PAGES
 import AdminOverviewPage from "./pages/admin/AdminOverviewPage";
@@ -58,14 +59,13 @@ function App() {
   useEffect(() => {
     if (!user || didHandleInitialRoleRedirect.current) return;
 
-    if ((user.role === "admin" || user.role === "owner") && location.pathname === "/") {
-      navigate("/admin");
-      didHandleInitialRoleRedirect.current = true;
-      return;
-    }
+    if (location.pathname === "/") {
+      const postLoginPath = getPostLoginPath(user);
 
-    if (user.role === "staff" && location.pathname === "/") {
-      navigate("/admin");
+      if (postLoginPath !== "/") {
+        navigate(postLoginPath);
+      }
+
       didHandleInitialRoleRedirect.current = true;
       return;
     }
@@ -125,6 +125,7 @@ function App() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/verify-otp" element={<VerifyOtpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Admin Routes */}
         <>

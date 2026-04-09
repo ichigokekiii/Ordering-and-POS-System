@@ -56,16 +56,9 @@ Route::apiResource('premades', PremadeController::class)->only(['index', 'show']
 Route::apiResource('schedules', ScheduleController::class)->only(['index', 'show']);
 Route::post('/schedules/{id}/book', [ScheduleController::class, 'book']);
 
-//cms controller
-Route::apiResource('contents', ContentController::class);
-Route::delete('/contents/archived/{id}', [ContentController::class, 'destroyArchived']);
-
-//pos api route
-// Route::get('/pos-transactions/analytics', [PosTransactionsController::class, 'analytics']);
-// Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
-
-// Allow customers/guests to place an order
-Route::post('/orders', [OrderController::class, 'store']);
+// Public CMS read routes
+Route::get('/contents', [ContentController::class, 'index']);
+Route::get('/contents/{id}', [ContentController::class, 'show']);
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -107,6 +100,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Delete account
     Route::delete('/profile', [ProfileController::class, 'deleteAccount']);
 
+    // Customers must be authenticated to place orders
+    Route::post('/orders', [OrderController::class, 'store']);
+
     // Order tracking for logged-in users
     Route::get('/orders/user/{user_id}', [OrderController::class, 'userOrders']);
     Route::post('/order-items', [OrderItemController::class, 'store']);
@@ -114,18 +110,20 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
     // ====================================================================
-    // STAFF "READ-ONLY" ADMIN ACCESS
-    // Staff are allowed to view this data, but the modifying routes 
-    // are safely locked in the admin group below.
+    // STAFF ADMIN ACCESS
+    // Staff can view admin data and update order progress. Other
+    // modifying routes stay locked in the admin group below.
     // ====================================================================
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{id}', [OrderController::class, 'show']);
+    Route::put('/orders/{id}', [OrderController::class, 'update']);
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/{id}', [UserController::class, 'show']);
     Route::get('/logs', [LogController::class, 'index']);
     Route::get('/logs/export', [LogController::class, 'export']);
     Route::get('/analytics', [AnalyticsController::class, 'index']);
     Route::post('/analytics/email', [AnalyticsController::class, 'sendReportEmail']);
+    Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -139,19 +137,23 @@ Route::middleware('auth:sanctum')->group(function () {
 */
 Route::middleware(['auth:sanctum', 'admin.owner'])->group(function () {
 
-    // Admin Order Management (Only updating and deleting)
-    Route::put('/orders/{id}', [OrderController::class, 'update']);
+    // Admin Order Management
     Route::delete('/orders/{id}', [OrderController::class, 'destroy']);
+    Route::put('/users/{id}', [UserController::class, 'update']);
 
     // Product & Schedule Management (Create, Update, Delete)
     Route::apiResource('products', ProductController::class)->except(['index', 'show']);
     Route::apiResource('premades', PremadeController::class)->except(['index', 'show']);
     Route::apiResource('schedules', ScheduleController::class)->except(['index', 'show']);
+    Route::post('/contents', [ContentController::class, 'store']);
+    Route::put('/contents/{id}', [ContentController::class, 'update']);
+    Route::patch('/contents/{id}', [ContentController::class, 'update']);
+    Route::delete('/contents/{id}', [ContentController::class, 'destroy']);
+    Route::delete('/contents/archived/{id}', [ContentController::class, 'destroyArchived']);
 
     // Restricted Admin-Only Actions
     Route::middleware('admin.only')->group(function () {
         Route::post('/users', [UserController::class, 'store']);
-        Route::put('/users/{id}', [UserController::class, 'update']);
         Route::delete('/users/{id}', [UserController::class, 'destroy']);
 
         // OTP endpoints for admin user management

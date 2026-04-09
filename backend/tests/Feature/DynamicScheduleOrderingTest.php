@@ -37,6 +37,8 @@ class DynamicScheduleOrderingTest extends TestCase
             'isArchived' => false,
         ]);
 
+        Sanctum::actingAs($user);
+
         $response = $this->post('/api/orders', [
             'user_id' => $user->id,
             'schedule_id' => $schedule->id,
@@ -47,6 +49,8 @@ class DynamicScheduleOrderingTest extends TestCase
             'reference_image' => UploadedFile::fake()->image('proof.jpg'),
             'total_amount' => 1200,
             'special_message' => '',
+            'terms_accepted' => true,
+            'terms_scope' => 'customer',
         ]);
 
         $response->assertCreated();
@@ -78,6 +82,8 @@ class DynamicScheduleOrderingTest extends TestCase
             'isArchived' => false,
         ]);
 
+        Sanctum::actingAs($user);
+
         $response = $this->post('/api/orders', [
             'user_id' => $user->id,
             'schedule_id' => $schedule->id,
@@ -88,6 +94,8 @@ class DynamicScheduleOrderingTest extends TestCase
             'reference_image' => UploadedFile::fake()->image('proof.jpg'),
             'total_amount' => 1200,
             'special_message' => '',
+            'terms_accepted' => true,
+            'terms_scope' => 'customer',
         ]);
 
         $response->assertStatus(422)

@@ -13,6 +13,8 @@ import {
   SlidersHorizontal, 
   Pencil, 
   Trash2, 
+  Archive,
+  ArchiveRestore,
   CheckCircle2, 
   X,
   Loader2,
@@ -75,9 +77,11 @@ function AdminOrdersPage({ user }) {
 
   const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', message: '' });
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, orderId: null });
+  const [archiveConfirm, setArchiveConfirm] = useState({ isOpen: false, order: null });
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("priority");
+  const [filterArchive, setFilterArchive] = useState("active");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterDelivery, setFilterDelivery] = useState("all");
   const [filterEvent, setFilterEvent] = useState("all");
@@ -88,7 +92,10 @@ function AdminOrdersPage({ user }) {
   const sortRef = useRef(null);
   const filterRef = useRef(null);
 
-  const canEdit = user?.role === "admin" || user?.role === "owner";
+  const userRole = (user?.role || "").toLowerCase();
+  const canUpdateOrderStatus = ["admin", "owner", "staff"].includes(userRole);
+  const canArchiveOrders = ["admin", "owner"].includes(userRole);
+  const canDeleteOrders = userRole === "admin";
 
   const showModalAlert = (type, message) => setStatusModal({ isOpen: true, type, message });
 
@@ -129,6 +136,9 @@ function AdminOrdersPage({ user }) {
 
   const filteredOrders = useMemo(() => {
     let result = [...orders];
+    const showingArchived = filterArchive === "archived";
+
+    result = result.filter((o) => Boolean(o.isArchived) === showingArchived);
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -160,9 +170,15 @@ function AdminOrdersPage({ user }) {
     });
 
     return result;
-  }, [orders, searchQuery, filterStatus, filterDelivery, filterEvent, sortBy]);
+  }, [orders, searchQuery, filterArchive, filterStatus, filterDelivery, filterEvent, sortBy]);
 
   const promptDelete = (id) => setDeleteConfirm({ isOpen: true, orderId: id });
+  const promptToggleArchive = (order) => setArchiveConfirm({ isOpen: true, order });
+
+  const handleArchiveFilterChange = (nextFilter) => {
+    setFilterArchive(nextFilter);
+    setShowFilterMenu(false);
+  };
 
   const confirmDelete = async () => {
     if (!deleteConfirm.orderId) return;
@@ -175,6 +191,32 @@ function AdminOrdersPage({ user }) {
       console.error("Delete failed:", err);
       setDeleteConfirm({ isOpen: false, orderId: null });
       showModalAlert("error", "Failed to delete order.");
+    }
+  };
+
+  const confirmToggleArchive = async () => {
+    const order = archiveConfirm.order;
+    if (!order) return;
+
+    const orderId = order.order_id || order.id;
+    const isRestoring = Boolean(order.isArchived);
+
+    try {
+      const res = await api.put(`/orders/${orderId}`, { isArchived: !isRestoring });
+      const updatedOrder = {
+        ...res.data,
+        order_items: res.data.order_items || res.data.orderItems || [],
+      };
+
+      setOrders((prev) => prev.map((item) => (
+        (item.order_id || item.id) === orderId ? updatedOrder : item
+      )));
+      setArchiveConfirm({ isOpen: false, order: null });
+      showModalAlert("success", isRestoring ? "Order restored successfully." : "Order archived successfully.");
+    } catch (err) {
+      console.error("Archive update failed:", err.response?.data || err.message);
+      setArchiveConfirm({ isOpen: false, order: null });
+      showModalAlert("error", isRestoring ? "Failed to restore order." : "Failed to archive order.");
     }
   };
 
@@ -284,7 +326,23 @@ function AdminOrdersPage({ user }) {
             </button>
             {showFilterMenu && (
               <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 p-4 animate-in fade-in zoom-in duration-100 max-h-[80vh] overflow-y-auto">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Filter by Status</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Filter by Archive</p>
+                <div className="space-y-1 mb-4">
+                  {[
+                    { key: "active", label: "Active Orders" },
+                    { key: "archived", label: "Archived Orders" },
+                  ].map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => handleArchiveFilterChange(key)}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-colors ${filterArchive === key ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-t border-gray-50 pt-4">Filter by Status</p>
                 <div className="space-y-1 mb-4">
                   {["all", "pending", "processing", "shipped", "delivered", "cancelled"].map((s) => (
                     <button
@@ -355,7 +413,7 @@ function AdminOrdersPage({ user }) {
             </span>
             {orders.length > 0 && (
               <button
-                onClick={() => { setSearchQuery(""); setFilterStatus("all"); setFilterDelivery("all"); setFilterEvent("all"); }}
+                onClick={() => { setSearchQuery(""); setFilterArchive("active"); setFilterStatus("all"); setFilterDelivery("all"); setFilterEvent("all"); }}
                 className="text-xs font-bold text-[#4f6fa5] hover:underline mt-1"
               >
                 Clear filters
@@ -375,19 +433,20 @@ function AdminOrdersPage({ user }) {
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Date Placed</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Status</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap text-right">Total</th>
-                  {canEdit && <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Actions</th>}
+                  {(canUpdateOrderStatus || canArchiveOrders || canDeleteOrders) && <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredOrders.map((order) => {
                   const orderId = order.order_id || order.id;
+                  const isArchivedOrder = Boolean(order.isArchived);
                   const edgeColor = getPriorityEdgeColor(order.user?.priority);
 
                   return (
                     <tr
                       key={orderId}
-                      onClick={() => canEdit ? openEditModal(order) : setViewingOrder(order)}
-                      className="group hover:bg-slate-50/80 transition-colors cursor-pointer relative"
+                      onClick={() => canUpdateOrderStatus ? openEditModal(order) : setViewingOrder(order)}
+                      className={`group transition-colors cursor-pointer relative ${isArchivedOrder ? "bg-gray-50 text-gray-500 hover:bg-gray-100/80" : "hover:bg-slate-50/80"}`}
                     >
                       {/* Priority Edge Accent Bar */}
                       <td className="p-0">
@@ -396,7 +455,12 @@ function AdminOrdersPage({ user }) {
 
                       {/* Order ID */}
                       <td className="px-5 py-5 pl-8">
-                        <span className="text-sm font-bold text-gray-900 whitespace-nowrap">#{orderId}</span>
+                        <span className={`text-sm font-bold whitespace-nowrap ${isArchivedOrder ? "text-gray-500" : "text-gray-900"}`}>#{orderId}</span>
+                        {isArchivedOrder && (
+                          <span className="mt-2 block w-fit rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-500">
+                            Archived
+                          </span>
+                        )}
                       </td>
                       
                       {/* Customer Info */}
@@ -406,7 +470,7 @@ function AdminOrdersPage({ user }) {
                             {order.user?.first_name ? order.user.first_name.charAt(0) : "U"}
                           </div>
                           <div className="min-w-0 max-w-[150px] lg:max-w-[200px]">
-                            <p className="font-bold text-gray-900 tracking-tight truncate text-sm">
+                            <p className={`font-bold tracking-tight truncate text-sm ${isArchivedOrder ? "text-gray-500" : "text-gray-900"}`}>
                               {order.user?.first_name ? `${order.user.first_name} ${order.user.last_name}` : `User ID: ${order.user_id}`}
                             </p>
                             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 truncate mt-1">
@@ -419,7 +483,7 @@ function AdminOrdersPage({ user }) {
                       {/* Event */}
                       <td className="px-5 py-5">
                         <div className="max-w-[160px] lg:max-w-[200px]">
-                          <p className="text-sm font-semibold text-gray-700 truncate">
+                          <p className={`text-sm font-semibold truncate ${isArchivedOrder ? "text-gray-500" : "text-gray-700"}`}>
                             {order.schedule?.schedule_name || "Legacy / Unlinked"}
                           </p>
                           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1 truncate">
@@ -430,7 +494,7 @@ function AdminOrdersPage({ user }) {
 
                       {/* Delivery */}
                       <td className="px-5 py-5">
-                        <p className="text-sm font-semibold text-gray-700 capitalize whitespace-nowrap">{order.delivery_method}</p>
+                        <p className={`text-sm font-semibold capitalize whitespace-nowrap ${isArchivedOrder ? "text-gray-500" : "text-gray-700"}`}>{order.delivery_method}</p>
                       </td>
 
                       {/* Date Placed */}
@@ -451,21 +515,38 @@ function AdminOrdersPage({ user }) {
                       </td>
 
                       {/* Actions */}
-                      {canEdit && (
+                      {(canUpdateOrderStatus || canArchiveOrders || canDeleteOrders) && (
                         <td className="px-5 py-5">
                           <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); openEditModal(order); }}
-                              className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white border-2 border-amber-500 hover:bg-transparent hover:text-amber-500 transition-all duration-300 shadow-sm"
-                            >
-                              <Pencil className="w-3.5 h-3.5" /> Edit
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); promptDelete(orderId); }}
-                              className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-xs font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-500 transition-all duration-300 shadow-sm"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" /> Delete
-                            </button>
+                            {canUpdateOrderStatus && !isArchivedOrder && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); openEditModal(order); }}
+                                className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white border-2 border-amber-500 hover:bg-transparent hover:text-amber-500 transition-all duration-300 shadow-sm"
+                              >
+                                <Pencil className="w-3.5 h-3.5" /> Status
+                              </button>
+                            )}
+                            {canArchiveOrders && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); promptToggleArchive(order); }}
+                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white border-2 transition-all duration-300 shadow-sm ${
+                                  isArchivedOrder
+                                    ? "bg-emerald-500 border-emerald-500 hover:bg-transparent hover:text-emerald-600"
+                                    : "bg-amber-500 border-amber-500 hover:bg-transparent hover:text-amber-500"
+                                }`}
+                              >
+                                {isArchivedOrder ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+                                {isArchivedOrder ? "Restore" : "Archive"}
+                              </button>
+                            )}
+                            {canDeleteOrders && isArchivedOrder && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); promptDelete(orderId); }}
+                                className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-xs font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-500 transition-all duration-300 shadow-sm"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" /> Delete
+                              </button>
+                            )}
                           </div>
                         </td>
                       )}
@@ -726,6 +807,45 @@ function AdminOrdersPage({ user }) {
           </div>
         </div>
       )}
+
+      {/* CONFIRM ARCHIVE/RESTORE MODAL */}
+      {archiveConfirm.isOpen && archiveConfirm.order && (() => {
+        const orderId = archiveConfirm.order.order_id || archiveConfirm.order.id;
+        const isRestoring = Boolean(archiveConfirm.order.isArchived);
+
+        return (
+          <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
+            <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
+              <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${isRestoring ? 'bg-emerald-100 text-emerald-500' : 'bg-amber-100 text-amber-500'}`}>
+                {isRestoring ? <ArchiveRestore size={28} /> : <Archive size={28} />}
+              </div>
+              <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
+                {isRestoring ? "Restore Order?" : "Archive Order?"}
+              </h3>
+              <p className="text-sm text-gray-500 mb-8 px-2">
+                {isRestoring
+                  ? `Restore Order #${orderId} to the active orders list?`
+                  : `Archive Order #${orderId}? You can restore it from the Archived filter.`}
+              </p>
+              <div className="flex justify-center gap-3">
+                <button onClick={() => setArchiveConfirm({ isOpen: false, order: null })} className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmToggleArchive}
+                  className={`rounded-lg px-5 py-2 text-sm font-bold text-white border-2 transition-all duration-300 shadow-sm ${
+                    isRestoring
+                      ? "bg-emerald-500 border-emerald-500 hover:bg-transparent hover:text-emerald-600"
+                      : "bg-amber-500 border-amber-500 hover:bg-transparent hover:text-amber-500"
+                  }`}
+                >
+                  {isRestoring ? "Yes, Restore" : "Yes, Archive"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* STATUS ALERT MODAL */}
       {statusModal.isOpen && (

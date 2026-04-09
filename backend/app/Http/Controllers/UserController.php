@@ -194,10 +194,21 @@ public function store(Request $request)
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        if (Auth::user()->role === 'owner' && $request->filled('role')) {
-            return response()->json(['error' => 'Owner cannot change roles'], 403);
-        } elseif (Auth::user()->role !== 'admin' && Auth::user()->role !== 'owner') {
+        $actorRole = Auth::user()->role;
+
+        if (!in_array($actorRole, ['admin', 'owner'], true)) {
             return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if ($actorRole === 'owner') {
+            $ownerAllowedKeys = ['isArchived'];
+            $requestedKeys = array_keys($request->all());
+            $hasOnlyOwnerArchiveFields = $request->has('isArchived')
+                && empty(array_diff($requestedKeys, $ownerAllowedKeys));
+
+            if (!$hasOnlyOwnerArchiveFields) {
+                return response()->json(['error' => 'Owner can only archive or restore users'], 403);
+            }
         }
 
         $user = User::find($id);
@@ -212,6 +223,7 @@ public function store(Request $request)
             'first_name'   => ['sometimes', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
             'last_name'    => ['sometimes', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
             'phone_number' => ['sometimes', 'string', 'regex:/^\d{11}$/'],
+            'isArchived'   => 'sometimes|boolean',
         ], [
             'first_name.regex'   => 'First name can only contain letters and spaces.',
             'last_name.regex'    => 'Last name can only contain letters and spaces.',
@@ -279,6 +291,10 @@ public function store(Request $request)
         }
 
         if ($request->filled('role')) {
+            if ($actorRole === 'owner') {
+                return response()->json(['error' => 'Owner cannot change roles'], 403);
+            }
+
             $user->role = $request->input('role');
         }
 
@@ -308,12 +324,16 @@ public function store(Request $request)
             $user->priority = min(max((int) $request->input('priority'), 0), 3);
         }
 
+        if ($request->has('isArchived')) {
+            $user->isArchived = $request->boolean('isArchived');
+        }
+
         $user->save();
 
         return response()->json($user);
     }
 
-    // Soft delete user
+    // Permanently delete archived user
     public function destroy($id)
     {
         // Only admin can delete users
@@ -327,9 +347,15 @@ public function store(Request $request)
             return response()->json(['error' => 'User not found'], 404);
         }
 
+        if (!$user->isArchived) {
+            return response()->json([
+                'message' => 'Archive this user before deleting them.',
+            ], 409);
+        }
+
         $user->delete();
 
-        return response()->json(['message' => 'User archived successfully']);
+        return response()->json(['message' => 'User deleted successfully']);
     }
 
     // Send email change OTP for admin

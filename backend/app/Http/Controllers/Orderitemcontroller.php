@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\Log;
 
 class OrderItemController extends Controller
 {
+    private function canManageOrders($user): bool
+    {
+        return $user && in_array(strtolower((string) $user->role), ['admin', 'owner', 'staff'], true);
+    }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -33,6 +38,28 @@ class OrderItemController extends Controller
             return response()->json([
                 'message' => 'Order not found.'
             ], 404);
+        }
+
+        $actor = $request->user();
+
+        if (
+            !$this->canManageOrders($actor)
+            && (int) $order->user_id !== (int) optional($actor)->id
+        ) {
+            return response()->json([
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        $distinctOrderIds = collect($request->items)
+            ->pluck('order_id')
+            ->unique()
+            ->values();
+
+        if ($distinctOrderIds->count() !== 1 || $distinctOrderIds->first() !== $orderId) {
+            return response()->json([
+                'message' => 'All items must belong to the same order.'
+            ], 422);
         }
 
         // ── Send receipt email ────────────────────────────────────────────

@@ -72,6 +72,7 @@ function AdminUsersPage({ user }) {
   const [error, setError] = useState(null);
 
   const [sortBy, setSortBy] = useState("created_at");
+  const [filterArchive, setFilterArchive] = useState("active");
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -90,7 +91,10 @@ function AdminUsersPage({ user }) {
   const dropdownRef = useRef(null);
   const sortRef = useRef(null);
 
+  const userRole = (user?.role || "").toLowerCase();
   const canManageUsers = canManageUsersAdmin(user);
+  const canArchiveUsers = ["admin", "owner"].includes(userRole);
+  const canDeleteUsers = userRole === "admin";
   const createTermsScope = useMemo(
     () => resolveTermsScopeFromRole(user?.role),
     [user?.role]
@@ -100,6 +104,7 @@ function AdminUsersPage({ user }) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showConfirmSave, setShowConfirmSave] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [archiveConfirm, setArchiveConfirm] = useState({ isOpen: false, user: null });
   
   // Replaced Toast with Modal System
   const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', message: '' });
@@ -222,6 +227,8 @@ function AdminUsersPage({ user }) {
 
   const filteredUsers = useMemo(() => {
     let result = [...users];
+    result = result.filter((u) => Boolean(u.isArchived) === (filterArchive === "archived"));
+
     if (filterRole !== "all") result = result.filter((u) => formatRole(u.role).toLowerCase() === filterRole);
     if (filterStatus !== "all") {
       if (filterStatus === "Locked") result = result.filter((u) => u.is_locked);
@@ -232,7 +239,16 @@ function AdminUsersPage({ user }) {
       if (sortBy === "created_at") return new Date(b.created_at) - new Date(a.created_at);
       return (a[sortBy] || "").toString().localeCompare((b[sortBy] || "").toString());
     });
-  }, [users, filterRole, filterStatus, sortBy]);
+  }, [users, filterArchive, filterRole, filterStatus, sortBy]);
+
+  const handleArchiveFilterChange = (nextFilter) => {
+    setFilterArchive(nextFilter);
+    setShowFilterMenu(false);
+  };
+
+  const promptToggleArchive = (targetUser) => {
+    setArchiveConfirm({ isOpen: true, user: targetUser });
+  };
 
   const handleUnlockUser = (userId) => {
     api.put(`/users/${userId}`, { is_locked: false })
@@ -253,6 +269,27 @@ function AdminUsersPage({ user }) {
       })
       .catch(() => {
         showModalAlert("error", "Failed to delete user");
+      });
+  };
+
+  const handleToggleArchiveUser = () => {
+    const targetUser = archiveConfirm.user;
+    if (!targetUser) return;
+
+    const isRestoring = Boolean(targetUser.isArchived);
+
+    api.put(`/users/${targetUser.id}`, { isArchived: !isRestoring })
+      .then((res) => {
+        setUsers((prev) => prev.map((u) => (u.id === targetUser.id ? res.data : u)));
+        setArchiveConfirm({ isOpen: false, user: null });
+        if (selectedUser?.id === targetUser.id) {
+          setSelectedUser(res.data);
+        }
+        showModalAlert("success", isRestoring ? "User restored successfully." : "User archived successfully.");
+      })
+      .catch((err) => {
+        setArchiveConfirm({ isOpen: false, user: null });
+        showModalAlert("error", err.response?.data?.error || err.response?.data?.message || (isRestoring ? "Failed to restore user" : "Failed to archive user"));
       });
   };
 
@@ -457,6 +494,7 @@ function AdminUsersPage({ user }) {
 
   // --- REUSABLE PILL ---
   const StatusPill = ({ u }) => {
+    if (u.isArchived) return <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600 border border-gray-200">Archived</span>;
     if (u.is_locked) return <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700 border border-rose-200">Locked</span>;
     const active = (u.status || "").toLowerCase() === "active";
     return (
@@ -534,7 +572,17 @@ function AdminUsersPage({ user }) {
             </button>
             {showFilterMenu && (
               <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 p-4 animate-in fade-in zoom-in duration-100">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Filter by Role</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Filter by Archive</p>
+                <div className="space-y-1 mb-4">
+                  {[
+                    { key: "active", label: "Active Users" },
+                    { key: "archived", label: "Archived Users" },
+                  ].map(({ key, label }) => (
+                    <button key={key} onClick={() => handleArchiveFilterChange(key)} className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-colors ${filterArchive === key ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}>{label}</button>
+                  ))}
+                </div>
+
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-t border-gray-50 pt-4">Filter by Role</p>
                 <div className="space-y-1 mb-4">
                   {["all", "admin", "staff", "customer"].map(r => (
                     <button key={r} onClick={() => setFilterRole(r)} className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold capitalize transition-colors ${filterRole === r ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}>{r}</button>
@@ -569,16 +617,19 @@ function AdminUsersPage({ user }) {
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Role</th>
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Status</th>
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Registered</th>
-                  {canManageUsers && (
+                  {(canManageUsers || canArchiveUsers || canDeleteUsers) && (
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Actions</th>
                   )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filteredUsers.map((u) => (
+                {filteredUsers.map((u) => {
+                  const isArchivedUser = Boolean(u.isArchived);
+
+                  return (
                   <tr 
                     key={u.id} 
-                    className="group cursor-pointer transition-colors hover:bg-slate-50/80"
+                    className={`group cursor-pointer transition-colors ${isArchivedUser ? "bg-gray-50 text-gray-500 hover:bg-gray-100/80" : "hover:bg-slate-50/80"}`}
                     onClick={() => openEditModal(u)}
                   >
                     <td className="px-6 py-5">
@@ -587,13 +638,13 @@ function AdminUsersPage({ user }) {
                           {u.first_name?.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-bold text-gray-900 tracking-tight whitespace-nowrap">{u.first_name} {u.last_name}</p>
+                          <p className={`font-bold tracking-tight whitespace-nowrap ${isArchivedUser ? "text-gray-500" : "text-gray-900"}`}>{u.first_name} {u.last_name}</p>
                           <p className="text-xs font-medium text-gray-400">ID: #{u.id}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-5">
-                      <p className="text-sm font-semibold text-gray-700 whitespace-nowrap">{u.email}</p>
+                      <p className={`text-sm font-semibold whitespace-nowrap ${isArchivedUser ? "text-gray-500" : "text-gray-700"}`}>{u.email}</p>
                       <p className="text-xs text-gray-400 whitespace-nowrap">{u.phone_number || "No Phone"}</p>
                     </td>
                     <td className="px-6 py-5">
@@ -618,32 +669,50 @@ function AdminUsersPage({ user }) {
                       <StatusPill u={u} />
                     </td>
                     <td className="px-6 py-5">
-                      <p className="text-sm font-bold text-gray-900 whitespace-nowrap">
+                      <p className={`text-sm font-bold whitespace-nowrap ${isArchivedUser ? "text-gray-500" : "text-gray-900"}`}>
                         {new Date(u.created_at).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric'})}
                       </p>
                     </td>
-                    {canManageUsers && (
+                    {(canManageUsers || canArchiveUsers || canDeleteUsers) && (
                       <td className="px-6 py-5">
                         <div className="flex items-center justify-end gap-2">
-                          <button 
+                          {canManageUsers && !isArchivedUser && (
+                          <button
                             onClick={(e) => { e.stopPropagation(); openEditModal(u); }}
                             className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-2 text-xs font-bold text-white border-2 border-amber-500 hover:bg-transparent hover:text-amber-500 transition-all duration-300 shadow-sm"
                           >
                             <Pencil className="w-3.5 h-3.5" />
                             Edit
                           </button>
-                          <button 
+                          )}
+                          {canArchiveUsers && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); promptToggleArchive(u); }}
+                            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold text-white border-2 transition-all duration-300 shadow-sm ${
+                              isArchivedUser
+                                ? "bg-emerald-500 border-emerald-500 hover:bg-transparent hover:text-emerald-600"
+                                : "bg-amber-500 border-amber-500 hover:bg-transparent hover:text-amber-500"
+                            }`}
+                          >
+                            {isArchivedUser ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+                            {isArchivedUser ? "Restore" : "Archive"}
+                          </button>
+                          )}
+                          {canDeleteUsers && isArchivedUser && (
+                          <button
                             onClick={(e) => { e.stopPropagation(); setSelectedUser(u); setShowConfirmDelete(true); }}
                             className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-4 py-2 text-xs font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-500 transition-all duration-300 shadow-sm"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                             Delete
                           </button>
+                          )}
                         </div>
                       </td>
                     )}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -783,9 +852,16 @@ function AdminUsersPage({ user }) {
           <div className="bg-white rounded-3xl w-[90%] max-w-lg shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-6">
                <h2 className="text-2xl font-playfair font-bold text-gray-900">{canManageUsers ? "Edit User Details" : "User Details"}</h2>
-               <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                 ID: #{selectedUser.id}
-               </span>
+               <div className="flex items-center gap-2">
+                 {selectedUser.isArchived && (
+                   <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                     Archived
+                   </span>
+                 )}
+                 <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                   ID: #{selectedUser.id}
+                 </span>
+               </div>
             </div>
 
             <fieldset disabled={!canManageUsers} className="space-y-4 disabled:opacity-100">
@@ -917,8 +993,17 @@ function AdminUsersPage({ user }) {
             )}
 
             <div className="flex justify-between items-center mt-8 pt-4">
-              <div>
-                {canManageUsers && (
+              <div className="flex items-center gap-3">
+                {canArchiveUsers && (
+                  <button
+                    onClick={() => promptToggleArchive(selectedUser)}
+                    className="text-xs font-bold text-gray-400 hover:text-amber-600 uppercase tracking-widest transition-colors flex items-center gap-1.5"
+                  >
+                    {selectedUser.isArchived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+                    {selectedUser.isArchived ? "Restore" : "Archive"}
+                  </button>
+                )}
+                {canDeleteUsers && selectedUser.isArchived && (
                   <button
                     onClick={() => setShowConfirmDelete(true)}
                     className="text-xs font-bold text-gray-400 hover:text-rose-600 uppercase tracking-widest transition-colors flex items-center gap-1.5"
@@ -980,8 +1065,8 @@ function AdminUsersPage({ user }) {
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 text-rose-500">
                <Trash2 size={28} />
             </div>
-            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">Delete User?</h3>
-            <p className="text-sm text-gray-500 mb-8 px-2">This action is irreversible and will permanently remove this account from the system.</p>
+            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">Delete Archived User?</h3>
+            <p className="text-sm text-gray-500 mb-8 px-2">This action is irreversible and will permanently remove this archived account from the system.</p>
             <div className="flex justify-center gap-3">
               <button onClick={() => setShowConfirmDelete(false)} className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
                 Cancel
@@ -993,6 +1078,45 @@ function AdminUsersPage({ user }) {
           </div>
         </div>
       )}
+
+      {/* Confirm Archive/Restore Modal */}
+      {archiveConfirm.isOpen && archiveConfirm.user && (() => {
+        const isRestoring = Boolean(archiveConfirm.user.isArchived);
+        const fullName = `${archiveConfirm.user.first_name || ""} ${archiveConfirm.user.last_name || ""}`.trim() || `User #${archiveConfirm.user.id}`;
+
+        return (
+          <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400]">
+            <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
+              <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${isRestoring ? "bg-emerald-100 text-emerald-500" : "bg-amber-100 text-amber-500"}`}>
+                {isRestoring ? <ArchiveRestore size={28} /> : <Archive size={28} />}
+              </div>
+              <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
+                {isRestoring ? "Restore User?" : "Archive User?"}
+              </h3>
+              <p className="text-sm text-gray-500 mb-8 px-2">
+                {isRestoring
+                  ? `Restore ${fullName} to the active user list?`
+                  : `Archive ${fullName}? You can restore this account from the Archived filter.`}
+              </p>
+              <div className="flex justify-center gap-3">
+                <button onClick={() => setArchiveConfirm({ isOpen: false, user: null })} className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleToggleArchiveUser}
+                  className={`rounded-lg px-5 py-2 text-sm font-bold text-white border-2 transition-all duration-300 shadow-sm ${
+                    isRestoring
+                      ? "bg-emerald-500 border-emerald-500 hover:bg-transparent hover:text-emerald-600"
+                      : "bg-amber-500 border-amber-500 hover:bg-transparent hover:text-amber-500"
+                  }`}
+                >
+                  {isRestoring ? "Yes, Restore" : "Yes, Archive"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* --- STATUS ALERT MODAL (Replaces Toast) --- */}
       {statusModal.isOpen && (

@@ -17,6 +17,11 @@ use App\Support\ScheduleService;
 
 class OrderController extends Controller
 {
+    private function canManageOrders(?User $user): bool
+    {
+        return $user && in_array(strtolower((string) $user->role), ['admin', 'owner', 'staff'], true);
+    }
+
     private function normalizeUserPriority(?User $user): ?User
     {
         if ($user) {
@@ -38,6 +43,10 @@ class OrderController extends Controller
     public function index()
     {
         try {
+            if (!$this->canManageOrders(request()->user())) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
             $orders = Order::query()
                 ->select('orders.*')
                 ->leftJoin('users', 'orders.user_id', '=', 'users.id')
@@ -72,6 +81,15 @@ class OrderController extends Controller
                 'orderItems.product',
             ])->where('order_id', $id)->firstOrFail();
 
+            $actor = request()->user();
+
+            if (
+                !$this->canManageOrders($actor)
+                && (int) $order->user_id !== (int) optional($actor)->id
+            ) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
             $this->normalizeOrderForResponse($order);
 
             return response()->json($order);
@@ -83,9 +101,18 @@ class OrderController extends Controller
         }
     }
 
-    public function userOrders($userId)
+    public function userOrders(Request $request, $userId)
     {
         try {
+            $actor = $request->user();
+
+            if (
+                !$this->canManageOrders($actor)
+                && (int) $userId !== (int) optional($actor)->id
+            ) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
             $orders = Order::with([
                 'user',
                 'payment',
@@ -110,7 +137,7 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'user_id'          => 'required|integer|exists:users,id',
+            'user_id'          => 'nullable|integer|exists:users,id',
             'schedule_id'      => 'required|integer|exists:schedules,id',
             'address'          => 'required|string',
             'delivery_method'  => 'required|in:pickup,delivery',
@@ -123,7 +150,31 @@ class OrderController extends Controller
             'terms_scope'      => 'required|string|in:customer,internal',
         ]);
 
-        $orderUser = User::find($request->input('user_id'));
+        $actor = $request->user();
+        $isPrivilegedActor = $this->canManageOrders($actor);
+        $requestedUserId = (int) $request->input('user_id', $actor?->id);
+
+        if (!$actor) {
+            return response()->json([
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        if (!$isPrivilegedActor && $requestedUserId !== (int) $actor->id) {
+            return response()->json([
+                'message' => 'You can only place orders for your own account.',
+            ], 403);
+        }
+
+        $resolvedUserId = $isPrivilegedActor ? $requestedUserId : (int) $actor->id;
+        $orderUser = User::find($resolvedUserId);
+
+        if (!$orderUser) {
+            return response()->json([
+                'message' => 'The selected customer account was not found.',
+            ], 404);
+        }
+
         $expectedTermsScope = in_array(strtolower((string) optional($orderUser)->role), ['user', 'customer'], true)
             ? 'customer'
             : 'internal';
@@ -151,12 +202,12 @@ class OrderController extends Controller
         $imagePath = $request->file('reference_image')->store('payments', 'public');
 
         try {
-            DB::transaction(function () use ($request, $now, $orderId, $paymentId, $imagePath, $schedule) {
+            DB::transaction(function () use ($request, $now, $orderId, $paymentId, $imagePath, $schedule, $resolvedUserId) {
 
                 // 1. Create order with payment_id null
                 $order = new Order();
                 $order->order_id        = $orderId;
-                $order->user_id         = $request->input('user_id');
+                $order->user_id         = $resolvedUserId;
                 $order->schedule_id     = $schedule->id;
                 $order->payment_id      = null;
                 $order->order_date      = $now->toDateTimeString();
@@ -202,9 +253,20 @@ class OrderController extends Controller
     public function update(Request $request, $id)
     {
         try {
+            $actorRole = strtolower((string) optional($request->user())->role);
+
+            if (!in_array($actorRole, ['admin', 'owner', 'staff'], true)) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            if ($request->has('isArchived') && !in_array($actorRole, ['admin', 'owner'], true)) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
             $request->validate([
                 'order_status' => 'nullable|string',
-                'status'       => 'nullable|string'
+                'status'       => 'nullable|string',
+                'isArchived'   => 'sometimes|boolean',
             ]);
 
             $order = Order::where('order_id', $id)->firstOrFail();
@@ -212,17 +274,24 @@ class OrderController extends Controller
 
             $status = $request->input('status') ?? $request->input('order_status');
 
-            if (!$status) {
+            if (!$status && !$request->has('isArchived')) {
                 return response()->json([
                     'message' => 'Failed to update order',
-                    'error'   => 'The status field is required.'
+                    'error'   => 'A status or archive value is required.'
                 ], 400);
             }
 
-            $order->order_status = $status;
+            if ($status) {
+                $order->order_status = $status;
+            }
+
+            if ($request->has('isArchived')) {
+                $order->isArchived = $request->boolean('isArchived');
+            }
+
             $order->save();
 
-            if (in_array(strtolower($status), ['delivered', 'completed'], true) && !in_array($previousStatus, ['delivered', 'completed'], true)) {
+            if ($status && in_array(strtolower($status), ['delivered', 'completed'], true) && !in_array($previousStatus, ['delivered', 'completed'], true)) {
                 User::query()
                     ->whereKey($order->user_id)
                     ->update(['consecutive_cancellations' => 0]);
@@ -232,29 +301,31 @@ class OrderController extends Controller
             $order->load(['user', 'payment', 'schedule', 'orderItems.product']);
             $this->normalizeOrderForResponse($order);
 
-            // ── Send status update email ──────────────────────────────────
-            try {
-                if ($order->user && $order->user->email) {
-                    $items = $order->orderItems->map(fn($item) => [
-                        'product_name'      => $item->product->name ?? $item->product_name,
-                        'quantity'          => $item->quantity,
-                        'price_at_purchase' => $item->price_at_purchase,
-                        'special_message'   => $item->special_message ?? null,
-                    ])->toArray();
+            if ($status) {
+                // ── Send status update email ──────────────────────────────
+                try {
+                    if ($order->user && $order->user->email) {
+                        $items = $order->orderItems->map(fn($item) => [
+                            'product_name'      => $item->product->name ?? $item->product_name,
+                            'quantity'          => $item->quantity,
+                            'price_at_purchase' => $item->price_at_purchase,
+                            'special_message'   => $item->special_message ?? null,
+                        ])->toArray();
 
-                    Mail::to($order->user->email)->send(new OrderStatusUpdated(
-                        orderId:        $order->order_id,
-                        newStatus:      $status,
-                        totalAmount:    (float) $order->total_amount,
-                        deliveryMethod: $order->delivery_method,
-                        userName:       trim(($order->user->first_name ?? '') . ' ' . ($order->user->last_name ?? '')),
-                        userEmail:      $order->user->email,
-                        items:          $items,
-                    ));
+                        Mail::to($order->user->email)->send(new OrderStatusUpdated(
+                            orderId:        $order->order_id,
+                            newStatus:      $status,
+                            totalAmount:    (float) $order->total_amount,
+                            deliveryMethod: $order->delivery_method,
+                            userName:       trim(($order->user->first_name ?? '') . ' ' . ($order->user->last_name ?? '')),
+                            userEmail:      $order->user->email,
+                            items:          $items,
+                        ));
+                    }
+                } catch (\Throwable $e) {
+                    // Never let mail failure break the status update
+                    Log::warning("Status update email failed for order {$id}: " . $e->getMessage());
                 }
-            } catch (\Throwable $e) {
-                // Never let mail failure break the status update
-                Log::warning("Status update email failed for order {$id}: " . $e->getMessage());
             }
 
             return response()->json($order);
@@ -270,8 +341,18 @@ class OrderController extends Controller
     public function destroy($id)
     {
         try {
+            if (strtolower((string) optional(request()->user())->role) !== 'admin') {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
             // Find order using the custom primary key
             $order = Order::where('order_id', $id)->firstOrFail();
+
+            if (!$order->isArchived) {
+                return response()->json([
+                    'message' => 'Archive this order before deleting it.',
+                ], 409);
+            }
 
             $order->delete();
 

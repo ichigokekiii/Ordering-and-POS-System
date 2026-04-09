@@ -19,7 +19,7 @@ return new class extends Migration
                   ->cascadeOnDelete();
 
             $table->unsignedBigInteger('product_id')->nullable();
-            $table->foreignId('catalog_product_id')->nullable()->constrained('products')->nullOnDelete();
+            $table->foreignId('source_product_id')->nullable()->constrained('products')->nullOnDelete();
 
             $table->string('product_name');
 
@@ -29,7 +29,7 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->index(['pos_id', 'catalog_product_id']);
+            $table->index(['pos_id', 'source_product_id']);
         });
     }
 

@@ -1,5 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom"; 
+import { LogOut } from "lucide-react"; 
 import { useProducts } from "../../contexts/ProductContext";
 import api from "../../services/api";
 import ProductGrid from "../../components/staff/ProductGrid";
@@ -15,6 +17,7 @@ import {
 const STAFF_POS_CART_STORAGE_KEY = "staff-pos-cart";
 
 function StaffPage({ children, customCategories }) {
+  const navigate = useNavigate(); 
   const { products, loading } = useProducts();
   const isVisibleForStaff = (product) => !product.isArchived && product.isAvailable;
 
@@ -57,7 +60,6 @@ function StaffPage({ children, customCategories }) {
   const [qrModal, setQrModal] = useState(false);
   const [cashReceived, setCashReceived] = useState(0);
 
-
   const available = products.filter(isVisibleForStaff);
 
   const categories = {
@@ -95,6 +97,21 @@ function StaffPage({ children, customCategories }) {
   const hasIncompleteBuilder = Boolean(activePromoBuilder);
 
   const total = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+
+  // --- LOGOUT FUNCTIONALITY ---
+  const handleLogout = async () => {
+    try {
+      await api.post("/logout"); 
+    } catch (err) {
+      console.error("Logout failed on server", err);
+    } finally {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.sessionStorage.removeItem(STAFF_POS_CART_STORAGE_KEY);
+      
+      navigate("/");
+    }
+  };
 
   const removeFromCart = (uniqueCartId) => {
     setCart((prev) => prev.filter((item) => item.cartId !== uniqueCartId));
@@ -512,7 +529,21 @@ function StaffPage({ children, customCategories }) {
       <Sidebar
         isOpen={isSidebarOpen}
         dm={dm}
+        onLogout={handleLogout}
       />
+
+      {/* FLOATING LOGOUT BUTTON (If sidebar is closed) */}
+      <button
+        onClick={handleLogout}
+        className={`fixed bottom-6 left-6 z-[40] flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-sm transition-all duration-300 shadow-lg active:scale-95 ${
+          dm
+            ? "bg-gray-800 text-rose-400 hover:bg-gray-700 border border-gray-700 hover:border-rose-500/50 shadow-black/20"
+            : "bg-white text-rose-500 border border-gray-200 hover:bg-rose-50 hover:border-rose-200 shadow-gray-200/50"
+        } ${isSidebarOpen ? "translate-x-64 opacity-0 pointer-events-none" : "translate-x-0 opacity-100"}`}
+      >
+        <LogOut className="w-4 h-4" />
+        Log Out
+      </button>
 
       {/* LEFT SIDE (BUILDER) */}
       {/* DYNAMIC CONTENT (Premade / Custom) */}

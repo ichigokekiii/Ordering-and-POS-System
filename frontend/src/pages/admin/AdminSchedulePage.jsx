@@ -31,8 +31,11 @@ function AdminSchedulePage({ user }) {
   // Inline errors state
   const [errors, setErrors] = useState({});
 
-  // Replaced Toast with Modal System
+  // Modal Systems
   const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', message: '' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false });
+  const [archiveConfirm, setArchiveConfirm] = useState({ isOpen: false, schedule: null });
+  
   const asBoolean = (value) => value === 1 || value === true || value === "1";
 
   useEffect(() => {
@@ -43,7 +46,7 @@ function AdminSchedulePage({ user }) {
     setStatusModal({ isOpen: true, type, message });
   };
 
-  const handleImageChange = (e) => {
+const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -77,6 +80,8 @@ function AdminSchedulePage({ user }) {
     setIsAvailable(1);
     setEditingSchedule(null);
     setShowModal(false);
+    setConfirmModal({ isOpen: false });
+    setArchiveConfirm({ isOpen: false, schedule: null });
     setErrors({});
   };
 
@@ -120,6 +125,13 @@ function AdminSchedulePage({ user }) {
       return;
     }
 
+    // If validation passes, open the confirmation modal instead of submitting immediately
+    setConfirmModal({ isOpen: true });
+  };
+
+  const confirmSubmit = async () => {
+    setConfirmModal({ isOpen: false }); // Close the confirmation modal
+    
     try {
       const formData = new FormData();
       formData.append("schedule_name", scheduleName);
@@ -133,6 +145,8 @@ function AdminSchedulePage({ user }) {
       }
 
       if (editingSchedule) {
+        // Use POST with _method=PUT to handle multipart/form-data update safely
+        formData.append("_method", "PUT");
         await updateSchedule(editingSchedule.id, formData);
         showModalAlert("success", "Schedule updated successfully!");
       } else {
@@ -144,7 +158,6 @@ function AdminSchedulePage({ user }) {
 
     } catch (error) {
       console.error("Schedule operation failed", error);
-      // Parse backend validation error response (422) for inline display
       if (error.response && error.response.status === 422) {
         setErrors(error.response.data.errors);
       } else {
@@ -165,7 +178,16 @@ function AdminSchedulePage({ user }) {
     setErrors({});
   };
 
-  const handleToggleArchive = async (schedule) => {
+  const promptToggleArchive = (schedule) => {
+    setArchiveConfirm({ isOpen: true, schedule });
+  };
+
+  const confirmToggleArchive = async () => {
+    const schedule = archiveConfirm.schedule;
+    if (!schedule) return;
+
+    setArchiveConfirm({ isOpen: false, schedule: null }); // Close the modal
+
     try {
       await updateSchedule(schedule.id, {
         isArchived: asBoolean(schedule.isArchived) ? 0 : 1,
@@ -276,7 +298,7 @@ function AdminSchedulePage({ user }) {
                         <Pencil className="w-3.5 h-3.5" /> Edit
                       </button>
                       <button 
-                        onClick={(e) => { e.stopPropagation(); handleToggleArchive(schedule); }}
+                        onClick={(e) => { e.stopPropagation(); promptToggleArchive(schedule); }}
                         className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-bold text-white border-2 border-amber-500 hover:bg-transparent hover:text-amber-500 transition-all duration-300 shadow-sm"
                       >
                         <Archive className="w-3.5 h-3.5" /> Archive
@@ -344,7 +366,7 @@ function AdminSchedulePage({ user }) {
                         <Pencil className="w-3.5 h-3.5" /> Edit
                       </button>
                       <button 
-                        onClick={(e) => { e.stopPropagation(); handleToggleArchive(schedule); }}
+                        onClick={(e) => { e.stopPropagation(); promptToggleArchive(schedule); }}
                         className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-bold text-white border-2 border-amber-500 hover:bg-transparent hover:text-amber-500 transition-all duration-300 shadow-sm"
                       >
                         <Archive className="w-3.5 h-3.5" /> Archive
@@ -399,7 +421,7 @@ function AdminSchedulePage({ user }) {
                         <Pencil className="w-3.5 h-3.5" /> Edit
                       </button>
                       <button 
-                        onClick={(e) => { e.stopPropagation(); handleToggleArchive(schedule); }}
+                        onClick={(e) => { e.stopPropagation(); promptToggleArchive(schedule); }}
                         className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-1.5 text-xs font-bold text-white border-2 border-emerald-500 hover:bg-transparent hover:text-emerald-600 transition-all duration-300 shadow-sm"
                       >
                         <ArchiveRestore className="w-3.5 h-3.5" /> Restore
@@ -429,22 +451,43 @@ function AdminSchedulePage({ user }) {
 
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
               
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Event Name</label>
-                <input
-                  type="text"
-                  value={scheduleName}
-                  onChange={(e) => {
-                    setScheduleName(e.target.value);
-                    if (errors.schedule_name) setErrors(prev => ({ ...prev, schedule_name: null }));
-                  }}
-                  placeholder="e.g. Summer Floral Workshop"
-                  className={`w-full rounded-xl border ${errors.schedule_name ? 'border-rose-500' : 'border-gray-200'} bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all font-semibold text-gray-900`}
-                />
-                {/* Inline Validation Error */}
+              <div className="flex gap-4 items-end">
+                <div className="flex-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Event Name</label>
+                  <input
+                    type="text"
+                    value={scheduleName}
+                    onChange={(e) => {
+                      setScheduleName(e.target.value);
+                      if (errors.schedule_name) setErrors(prev => ({ ...prev, schedule_name: null }));
+                    }}
+                    placeholder="e.g. Summer Floral Workshop"
+                    className={`w-full rounded-xl border ${errors.schedule_name ? 'border-rose-500 bg-rose-50' : 'border-gray-200 bg-gray-50'} px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all font-semibold text-gray-900`}
+                  />
+                </div>
+                <div className="w-[140px]">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Event Date</label>
+                  <input
+                    type="date"
+                    value={eventDate}
+                    min={new Date().toISOString().split("T")[0]}
+                    onChange={(e) => {
+                      setEventDate(e.target.value);
+                      if (errors.event_date) setErrors(prev => ({ ...prev, event_date: null }));
+                    }}
+                    className={`w-full rounded-xl border ${errors.event_date ? 'border-rose-500 bg-rose-50' : 'border-gray-200 bg-gray-50'} px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all font-semibold text-gray-900`}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-4">
                 {errors.schedule_name && (
-                  <p className="text-rose-500 text-[10px] font-bold mt-1.5 uppercase tracking-wide">
+                  <p className="flex-1 text-rose-500 text-[10px] font-bold mt-1 uppercase tracking-wide">
                     {errors.schedule_name[0]}
+                  </p>
+                )}
+                {errors.event_date && (
+                  <p className="w-[140px] text-rose-500 text-[10px] font-bold mt-1 uppercase tracking-wide">
+                    {errors.event_date[0]}
                   </p>
                 )}
               </div>
@@ -459,32 +502,11 @@ function AdminSchedulePage({ user }) {
                     if (errors.location) setErrors(prev => ({ ...prev, location: null }));
                   }}
                   placeholder="e.g. Petal Express Main Studio"
-                  className={`w-full rounded-xl border ${errors.location ? 'border-rose-500' : 'border-gray-200'} bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all font-semibold text-gray-900`}
+                  className={`w-full rounded-xl border ${errors.location ? 'border-rose-500 bg-rose-50' : 'border-gray-200 bg-gray-50'} px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all font-semibold text-gray-900`}
                 />
-                {/* Inline Validation Error */}
                 {errors.location && (
                   <p className="text-rose-500 text-[10px] font-bold mt-1.5 uppercase tracking-wide">
                     {errors.location[0]}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Event Date</label>
-                <input
-                  type="date"
-                  value={eventDate}
-                  min={new Date().toISOString().split("T")[0]}
-                  onChange={(e) => {
-                    setEventDate(e.target.value);
-                    if (errors.event_date) setErrors(prev => ({ ...prev, event_date: null }));
-                  }}
-                  className={`w-full rounded-xl border ${errors.event_date ? 'border-rose-500' : 'border-gray-200'} bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all font-semibold text-gray-900`}
-                />
-                {/* Inline Validation Error */}
-                {errors.event_date && (
-                  <p className="text-rose-500 text-[10px] font-bold mt-1.5 uppercase tracking-wide">
-                    {errors.event_date[0]}
                   </p>
                 )}
               </div>
@@ -498,9 +520,8 @@ function AdminSchedulePage({ user }) {
                     if (errors.schedule_description) setErrors(prev => ({ ...prev, schedule_description: null }));
                   }}
                   placeholder="Provide event details, requirements, or marketing copy..."
-                  className={`min-h-24 w-full rounded-xl border ${errors.schedule_description ? 'border-rose-500' : 'border-gray-200'} bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all text-gray-700 leading-relaxed`}
+                  className={`min-h-24 w-full rounded-xl border ${errors.schedule_description ? 'border-rose-500 bg-rose-50' : 'border-gray-200 bg-gray-50'} px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all text-gray-700 leading-relaxed`}
                 />
-                {/* Inline Validation Error */}
                 {errors.schedule_description && (
                   <p className="text-rose-500 text-[10px] font-bold mt-1.5 uppercase tracking-wide">
                     {errors.schedule_description[0]}
@@ -538,7 +559,7 @@ function AdminSchedulePage({ user }) {
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-gray-100">
+<div className="pt-2 border-t border-gray-100">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Cover Image</label>
                 {editingSchedule?.image && !image && (
                   <div className="mb-3 h-24 w-full rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
@@ -587,7 +608,80 @@ function AdminSchedulePage({ user }) {
         </div>
       )}
 
-      {/* --- STATUS ALERT MODAL (Replaces Toast) --- */}
+      {/* --- CONFIRMATION MODAL (CREATE/EDIT) --- */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#eaf2ff] text-[#4f6fa5]">
+               <CalendarClock size={28} />
+            </div>
+            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
+              {editingSchedule ? "Save Changes?" : "Publish Event?"}
+            </h3>
+            <p className="text-sm text-gray-500 mb-8 px-2">
+              {editingSchedule 
+                ? "Are you sure you want to update this event's details?" 
+                : "Are you sure you want to publish this new event to the schedule?"}
+            </p>
+            <div className="flex justify-center gap-3">
+              <button 
+                onClick={() => setConfirmModal({ isOpen: false })} 
+                className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmSubmit} 
+                className="rounded-lg bg-gray-900 px-5 py-2 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+              >
+                {editingSchedule ? "Yes, Save" : "Yes, Publish"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- CONFIRM ARCHIVE/RESTORE MODAL --- */}
+      {archiveConfirm.isOpen && archiveConfirm.schedule && (() => {
+        const isRestoring = asBoolean(archiveConfirm.schedule.isArchived);
+        return (
+          <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
+            <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
+              <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${isRestoring ? 'bg-emerald-100 text-emerald-500' : 'bg-amber-100 text-amber-500'}`}>
+                 {isRestoring ? <ArchiveRestore size={28} /> : <Archive size={28} />}
+              </div>
+              <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
+                {isRestoring ? "Restore Event?" : "Archive Event?"}
+              </h3>
+              <p className="text-sm text-gray-500 mb-8 px-2">
+                {isRestoring
+                  ? `Are you sure you want to restore "${archiveConfirm.schedule.schedule_name}" back to the active list?`
+                  : `Are you sure you want to hide "${archiveConfirm.schedule.schedule_name}" from the active list?`}
+              </p>
+              <div className="flex justify-center gap-3">
+                <button 
+                  onClick={() => setArchiveConfirm({ isOpen: false, schedule: null })} 
+                  className="rounded-lg px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmToggleArchive} 
+                  className={`rounded-lg px-5 py-2 text-sm font-bold text-white border-2 transition-all duration-300 shadow-sm ${
+                    isRestoring 
+                      ? "bg-emerald-500 border-emerald-500 hover:bg-transparent hover:text-emerald-600" 
+                      : "bg-amber-500 border-amber-500 hover:bg-transparent hover:text-amber-500"
+                  }`}
+                >
+                  {isRestoring ? "Yes, Restore" : "Yes, Archive"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* --- STATUS ALERT MODAL --- */}
       {statusModal.isOpen && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">

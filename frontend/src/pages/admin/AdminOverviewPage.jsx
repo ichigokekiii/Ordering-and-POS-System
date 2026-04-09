@@ -1,5 +1,11 @@
 import { useEffect, useState, useMemo } from "react";
 import api from "../../services/api";
+import {
+  formatOrderStatus,
+  getOrderStatusPillClasses,
+  isActionRequiredOrderStatus,
+  normalizeOrderStatus,
+} from "../../utils/orderStatus";
 import { 
   Users, 
   Package, 
@@ -20,16 +26,9 @@ import {
 
 // Reusable Status Pill
 const OrderStatusPill = ({ status }) => {
-  let colorClass = "bg-gray-100 text-gray-600 border-gray-200";
-  if (status === "Pending") colorClass = "bg-amber-100 text-amber-700 border-amber-200";
-  else if (status === "Processing") colorClass = "bg-blue-100 text-blue-700 border-blue-200";
-  else if (status === "Shipped") colorClass = "bg-purple-100 text-purple-700 border-purple-200";
-  else if (status === "Delivered" || status === "Completed") colorClass = "bg-emerald-100 text-emerald-700 border-emerald-200";
-  else if (status === "Cancelled") colorClass = "bg-rose-100 text-rose-700 border-rose-200";
-
   return (
-    <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border ${colorClass}`}>
-      {status || "Unknown"}
+    <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border ${getOrderStatusPillClasses(status)}`}>
+      {formatOrderStatus(status)}
     </span>
   );
 };
@@ -80,7 +79,7 @@ function AdminOverviewPage({ user }) {
   const stats = useMemo(() => {
     // 1. Pending & Processing Orders (Needs action)
     const actionRequiredOrders = data.orders.filter(o => 
-      o.order_status === "Pending" || o.order_status === "Processing"
+      isActionRequiredOrderStatus(o.order_status)
     ).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)); // Oldest first (longest waiting)
 
     // 2. Inventory Alerts (Out of stock items)
@@ -95,8 +94,8 @@ function AdminOverviewPage({ user }) {
       .slice(0, 4);
 
     return {
-      pendingCount: actionRequiredOrders.filter(o => o.order_status === "Pending").length,
-      processingCount: actionRequiredOrders.filter(o => o.order_status === "Processing").length,
+      pendingCount: actionRequiredOrders.filter((o) => normalizeOrderStatus(o.order_status) === "pending").length,
+      processingCount: actionRequiredOrders.filter((o) => normalizeOrderStatus(o.order_status) === "processing").length,
       actionRequiredOrders: actionRequiredOrders.slice(0, 6),
       outOfStockCount: outOfStockItems.length,
       outOfStockItems: outOfStockItems.slice(0, 5),

@@ -119,7 +119,20 @@ class OrderController extends Controller
             'reference_image'  => 'required|image|mimes:jpeg,png,jpg|max:2048',
             'total_amount'     => 'required|numeric',
             'special_message'  => 'nullable|string',
+            'terms_accepted'   => 'accepted',
+            'terms_scope'      => 'required|string|in:customer,internal',
         ]);
+
+        $orderUser = User::find($request->input('user_id'));
+        $expectedTermsScope = in_array(strtolower((string) optional($orderUser)->role), ['user', 'customer'], true)
+            ? 'customer'
+            : 'internal';
+
+        if ($request->input('terms_scope') !== $expectedTermsScope) {
+            return response()->json([
+                'message' => 'The selected terms do not match this account role.',
+            ], 422);
+        }
 
         $now = Carbon::now();
         $datePart = $now->format('Ymd');

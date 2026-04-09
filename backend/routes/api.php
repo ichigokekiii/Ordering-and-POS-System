@@ -89,6 +89,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Profile Management
     Route::get('/profile', [ProfileController::class, 'profile']);
     Route::put('/profile', [ProfileController::class, 'updateProfile']);
+    Route::post('/profile/photo', [ProfileController::class, 'updatePhoto']);
     Route::post('/profile/email-otp', [ProfileController::class, 'requestEmailChangeOtp']);
 
     // Verify email OTP and update email

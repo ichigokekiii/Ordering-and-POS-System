@@ -14,6 +14,7 @@ import {
   Archive,
   ArchiveRestore
 } from "lucide-react";
+import { canManageAdminDashboard } from "../../utils/adminAccess";
 
 // Validation rules
 const VALIDATION = {
@@ -79,8 +80,11 @@ const StatusPill = ({ isAvailable }) => (
   </span>
 );
 
-const ProductCard = ({ product, onEdit, onDelete, canEdit, isArchived }) => (
-  <div className={`flex flex-col rounded-[1.5rem] border border-gray-200 overflow-hidden transition-all group ${isArchived ? "bg-gray-50 opacity-80 hover:opacity-100 hover:shadow-md" : "bg-white shadow-sm hover:shadow-lg hover:border-[#4f6fa5]"}`}>
+const ProductCard = ({ product, onOpen, onDelete, canEdit, isArchived }) => (
+  <div
+    onClick={() => onOpen(product)}
+    className={`flex cursor-pointer flex-col rounded-[1.5rem] border border-gray-200 overflow-hidden transition-all group ${isArchived ? "bg-gray-50 opacity-80 hover:opacity-100 hover:shadow-md" : "bg-white shadow-sm hover:shadow-lg hover:border-[#4f6fa5]"}`}
+  >
     <div className={`h-48 border-b border-gray-100 relative overflow-hidden ${isArchived ? "bg-gray-200 grayscale" : "bg-gray-50"}`}>
       {product.image ? (
         <img
@@ -108,13 +112,19 @@ const ProductCard = ({ product, onEdit, onDelete, canEdit, isArchived }) => (
       {canEdit && (
         <div className="flex items-center justify-between pt-4 border-t border-gray-200">
           <button
-            onClick={() => onEdit(product)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpen(product);
+            }}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${isArchived ? "text-gray-500 hover:bg-gray-200 hover:text-gray-900" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"}`}
           >
             <Pencil className="w-3.5 h-3.5" /> Edit
           </button>
           <button
-            onClick={() => onDelete(product)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete(product);
+            }}
             className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-bold text-white border-2 transition-all duration-300 shadow-sm ${
               isArchived
                 ? "bg-rose-500 border-rose-500 hover:bg-transparent hover:text-rose-500"
@@ -130,7 +140,7 @@ const ProductCard = ({ product, onEdit, onDelete, canEdit, isArchived }) => (
   </div>
 );
 
-const SectionGrid = ({ title, items, emptyMsg, onEdit, onDelete, canEdit, isArchived = false }) => (
+const SectionGrid = ({ title, items, emptyMsg, onOpen, onDelete, canEdit, isArchived = false }) => (
   <div className="mb-10">
     {title && (
       <h4 className="mb-4 text-lg font-playfair font-bold text-gray-800 border-b border-gray-100 pb-2">{title}</h4>
@@ -143,7 +153,7 @@ const SectionGrid = ({ title, items, emptyMsg, onEdit, onDelete, canEdit, isArch
     ) : (
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {items.map((p) => (
-          <ProductCard key={p.id} product={p} onEdit={onEdit} onDelete={onDelete} canEdit={canEdit} isArchived={isArchived} />
+          <ProductCard key={p.id} product={p} onOpen={onOpen} onDelete={onDelete} canEdit={canEdit} isArchived={isArchived} />
         ))}
       </div>
     )}
@@ -162,7 +172,7 @@ function AdminProductPage({ user }) {
     deletePremade,
   } = useProducts();
 
-  const canEdit = user?.role === "admin" || user?.role === "owner";
+  const canEdit = canManageAdminDashboard(user);
 
   const [activeSection, setActiveSection] = useState("custom");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -273,6 +283,7 @@ function AdminProductPage({ user }) {
 
  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canEdit) return;
     if (!validateAll()) return;
     
     try {
@@ -468,11 +479,6 @@ function AdminProductPage({ user }) {
         </div>
 
         <div className="flex items-center gap-4">
-          {!canEdit && (
-            <span className="rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-blue-600 border border-blue-100">
-              View-Only Access
-            </span>
-          )}
           {canEdit && (
             <button
               onClick={() => { resetForm(); setShowModal(true); }}
@@ -528,71 +534,73 @@ function AdminProductPage({ user }) {
       <div className="flex-1 mt-4">
         {activeSection === "custom" && (
           <div className="animate-in fade-in duration-500">
-            <SectionGrid title="Bouquet Frameworks" items={bouquets} emptyMsg="No bouquets available in inventory." onEdit={handleEdit} onDelete={promptArchive} canEdit={canEdit} />
-            <SectionGrid title="Main Flowers" items={mainFlowers} emptyMsg="No main flowers available in inventory." onEdit={handleEdit} onDelete={promptArchive} canEdit={canEdit} />
-            <SectionGrid title="Filler Elements" items={fillers} emptyMsg="No fillers available in inventory." onEdit={handleEdit} onDelete={promptArchive} canEdit={canEdit} />
+            <SectionGrid title="Bouquet Frameworks" items={bouquets} emptyMsg="No bouquets available in inventory." onOpen={handleEdit} onDelete={promptArchive} canEdit={canEdit} />
+            <SectionGrid title="Main Flowers" items={mainFlowers} emptyMsg="No main flowers available in inventory." onOpen={handleEdit} onDelete={promptArchive} canEdit={canEdit} />
+            <SectionGrid title="Filler Elements" items={fillers} emptyMsg="No fillers available in inventory." onOpen={handleEdit} onDelete={promptArchive} canEdit={canEdit} />
 
-            {/* Archived Items */}
-            <div className="mt-16 pt-8 border-t border-gray-100">
-              <div className="mb-6 flex items-end justify-between border-b border-gray-100 pb-4">
-                <h3 className="text-2xl font-playfair font-bold text-gray-400">Archived Items</h3>
-                {archivedProducts.length > 0 && (
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                    {archivedProducts.length} Hidden
-                  </span>
+            {canEdit && (
+              <div className="mt-16 pt-8 border-t border-gray-100">
+                <div className="mb-6 flex items-end justify-between border-b border-gray-100 pb-4">
+                  <h3 className="text-2xl font-playfair font-bold text-gray-400">Archived Items</h3>
+                  {archivedProducts.length > 0 && (
+                    <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                      {archivedProducts.length} Hidden
+                    </span>
+                  )}
+                </div>
+                
+                {archivedProducts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-gray-400 border-2 border-dashed border-gray-100 rounded-[2rem]">
+                    <Archive className="mb-4 opacity-20 w-12 h-12" />
+                    <p className="text-sm font-bold text-gray-500">No archived custom items found.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {archivedProducts.map((p) => (
+                      <ProductCard key={p.id} product={p} onOpen={handleEdit} onDelete={promptDelete} canEdit={canEdit} isArchived={true} />
+                    ))}
+                  </div>
                 )}
               </div>
-              
-              {archivedProducts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-gray-400 border-2 border-dashed border-gray-100 rounded-[2rem]">
-                  <Archive className="mb-4 opacity-20 w-12 h-12" />
-                  <p className="text-sm font-bold text-gray-500">No archived custom items found.</p>
-                </div>
-              ) : (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {archivedProducts.map((p) => (
-                    <ProductCard key={p.id} product={p} onEdit={handleEdit} onDelete={promptDelete} canEdit={canEdit} isArchived={true} />
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
           </div>
         )}
 
         {activeSection === "premades" && (
           <div className="animate-in fade-in duration-500">
-            <SectionGrid title="Curated Collections" items={activePremades} emptyMsg="No curated collections available in inventory." onEdit={handleEdit} onDelete={promptArchive} canEdit={canEdit} />
+            <SectionGrid title="Curated Collections" items={activePremades} emptyMsg="No curated collections available in inventory." onOpen={handleEdit} onDelete={promptArchive} canEdit={canEdit} />
 
-            {/* Archived Premades */}
-            <div className="mt-16 pt-8 border-t border-gray-100">
-              <div className="mb-6 flex items-end justify-between border-b border-gray-100 pb-4">
-                <h3 className="text-2xl font-playfair font-bold text-gray-400">Archived Collections</h3>
-                {archivedPremades.length > 0 && (
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                    {archivedPremades.length} Hidden
-                  </span>
+            {canEdit && (
+              <div className="mt-16 pt-8 border-t border-gray-100">
+                <div className="mb-6 flex items-end justify-between border-b border-gray-100 pb-4">
+                  <h3 className="text-2xl font-playfair font-bold text-gray-400">Archived Collections</h3>
+                  {archivedPremades.length > 0 && (
+                    <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                      {archivedPremades.length} Hidden
+                    </span>
+                  )}
+                </div>
+                
+                {archivedPremades.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-gray-400 border-2 border-dashed border-gray-100 rounded-[2rem]">
+                    <Archive className="mb-4 opacity-20 w-12 h-12" />
+                    <p className="text-sm font-bold text-gray-500">No archived premade collections found.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {archivedPremades.map((p) => (
+                      <ProductCard key={p.id} product={p} onOpen={handleEdit} onDelete={promptDelete} canEdit={canEdit} isArchived={true} />
+                    ))}
+                  </div>
                 )}
               </div>
-              
-              {archivedPremades.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-gray-400 border-2 border-dashed border-gray-100 rounded-[2rem]">
-                  <Archive className="mb-4 opacity-20 w-12 h-12" />
-                  <p className="text-sm font-bold text-gray-500">No archived premade collections found.</p>
-                </div>
-              ) : (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {archivedPremades.map((p) => (
-                    <ProductCard key={p.id} product={p} onEdit={handleEdit} onDelete={promptDelete} canEdit={canEdit} isArchived={true} />
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
           </div>
         )}
       </div>
 
       {/* ADD/EDIT MODAL */}
-      {showModal && canEdit && (
+      {showModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
           <div className="w-full max-w-lg rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             
@@ -602,7 +610,7 @@ function AdminProductPage({ user }) {
                   {activeSection === "custom" ? "Custom Element" : "Premade Collection"}
                 </span>
                 <h2 className="text-2xl font-playfair font-bold text-gray-900">
-                  {isEditing ? "Edit Item Details" : "Create New Item"}
+                  {canEdit ? (isEditing ? "Edit Item Details" : "Create New Item") : "View Item Details"}
                 </h2>
               </div>
               {isEditing && (
@@ -613,7 +621,7 @@ function AdminProductPage({ user }) {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              
+              <fieldset disabled={!canEdit} className="space-y-5 disabled:opacity-100">
               {/* Name & Price Row */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2">
@@ -829,11 +837,12 @@ function AdminProductPage({ user }) {
                   <FieldError error={errors.image} />
                 </div>
               </div>
+              </fieldset>
 
               {/* Form Actions */}
               <div className="mt-8 flex items-center justify-between gap-3 pt-6 border-t border-gray-100">
                 <div>
-                  {isEditing && (
+                  {isEditing && canEdit && (
                     <button
                       type="button"
                       onClick={() => setArchiveConfirm({
@@ -858,14 +867,16 @@ function AdminProductPage({ user }) {
                   onClick={() => { setShowModal(false); resetForm(); }}
                   className="rounded-lg px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
                 >
-                  Cancel
+                  {canEdit ? "Cancel" : "Close"}
                 </button>
-                <button
-                  type="submit"
-                  className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
-                >
-                  {isEditing ? "Save Changes" : "Create Product"}
-                </button>
+                {canEdit && (
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+                  >
+                    {isEditing ? "Save Changes" : "Create Product"}
+                  </button>
+                )}
                 </div>
               </div>
             </form>

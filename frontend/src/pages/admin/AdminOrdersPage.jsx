@@ -1,6 +1,11 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState, useRef, useMemo } from "react";
 import api from "../../services/api";
+import {
+  formatOrderStatus,
+  getOrderStatusPillClasses,
+  normalizeOrderStatus,
+} from "../../utils/orderStatus";
 import { 
   Search, 
   ChevronDown, 
@@ -18,16 +23,9 @@ import {
 
 // --- REUSABLE PILLS ---
 const OrderStatusPill = ({ status }) => {
-  let colorClass = "bg-gray-100 text-gray-600 border-gray-200";
-  if (status === "Pending") colorClass = "bg-amber-100 text-amber-700 border-amber-200";
-  else if (status === "Processing") colorClass = "bg-blue-100 text-blue-700 border-blue-200";
-  else if (status === "Shipped") colorClass = "bg-purple-100 text-purple-700 border-purple-200";
-  else if (status === "Delivered" || status === "Completed") colorClass = "bg-emerald-100 text-emerald-700 border-emerald-200";
-  else if (status === "Cancelled") colorClass = "bg-rose-100 text-rose-700 border-rose-200";
-  
   return (
-    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${colorClass}`}>
-      {status || "Unknown"}
+    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getOrderStatusPillClasses(status)}`}>
+      {formatOrderStatus(status)}
     </span>
   );
 };
@@ -143,7 +141,7 @@ function AdminOrdersPage({ user }) {
       });
     }
 
-    if (filterStatus !== "all") result = result.filter((o) => (o.order_status || "").toLowerCase() === filterStatus.toLowerCase());
+    if (filterStatus !== "all") result = result.filter((o) => normalizeOrderStatus(o.order_status) === normalizeOrderStatus(filterStatus));
     if (filterDelivery !== "all") result = result.filter((o) => (o.delivery_method || "").toLowerCase() === filterDelivery.toLowerCase());
     if (filterEvent !== "all") result = result.filter((o) => (o.schedule?.schedule_name || "Unlinked") === filterEvent);
 
@@ -206,7 +204,7 @@ function AdminOrdersPage({ user }) {
 
   const openEditModal = (order) => {
     setEditingOrder(order);
-    setStatus(order.order_status);
+    setStatus(normalizeOrderStatus(order.order_status));
   };
 
   const getImageUrl = (imagePath) => {
@@ -233,11 +231,6 @@ function AdminOrdersPage({ user }) {
             Manage customer orders, track delivery statuses, and oversee transactions.
           </p>
         </div>
-        {!canEdit && (
-          <span className="rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-blue-600 border border-blue-100 self-start lg:self-auto">
-            View-Only Access
-          </span>
-        )}
       </div>
 
       {/* SEARCH & FILTERS BAR */}
@@ -293,13 +286,13 @@ function AdminOrdersPage({ user }) {
               <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 p-4 animate-in fade-in zoom-in duration-100 max-h-[80vh] overflow-y-auto">
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Filter by Status</p>
                 <div className="space-y-1 mb-4">
-                  {["all", "Pending", "Processing", "Shipped", "Delivered", "Cancelled"].map((s) => (
+                  {["all", "pending", "processing", "shipped", "delivered", "cancelled"].map((s) => (
                     <button
                       key={s}
                       onClick={() => setFilterStatus(s)}
                       className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-colors ${filterStatus === s ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
                     >
-                      {s === "all" ? "All Statuses" : s}
+                      {s === "all" ? "All Statuses" : formatOrderStatus(s)}
                     </button>
                   ))}
                 </div>
@@ -607,11 +600,11 @@ function AdminOrdersPage({ user }) {
                       onChange={(e) => setStatus(e.target.value)}
                       className="w-full appearance-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 hover:border-gray-900 hover:text-gray-900 transition-all cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-[#eaf2ff]"
                     >
-                      <option value="Pending">Pending</option>
-                      <option value="Processing">Processing</option>
-                      <option value="Shipped">Shipped</option>
-                      <option value="Delivered">Delivered</option>
-                      <option value="Cancelled">Cancelled</option>
+                      <option value="pending">Pending</option>
+                      <option value="processing">Processing</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="cancelled">Cancelled</option>
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                   </div>

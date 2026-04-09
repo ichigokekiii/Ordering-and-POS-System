@@ -8,53 +8,70 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\Otp;
 use App\Mail\SendOtpMail;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use App\Models\User;
 
 class ProfileController extends Controller
 {
+    private function formatUser(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'email' => $user->email,
+            'phone_number' => $user->phone_number,
+            'profile_picture' => $user->profile_picture,
+            'role' => $user->role,
+        ];
+    }
+
+    private function deleteProfilePicture(?string $profilePicture): void
+    {
+        if (!$profilePicture) {
+            return;
+        }
+
+        Storage::disk('public')->delete(str_replace('/storage/', '', $profilePicture));
+    }
+
     /**
      * Get authenticated user's profile with addresses
      */
-public function profile()
-{
-    /** @var User $user */
-    $user = Auth::user();
+    public function profile()
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
 
-    if (!$user) {
-        return response()->json([
-            'message' => 'Unauthenticated'
-        ], 401);
-    }
-
-    // Load addresses and orders (sorted newest first)
-    $user->load([
-        'addresses',
-        'orders' => function($query) {
-            $query->with('schedule')->orderBy('created_at', 'desc');
+        if (!$user) {
+            return response()->json([
+                'message' => 'Unauthenticated'
+            ], 401);
         }
-    ]);
 
-    $orders = $user->orders->map(function ($order) {
-        $orderArray = $order->toArray();
-        $orderArray['event_date'] = $order->schedule?->event_date;
-        $orderArray['schedule_name'] = $order->schedule?->schedule_name;
-        $orderArray['schedule'] = $order->schedule;
+        $user->load([
+            'addresses',
+            'orders' => function ($query) {
+                $query->with('schedule')->orderBy('created_at', 'desc');
+            }
+        ]);
 
-        return $orderArray;
-    });
+        $orders = $user->orders->map(function ($order) {
+            $orderArray = $order->toArray();
+            $orderArray['event_date'] = $order->schedule?->event_date;
+            $orderArray['schedule_name'] = $order->schedule?->schedule_name;
+            $orderArray['schedule'] = $order->schedule;
 
-    return response()->json([
-        'id'           => $user->id,
-        'first_name'   => $user->first_name,
-        'last_name'    => $user->last_name,
-        'email'        => $user->email,
-        'phone_number' => $user->phone_number,
-        'role'         => $user->role,
-        'addresses'    => $user->addresses,
-        'orders'       => $orders,
-    ]);
-}
+            return $orderArray;
+        });
+
+        return response()->json([
+            ...$this->formatUser($user),
+            'addresses' => $user->addresses,
+            'orders' => $orders,
+        ]);
+    }
     /**
      * Request OTP when user wants to change email
      */
@@ -132,14 +149,39 @@ public function profile()
         return response()->json([
             'message' => 'Profile updated successfully',
             'user' => [
-                'id' => $user->id,
-                'first_name' => $user->first_name,
-                'last_name' => $user->last_name,
-                'email' => $user->email,
-                'phone_number' => $user->phone_number,
-                'role' => $user->role,
+                ...$this->formatUser($user),
                 'addresses' => $user->load('addresses')->addresses
             ]
+        ]);
+    }
+
+    public function updatePhoto(Request $request)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $request->validate([
+            'profile_picture' => 'required|image|mimes:jpg,jpeg,png,gif|max:5120',
+        ], [
+            'profile_picture.required' => 'Please select an image to upload.',
+            'profile_picture.image' => 'The selected file must be an image.',
+            'profile_picture.mimes' => 'Only JPG, JPEG, PNG, and GIF files are allowed.',
+            'profile_picture.max' => 'Image must be 5MB or smaller.',
+        ]);
+
+        $this->deleteProfilePicture($user->profile_picture);
+
+        $path = $request->file('profile_picture')->store('profile-pictures', 'public');
+
+        $user->profile_picture = Storage::url($path);
+        $user->save();
+
+        return response()->json([
+            'message' => 'Profile photo updated successfully',
+            'user' => [
+                ...$this->formatUser($user),
+                'addresses' => $user->load('addresses')->addresses,
+            ],
         ]);
     }
 
@@ -249,6 +291,7 @@ public function profile()
         /** @var User $user */
         $user = Auth::user();
 
+        $this->deleteProfilePicture($user->profile_picture);
         $user->delete();
 
         return response()->json([

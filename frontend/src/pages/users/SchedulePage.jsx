@@ -3,16 +3,32 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSchedules } from "../../contexts/ScheduleContext";
+import { useContents } from "../../contexts/ContentContext";
 import api from "../../services/api";
 import { Search, ChevronLeft, ChevronRight, Share } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../../contexts/CartContext";
 import { useNavbar } from "../../contexts/NavbarContext";
+import CmsEditableRegion from "../../components/admin/CmsEditableRegion";
+import {
+  getCmsField,
+  getCmsAssetUrl,
+  getContentValue as getCmsContentValue,
+} from "../../cms/cmsRegistry";
 
 
-function SchedulePage() {
+function SchedulePage({ cmsPreview }) {
   const { schedules, loading } = useSchedules();
+  const { contents } = useContents();
   const asBoolean = (value) => value === 1 || value === true || value === "1";
+  const getContentValue = (key, defaultValue) =>
+    getCmsContentValue(contents, "schedule", key, defaultValue);
+  const heroImage = getCmsAssetUrl(
+    getContentValue(
+      "schedule_hero_image",
+      "https://images.unsplash.com/photo-1468327768560-75b778cbb551?q=80&w=1600"
+    )
+  );
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -78,8 +94,6 @@ const isUpcomingSchedule = (schedule) => {
   const daysUntil = getDaysUntilEvent(schedule.event_date);
   return !asBoolean(schedule.isArchived) && daysUntil !== null && daysUntil > 7;
 };
-
-console.log(schedules[0]);
 
   const isOrderable = (schedule) => {
   if (!schedule) return false;
@@ -222,26 +236,54 @@ const getOrderLabel = (schedule) => {
   return (
     <div className="bg-[#fcfaf9] text-gray-900 min-h-screen font-sans pb-24">
       
-       {/* 1. HERO HEADER */}
-      <section className="bg-white border-b border-gray-100 pt-20 pb-16">
-        <div className="max-w-[1400px] mx-auto px-6 md:px-12">
+       {/* 1. HERO HEADER (UPDATED WITH BLURRED IMAGE) */}
+      <section className="relative isolate overflow-hidden border-b border-gray-100 pt-20 pb-16">
+        <CmsEditableRegion
+          cmsPreview={cmsPreview}
+          field={getCmsField("schedule", "schedule_hero_image")}
+          className="absolute inset-0"
+          overlayClassName="rounded-none"
+        >
+          <div className="absolute inset-0">
+            {/* The image itself is now blurred and scaled up slightly to prevent white edges */}
+            <img
+              src={heroImage}
+              alt="Schedule hero background"
+              className="h-full w-full object-cover blur-sm scale-105"
+            />
+            {/* A gradient overlay helps text readability while letting the color bleed through */}
+            <div className="absolute inset-0 bg-white/70" />
+          </div>
+        </CmsEditableRegion>
+
+        <div className="relative z-10 max-w-[1400px] mx-auto px-6 md:px-12">
           <motion.div 
              initial={{ opacity: 0, y: 20 }}
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: 0.6 }}
-             className="max-w-2xl"
+             className="max-w-3xl py-8 md:py-10"
           >
-            <p className="text-[#4f6fa5] font-semibold tracking-widest uppercase text-xs md:text-sm mb-4">Pop-up Experience</p>
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-playfair font-bold text-gray-900 leading-[1.05]">
-              Experience the
+            <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("schedule", "schedule_hero_label")} className="inline-block w-fit pointer-events-auto">
+              <p className="text-[#4f6fa5] font-bold tracking-widest uppercase text-xs md:text-sm mb-4 drop-shadow-sm">
+                {getContentValue("schedule_hero_label", "Pop-up Experience")}
+              </p>
+            </CmsEditableRegion>
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-playfair font-bold text-gray-900 leading-[1.05] drop-shadow-sm">
+              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("schedule", "schedule_hero_title_intro")} className="inline-block w-fit pointer-events-auto">
+                <span>{getContentValue("schedule_hero_title_intro", "Experience the")}</span>
+              </CmsEditableRegion>
               <br />
-              <span className="block font-dancing text-[#4f6fa5] font-normal text-6xl md:text-8xl lg:text-9xl leading-[0.9] mt-3 lg:ml-2 transform -rotate-2">
-                Blossom
-              </span>
+              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("schedule", "schedule_hero_title_accent")} className="inline-block w-fit pointer-events-auto">
+                <span className="block font-dancing text-[#4f6fa5] font-normal text-6xl md:text-8xl lg:text-9xl leading-[0.9] mt-3 lg:ml-2 transform -rotate-2">
+                  {getContentValue("schedule_hero_title_accent", "Blossom")}
+                </span>
+              </CmsEditableRegion>
             </h1>
-            <p className="mt-8 text-gray-500 leading-relaxed text-base md:text-lg max-w-lg">
-              Check out our latest pop-up schedules and live events. Find an experience near you and reserve your spot!
-            </p>
+            <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("schedule", "schedule_hero_description")} className="mt-8 inline-block max-w-lg pointer-events-auto">
+              <p className="text-gray-800 font-medium leading-relaxed text-base md:text-lg drop-shadow-sm">
+                {getContentValue("schedule_hero_description", "Check out our latest pop-up schedules and live events. Find an experience near you and reserve your spot!")}
+              </p>
+            </CmsEditableRegion>
           </motion.div>
         </div>
       </section>

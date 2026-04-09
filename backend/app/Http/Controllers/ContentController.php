@@ -40,10 +40,7 @@ class ContentController extends Controller
 
             return response()->json($contents);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to fetch content',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Failed to fetch content', $e);
         }
     }
 
@@ -56,10 +53,7 @@ class ContentController extends Controller
 
             return response()->json($content);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to fetch content',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Failed to fetch content', $e);
         }
     }
 
@@ -107,12 +101,7 @@ class ContentController extends Controller
                 'content' => $content
             ], 201);
         } catch (\Exception $e) {
-            report($e);
-
-            return response()->json([
-                'message' => 'Failed to create content',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Failed to create content', $e);
         }
     }
 
@@ -172,12 +161,7 @@ class ContentController extends Controller
                 'content' => $content
             ]);
         } catch (\Exception $e) {
-            report($e);
-
-            return response()->json([
-                'message' => 'Failed to update content',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Failed to update content', $e);
         }
     }
 
@@ -197,10 +181,7 @@ class ContentController extends Controller
                 'message' => 'Content deleted successfully'
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to delete content',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Failed to delete content', $e);
         }
     }
 
@@ -228,10 +209,7 @@ class ContentController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to delete archived content',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Failed to delete archived content', $e);
         }
     }
 }

@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\Otp;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
@@ -59,6 +60,32 @@ class SecurityHardeningTest extends TestCase
 
         $this->getJson("/api/orders/{$order->order_id}")
             ->assertForbidden();
+    }
+
+    public function test_customer_cannot_access_staff_analytics_or_logs(): void
+    {
+        $customer = $this->createUser('customer-metrics@example.com');
+
+        Sanctum::actingAs($customer);
+
+        $this->getJson('/api/analytics')
+            ->assertForbidden();
+
+        $this->getJson('/api/logs')
+            ->assertForbidden();
+    }
+
+    public function test_server_errors_do_not_expose_raw_exception_messages(): void
+    {
+        Schema::drop('contents');
+
+        $response = $this->getJson('/api/contents');
+
+        $response->assertStatus(500)
+            ->assertJson([
+                'message' => 'Failed to fetch content',
+            ])
+            ->assertJsonMissingPath('error');
     }
 
     private function createUser(string $email): User

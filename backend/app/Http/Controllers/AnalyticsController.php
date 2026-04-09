@@ -20,18 +20,27 @@ use App\Mail\AnalyticsReportMail;
 
 class AnalyticsController extends Controller
 {
+    private function canAccessAnalytics(?User $user): bool
+    {
+        return $user && in_array(strtolower((string) $user->role), ['admin', 'owner', 'staff'], true);
+    }
+
     /**
      * Display the analytics dashboard data.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        if (!$this->canAccessAnalytics($request->user() ?? Auth::user())) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
         return response()->json($this->getRawAnalyticsData());
     }
 
     /**
      * NEW: Handles the request to generate a PDF and email it to the user.
      */
-public function sendReportEmail(Request $request): JsonResponse
+    public function sendReportEmail(Request $request): JsonResponse
     {
         $user = $request->user() ?? Auth::user();
 
@@ -39,6 +48,12 @@ public function sendReportEmail(Request $request): JsonResponse
             return response()->json([
                 'error' => 'You must be logged in to email an analytics report.'
             ], 401);
+        }
+
+        if (!$this->canAccessAnalytics($user)) {
+            return response()->json([
+                'error' => 'Unauthorized'
+            ], 403);
         }
 
         if (empty($user->email)) {
@@ -66,11 +81,7 @@ public function sendReportEmail(Request $request): JsonResponse
             return response()->json(['message' => 'Report emailed successfully!']);
             
         } catch (\Throwable $e) {
-            // CHANGED TO \Throwable: This will now catch Fatal Errors (like missing DomPDF or Views) 
-            // and send the exact error message back to your React Modal!
-            return response()->json([
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Unable to email analytics report right now.', $e);
         }
     }
 

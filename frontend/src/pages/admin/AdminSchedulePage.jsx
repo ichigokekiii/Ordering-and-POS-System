@@ -3,11 +3,13 @@ import { useEffect, useState } from "react";
 import { useSchedules } from "../../contexts/ScheduleContext";
 import { CalendarPlus, MapPin, CalendarClock, Pencil, Archive, ArchiveRestore, CheckCircle2, X } from "lucide-react";
 import { canManageAdminDashboard } from "../../utils/adminAccess";
-
-const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
-const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png)$/i;
-const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,image/jpeg,image/png";
+import {
+  ADMIN_IMAGE_ACCEPT,
+  MAX_ADMIN_IMAGE_SIZE_LABEL,
+  getFirstValidationErrorMessage,
+  prepareAdminImageForUpload,
+  validateAdminImageFile,
+} from "../../utils/adminImageUpload";
 
 function AdminSchedulePage({ user }) {
   const {
@@ -47,7 +49,7 @@ function AdminSchedulePage({ user }) {
     setStatusModal({ isOpen: true, type, message });
   };
 
-const handleImageChange = (e) => {
+  const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) {
       setErrors((prev) => ({ ...prev, image: null }));
@@ -55,18 +57,9 @@ const handleImageChange = (e) => {
       return;
     }
 
-    const hasValidMimeType = !file.type || ALLOWED_IMAGE_TYPES.includes(file.type);
-    const hasValidExtension = ALLOWED_IMAGE_NAME_REGEX.test(file.name || "");
-
-    if (!hasValidMimeType || !hasValidExtension) {
-      setErrors((prev) => ({ ...prev, image: ["Only JPG, JPEG, and PNG files are allowed."] }));
-      setImage(null);
-      e.target.value = "";
-      return;
-    }
-
-    if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      setErrors((prev) => ({ ...prev, image: ["Image must be 5MB or smaller."] }));
+    const imageError = validateAdminImageFile(file);
+    if (imageError) {
+      setErrors((prev) => ({ ...prev, image: [imageError] }));
       setImage(null);
       e.target.value = "";
       return;
@@ -152,7 +145,15 @@ const handleImageChange = (e) => {
       formData.append("isAvailable", isAvailable);
 
       if (image) {
-        formData.append("image", image);
+        const { file: optimizedImage, error: imageError } = await prepareAdminImageForUpload(image);
+
+        if (imageError) {
+          setErrors((prev) => ({ ...prev, image: [imageError] }));
+          showModalAlert("error", imageError);
+          return;
+        }
+
+        formData.append("image", optimizedImage, optimizedImage.name);
       }
 
       if (editingSchedule) {
@@ -171,6 +172,7 @@ const handleImageChange = (e) => {
       console.error("Schedule operation failed", error);
       if (error.response && error.response.status === 422) {
         setErrors(error.response.data.errors);
+        showModalAlert("error", getFirstValidationErrorMessage(error, "Operation failed. Please try again."));
       } else {
         showModalAlert("error", "Operation failed. Please try again.");
       }
@@ -560,7 +562,7 @@ const handleImageChange = (e) => {
                 </div>
               </div>
 
-<div className="pt-2 border-t border-gray-100">
+              <div className="pt-2 border-t border-gray-100">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Cover Image</label>
                 {editingSchedule?.image && !image && (
                   <div className="mb-3 h-24 w-full rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
@@ -575,8 +577,8 @@ const handleImageChange = (e) => {
                 />
                 <p className="mt-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                   {editingSchedule
-                    ? "Optional on edit. JPG, JPEG, or PNG only. Max 5MB."
-                    : "Required for new events. JPG, JPEG, or PNG only. Max 5MB."}
+                    ? `Optional on edit. JPG, JPEG, or PNG only. Max ${MAX_ADMIN_IMAGE_SIZE_LABEL}. Larger images are auto-resized when possible.`
+                    : `Required for new events. JPG, JPEG, or PNG only. Max ${MAX_ADMIN_IMAGE_SIZE_LABEL}. Larger images are auto-resized when possible.`}
                 </p>
                 {!image && editingSchedule && (
                   <p className="mt-2 text-[10px] font-bold text-amber-500 uppercase tracking-wider">

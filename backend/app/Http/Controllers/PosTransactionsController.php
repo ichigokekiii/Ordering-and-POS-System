@@ -58,10 +58,7 @@ class PosTransactionsController extends Controller
 
             return response()->json(['message' => 'Sale recorded!'], 201);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Database crash',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->serverErrorResponse('Sale could not be recorded right now.', $e);
         }
     }
 
@@ -152,10 +149,7 @@ class PosTransactionsController extends Controller
         } catch (\Exception $e) {
             Log::error('analytics() failed: ' . $e->getMessage());
 
-            return response()->json([
-                'message' => 'Failed to load analytics',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->serverErrorResponse('Failed to load analytics', $e);
         }
     }
 }

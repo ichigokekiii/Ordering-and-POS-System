@@ -64,10 +64,7 @@ class OrderController extends Controller
 
             return response()->json($orders);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to fetch orders',
-                'error'   => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Failed to fetch orders', $e);
         }
     }
 
@@ -94,10 +91,7 @@ class OrderController extends Controller
 
             return response()->json($order);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to fetch order',
-                'error'   => $e->getMessage(),
-            ], 500);
+            return $this->serverErrorResponse('Failed to fetch order', $e);
         }
     }
 
@@ -127,10 +121,7 @@ class OrderController extends Controller
 
             return response()->json($orders);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to fetch user orders',
-                'error'   => $e->getMessage(),
-            ], 500);
+            return $this->serverErrorResponse('Failed to fetch user orders', $e);
         }
     }
 
@@ -243,10 +234,7 @@ class OrderController extends Controller
         } catch (\Exception $e) {
             Storage::disk('public')->delete($imagePath);
 
-            return response()->json([
-                'message' => 'Order could not be placed. Please try again.',
-                'error'   => $e->getMessage(),
-            ], 500);
+            return $this->serverErrorResponse('Order could not be placed. Please try again.', $e);
         }
     }
 
@@ -331,10 +319,7 @@ class OrderController extends Controller
             return response()->json($order);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to update order',
-                'error'   => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Failed to update order', $e);
         }
     }
 
@@ -360,10 +345,7 @@ class OrderController extends Controller
                 'message' => 'Order deleted successfully'
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to delete order',
-                'error'   => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Failed to delete order', $e);
         }
     }
 }

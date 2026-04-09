@@ -79,7 +79,7 @@ function VerifyOtpPage({ cmsPreview }) {
 
     try {
       const res = await api.post("/verify-otp", { email, otp });
-      if (res.data.token) localStorage.setItem("token", res.data.token);
+      if (res.data.token) window.sessionStorage.setItem("token", res.data.token);
       if (!res.data.token) {
         setError("Authentication failed. Please try logging in again.");
         setLoading(false);

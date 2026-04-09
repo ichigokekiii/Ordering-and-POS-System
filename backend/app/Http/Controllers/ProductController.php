@@ -6,6 +6,7 @@ use App\Models\CustomProduct;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Support\AdminImageUpload;
 use App\Support\ProductService;
 
 class ProductController extends Controller
@@ -41,7 +42,7 @@ class ProductController extends Controller
     {
         $request->validate([
             'name'                  => 'required|string',
-            'image'                 => 'required|image|mimes:jpg,jpeg,png|max:5120',
+            'image'                 => 'required|image|mimes:jpg,jpeg,png|max:' . AdminImageUpload::maxKilobytes(),
             'description'           => 'required|string',
             'category'              => 'required|string',
             'type'                  => 'nullable|string',
@@ -50,10 +51,7 @@ class ProductController extends Controller
             'isArchived'            => 'sometimes|boolean',
             'required_main_count'   => 'nullable|integer|min:0',
             'required_filler_count' => 'nullable|integer|min:0',
-        ], [
-            'image.mimes' => 'Only JPG, JPEG, and PNG files are allowed.',
-            'image.max' => 'Image must be 5MB or smaller.',
-        ]);
+        ], AdminImageUpload::validationMessages());
 
         if ($request->input('category') === 'Bouquets') {
             $request->validate([
@@ -91,7 +89,7 @@ class ProductController extends Controller
     {
         $request->validate([
             'name'                  => 'sometimes|required|string',
-            'image'                 => 'sometimes|image|mimes:jpg,jpeg,png|max:5120',
+            'image'                 => 'sometimes|image|mimes:jpg,jpeg,png|max:' . AdminImageUpload::maxKilobytes(),
             'description'           => 'sometimes|required|string',
             'category'              => 'sometimes|required|string',
             'type'                  => 'nullable|string',
@@ -100,10 +98,7 @@ class ProductController extends Controller
             'isArchived'            => 'sometimes|required|boolean',
             'required_main_count'   => 'nullable|integer|min:0',
             'required_filler_count' => 'nullable|integer|min:0',
-        ], [
-            'image.mimes' => 'Only JPG, JPEG, and PNG files are allowed.',
-            'image.max' => 'Image must be 5MB or smaller.',
-        ]);
+        ], AdminImageUpload::validationMessages());
 
         $product = CustomProduct::findOrFail($id);
         

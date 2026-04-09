@@ -15,6 +15,13 @@ import {
   ArchiveRestore
 } from "lucide-react";
 import { canManageAdminDashboard } from "../../utils/adminAccess";
+import {
+  ADMIN_IMAGE_ACCEPT,
+  MAX_ADMIN_IMAGE_SIZE_LABEL,
+  getFirstValidationErrorMessage,
+  prepareAdminImageForUpload,
+  validateAdminImageFile,
+} from "../../utils/adminImageUpload";
 
 // Validation rules
 const VALIDATION = {
@@ -64,11 +71,6 @@ const CharCount = ({ value, max }) => (
 
 const FieldError = ({ error }) =>
   error ? <p className="mt-1.5 text-[10px] font-bold text-rose-500 uppercase tracking-wide">{error}</p> : null;
-
-const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
-const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png)$/i;
-const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,image/jpeg,image/png";
 
 const asBoolean = (value) => value === 1 || value === true || value === "1";
 
@@ -215,26 +217,21 @@ function AdminProductPage({ user }) {
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file) {
+      setErrors((prev) => ({ ...prev, image: "" }));
+      setImage(null);
+      return;
+    }
 
-    const hasValidMimeType = !file.type || ALLOWED_IMAGE_TYPES.includes(file.type);
-    const hasValidExtension = ALLOWED_IMAGE_NAME_REGEX.test(file.name || "");
-
-    if (!hasValidMimeType || !hasValidExtension) {
-      setErrors(prev => ({ ...prev, image: "Only JPG, JPEG, and PNG files are allowed." }));
+    const imageError = validateAdminImageFile(file);
+    if (imageError) {
+      setErrors((prev) => ({ ...prev, image: imageError }));
       setImage(null);
       e.target.value = "";
       return;
     }
 
-    if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      setErrors(prev => ({ ...prev, image: "Image must be 5MB or smaller." }));
-      setImage(null);
-      e.target.value = "";
-      return;
-    }
-
-    setErrors(prev => ({ ...prev, image: "" }));
+    setErrors((prev) => ({ ...prev, image: "" }));
     setImage(file);
   };
 
@@ -281,7 +278,7 @@ function AdminProductPage({ user }) {
     return true;
   };
 
- const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canEdit) return;
     if (!validateAll()) return;
@@ -296,9 +293,16 @@ function AdminProductPage({ user }) {
       formData.append("isAvailable", isAvailable ? 1 : 0);
       formData.append("isArchived", isArchived ? 1 : 0);
       
-      // Only append image if the user uploaded a new one
       if (image) {
-        formData.append("image", image);
+        const { file: optimizedImage, error: imageError } = await prepareAdminImageForUpload(image);
+
+        if (imageError) {
+          setErrors((prev) => ({ ...prev, image: imageError }));
+          showModalAlert("error", imageError);
+          return;
+        }
+
+        formData.append("image", optimizedImage, optimizedImage.name);
       }
 
       if (activeSection === "custom") {
@@ -329,25 +333,25 @@ function AdminProductPage({ user }) {
       }
       resetForm();
       setShowModal(false);
-} catch (error) {
+    } catch (error) {
       console.error("Operation failed", error);
       
-      let errorMsg = "Operation failed. Please check your inputs.";
-      
-      // If Laravel throws a 422, let's print EXACTLY what it rejected to the console!
+      let errorMsg = getFirstValidationErrorMessage(
+        error,
+        "Operation failed. Please check your inputs."
+      );
+
       if (error.response && error.response.status === 422) {
          console.error("🚨 LARAVEL REJECTED THESE FIELDS:", error.response.data.errors);
-         
-         const serverErrors = error.response.data.errors;
-         if (serverErrors) {
-            // Grab the very first error message from Laravel and put it in the modal
-            const firstKey = Object.keys(serverErrors)[0];
-            errorMsg = serverErrors[firstKey][0];
-         } else if (error.response.data.message) {
-            errorMsg = error.response.data.message;
-         }
-      } else if (error.response?.data?.message) {
-         errorMsg = error.response.data.message;
+
+         const serverErrors = error.response.data.errors || {};
+         setErrors((prev) => ({
+           ...prev,
+           name: serverErrors.name?.[0] || prev.name,
+           description: serverErrors.description?.[0] || prev.description,
+           price: serverErrors.price?.[0] || prev.price,
+           image: serverErrors.image?.[0] || prev.image,
+         }));
       }
       
       showModalAlert("error", errorMsg);
@@ -827,7 +831,7 @@ function AdminProductPage({ user }) {
                     className="w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-gray-600 hover:file:bg-gray-200 transition-all cursor-pointer"
                   />
                   <p className="mt-2 text-[9px] font-bold text-gray-400 uppercase tracking-wider leading-tight">
-                    JPG, JPEG, or PNG only. Max 5MB.
+                    JPG, JPEG, or PNG only. Max {MAX_ADMIN_IMAGE_SIZE_LABEL}. Larger images are auto-resized when possible.
                   </p>
                   {!image && isEditing && (
                     <p className="mt-2 text-[9px] font-bold text-amber-500 uppercase tracking-wider leading-tight">

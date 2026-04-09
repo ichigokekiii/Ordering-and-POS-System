@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom"; 
 import { LogOut } from "lucide-react"; 
 import { useProducts } from "../../contexts/ProductContext";
-import api from "../../services/api";
+import { useAuth } from "../../contexts/AuthContext";
 import ProductGrid from "../../components/staff/ProductGrid";
 import Sidebar from "../../components/staff/Sidebar";
 import CartSection from "../../components/staff/CartSection";
@@ -18,6 +18,7 @@ const STAFF_POS_CART_STORAGE_KEY = "staff-pos-cart";
 
 function StaffPage({ children, customCategories }) {
   const navigate = useNavigate(); 
+  const { handleLogout: logoutAuthUser } = useAuth();
   const { products, loading } = useProducts();
   const isVisibleForStaff = (product) => !product.isArchived && product.isAvailable;
 
@@ -101,14 +102,8 @@ function StaffPage({ children, customCategories }) {
   // --- LOGOUT FUNCTIONALITY ---
   const handleLogout = async () => {
     try {
-      await api.post("/logout"); 
-    } catch (err) {
-      console.error("Logout failed on server", err);
+      await logoutAuthUser();
     } finally {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.sessionStorage.removeItem(STAFF_POS_CART_STORAGE_KEY);
-      
       navigate("/");
     }
   };

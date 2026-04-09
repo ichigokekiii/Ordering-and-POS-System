@@ -94,6 +94,19 @@ class StaffUserReadOnlyAccessTest extends TestCase
         ]);
     }
 
+    public function test_staff_can_access_analytics_and_logs(): void
+    {
+        $staff = $this->createUserWithRole('staff', 'staff-analytics@example.com');
+
+        Sanctum::actingAs($staff);
+
+        $this->getJson('/api/analytics')
+            ->assertOk();
+
+        $this->getJson('/api/logs')
+            ->assertOk();
+    }
+
     private function createUserWithRole(string $role, string $email): User
     {
         return User::create([

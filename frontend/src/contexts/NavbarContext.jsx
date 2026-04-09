@@ -7,22 +7,44 @@ import api from "../services/api";
 
 const NavbarContext = createContext();
 
+const mapProfileToNavbarUser = (profile) => {
+  if (!profile) return null;
+
+  return {
+    id: profile.id,
+    first_name: profile.first_name,
+    last_name: profile.last_name,
+    email: profile.email,
+    phone_number: profile.phone_number,
+    profile_picture: profile.profile_picture,
+    role: profile.role,
+  };
+};
+
 export function NavbarProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(
-    JSON.parse(localStorage.getItem("user")) || null
-  );
-  const [token, setToken] = useState(localStorage.getItem("token"));
+  const [currentUser, setCurrentUser] = useState(null);
+  const [token, setToken] = useState(window.sessionStorage.getItem("token"));
 
   // Fetch user from backend
   const fetchUser = async () => {
+    const storedToken = window.sessionStorage.getItem("token");
+
+    if (!storedToken) {
+      setCurrentUser(null);
+      localStorage.removeItem("user");
+      return;
+    }
+
     try {
       const res = await api.get("/profile");
       if (res.data) {
-        setCurrentUser(res.data);
-        localStorage.setItem("user", JSON.stringify(res.data));
+        setCurrentUser(mapProfileToNavbarUser(res.data));
+        localStorage.removeItem("user");
       }
-    } catch {
+    } catch (error) {
+      console.error("Failed to fetch navbar user", error.response?.data || error.message);
       setCurrentUser(null);
+      window.sessionStorage.removeItem("token");
       localStorage.removeItem("user");
     }
   };
@@ -35,7 +57,7 @@ export function NavbarProvider({ children }) {
   // Detect login/logout by watching token changes
   useEffect(() => {
     const interval = setInterval(() => {
-      const storedToken = localStorage.getItem("token");
+      const storedToken = window.sessionStorage.getItem("token");
 
       if (storedToken !== token) {
         setToken(storedToken);
@@ -54,8 +76,6 @@ export function NavbarProvider({ children }) {
   // Listen for updates across tabs or manual dispatch
   useEffect(() => {
     const handleUserUpdate = () => {
-      const storedUser = JSON.parse(localStorage.getItem("user"));
-      if (storedUser) setCurrentUser(storedUser);
       fetchUser();
     };
 
@@ -70,7 +90,7 @@ export function NavbarProvider({ children }) {
 
   const updateUser = (user) => {
     setCurrentUser(user);
-    localStorage.setItem("user", JSON.stringify(user));
+    localStorage.removeItem("user");
     window.dispatchEvent(new Event("userUpdated"));
   };
 
@@ -84,7 +104,7 @@ export function NavbarProvider({ children }) {
     // Clear frontend auth state
     setCurrentUser(null);
     localStorage.removeItem("user");
-    localStorage.removeItem("token");
+    window.sessionStorage.removeItem("token");
 
     window.dispatchEvent(new Event("userUpdated"));
   };

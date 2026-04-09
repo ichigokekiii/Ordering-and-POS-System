@@ -61,32 +61,38 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
   const termsScope = resolveTermsScopeFromRole(userRole);
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("user") || "{}");
-    const fullName = `${stored.first_name || ""} ${stored.last_name || ""}`.trim();
-    setUserName(fullName);
-    setUserEmail(stored.email || "");
-    setUserPhone(stored.phone_number || "");
-    setUserId(stored.id || null);
-    setUserRole(stored.role || "");
-  }, []);
-
-  useEffect(() => {
     setTermsAcknowledged(false);
     setTermsAccepted(false);
     setErrors((prev) => ({ ...prev, terms: "" }));
   }, [termsScope]);
 
-  // Fetch saved addresses from profile
   useEffect(() => {
-    const fetchAddresses = async () => {
+    let isMounted = true;
+
+    const fetchProfile = async () => {
       try {
         const res = await api.get("/profile");
-        setSavedAddresses(res.data.addresses || []);
+        if (!isMounted) return;
+
+        const profile = res.data || {};
+        const fullName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim();
+
+        setUserName(fullName);
+        setUserEmail(profile.email || "");
+        setUserPhone(profile.phone_number || "");
+        setUserId(profile.id || null);
+        setUserRole(profile.role || "");
+        setSavedAddresses(profile.addresses || []);
       } catch (err) {
-        console.error("Failed to load addresses", err);
+        console.error("Failed to load profile", err.response?.data || err.message);
       }
     };
-    fetchAddresses();
+
+    fetchProfile();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Build a readable one-line string from a saved address object

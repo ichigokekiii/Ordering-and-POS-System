@@ -43,9 +43,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/feedbacks', [FeedbackController::class, 'store']);
 });
 
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'admin.dashboard'])->group(function () {
     Route::get('/analytics', [AnalyticsController::class, 'index']);
     Route::post('/analytics/email', [AnalyticsController::class, 'sendReportEmail']);
+    Route::get('/logs', [LogController::class, 'index']);
+    Route::get('/logs/export', [LogController::class, 'export']);
 });
 
 // Product & Premade routes (Public so customers can see menu)
@@ -67,10 +69,6 @@ Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
-
-// Analytics routes
-Route::get('/analytics', [AnalyticsController::class, 'index']);
-
 
 /*
 |--------------------------------------------------------------------------
@@ -119,10 +117,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/orders/{id}', [OrderController::class, 'update']);
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/{id}', [UserController::class, 'show']);
-    Route::get('/logs', [LogController::class, 'index']);
-    Route::get('/logs/export', [LogController::class, 'export']);
-    Route::get('/analytics', [AnalyticsController::class, 'index']);
-    Route::post('/analytics/email', [AnalyticsController::class, 'sendReportEmail']);
     Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
 
     // Logout

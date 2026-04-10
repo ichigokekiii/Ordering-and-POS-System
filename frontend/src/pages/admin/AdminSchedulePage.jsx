@@ -123,6 +123,13 @@ function AdminSchedulePage({ user }) {
       newErrors.image = ["An image is required."];
     }
 
+    // Validate Image (Required on create, or if a size error is already present)
+    if (errors.image) {
+      newErrors.image = errors.image; // Preserve the 5MB / invalid type error
+    } else if (!editingSchedule && !image) {
+      newErrors.image = ["Cover image is required."];
+    }
+
     // If there are errors, set them and stop submission
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -237,6 +244,11 @@ function AdminSchedulePage({ user }) {
         </div>
 
         <div className="flex items-center gap-4">
+          {!canEdit && (
+            <span className="rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-blue-600 border border-blue-100">
+              View-Only Access
+            </span>
+          )}
           {canEdit && (
             <button
               onClick={() => {
@@ -573,7 +585,7 @@ function AdminSchedulePage({ user }) {
                   type="file"
                   accept={ADMIN_IMAGE_ACCEPT}
                   onChange={handleImageChange}
-                  className="w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-4 file:py-2.5 file:text-xs file:font-bold file:text-gray-600 hover:file:bg-gray-200 transition-all cursor-pointer"
+                  className={`w-full text-sm file:mr-4 file:rounded-full file:border-0 ${errors.image ? 'file:bg-rose-100 file:text-rose-600' : 'file:bg-gray-100 file:text-gray-600'} file:px-4 file:py-2.5 file:text-xs file:font-bold hover:file:bg-gray-200 transition-all cursor-pointer`}
                 />
                 <p className="mt-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                   {editingSchedule
@@ -583,11 +595,6 @@ function AdminSchedulePage({ user }) {
                 {!image && editingSchedule && (
                   <p className="mt-2 text-[10px] font-bold text-amber-500 uppercase tracking-wider">
                     Note: Current image will be kept if no new file is chosen.
-                  </p>
-                )}
-                {errors.image && (
-                  <p className="mt-2 text-xs text-rose-500">
-                    {errors.image[0]}
                   </p>
                 )}
               </div>

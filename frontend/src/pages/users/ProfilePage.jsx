@@ -35,24 +35,24 @@ export default function ProfilePage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoInputRef = useRef(null);
 
-  // --- Modal System (replaces all alert/confirm) ---
+  // --- MISSING VALIDATION STATES ADDED HERE ---
+  const [profileFieldErrors, setProfileFieldErrors] = useState({ first_name: "", last_name: "", phone_number: "", profile_picture: "" });
+  const [addressFieldErrors, setAddressFieldErrors] = useState({ house_number: "", street: "", barangay: "", city: "", zip_code: "" });
+  const [emailFieldErrors, setEmailFieldErrors] = useState({ email: "", otp: "" });
+  const [passwordFieldErrors, setPasswordFieldErrors] = useState({ current_password: "", new_password: "", confirmPassword: "", otp: "" });
+
   const [statusModal, setStatusModal] = useState({ isOpen: false, type: "success", message: "" });
   const [cancelConfirm, setCancelConfirm] = useState({ isOpen: false, orderId: null });
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
   const [removeAddressConfirm, setRemoveAddressConfirm] = useState({ isOpen: false, index: null });
 
-  // Navigation State
   const [activeTab, setActiveTab] = useState("profile");
-
-  // --- Profile State ---
   const [editingProfile, setEditingProfile] = useState(false);
 
-  // --- Address State ---
   const [editingAddressIndex, setEditingAddressIndex] = useState(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [addressForm, setAddressForm] = useState({ house_number: "", street: "", barangay: "", city: "", zip_code: "" });
 
-  // --- Security State ---
   const [emailChangeMode, setEmailChangeMode] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [emailOtp, setEmailOtp] = useState("");
@@ -63,31 +63,19 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordOtp, setPasswordOtp] = useState("");
   const [passwordOtpSent, setPasswordOtpSent] = useState(false);
-  const [profileFieldErrors, setProfileFieldErrors] = useState({
-    first_name: "",
-    last_name: "",
-    phone_number: "",
-    profile_picture: "",
-  });
-  const [addressFieldErrors, setAddressFieldErrors] = useState({
-    house_number: "",
-    street: "",
-    barangay: "",
-    city: "",
-    zip_code: "",
-  });
-  const [emailFieldErrors, setEmailFieldErrors] = useState({ email: "", otp: "" });
-  const [passwordFieldErrors, setPasswordFieldErrors] = useState({
-    current_password: "",
-    new_password: "",
-    confirmPassword: "",
-    otp: "",
-  });
 
   // Helper to show status modal
   const showAlert = (type, message) => setStatusModal({ isOpen: true, type, message });
   const profilePictureUrl = getAssetUrl(profile?.profile_picture);
   const profileInitial = profile?.first_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || "U";
+
+  // Password strength indicators for change password
+  const passwordStrength = {
+    length: newPassword.length >= 8,
+    uppercase: /[A-Z]/.test(newPassword),
+    number: /[0-9]/.test(newPassword),
+    match: confirmPassword.length > 0 && newPassword === confirmPassword,
+  };
 
   useEffect(() => {
     fetchProfile();
@@ -123,22 +111,20 @@ export default function ProfilePage() {
   };
 
   const cancelOrderCustomer = async () => {
-  const orderId = cancelConfirm.orderId;
-  setCancelConfirm({ isOpen: false, orderId: null });
-  try {
-    const res = await api.post(`/orders/${orderId}/cancel`);
-
-    if (res.data?.account_disabled) {
-      // Show the disabled modal first, THEN log out after user clicks OK
-      setAccountDisabledModal(true);
-    } else {
-      showAlert("success", "Your order has been cancelled. A confirmation email has been sent to you.");
-      fetchProfile();
+    const orderId = cancelConfirm.orderId;
+    setCancelConfirm({ isOpen: false, orderId: null });
+    try {
+      const res = await api.post(`/orders/${orderId}/cancel`);
+      if (res.data?.account_disabled) {
+        setAccountDisabledModal(true);
+      } else {
+        showAlert("success", "Your order has been cancelled. A confirmation email has been sent to you.");
+        fetchProfile();
+      }
+    } catch (err) {
+      showAlert("error", err.response?.data?.message || "Failed to cancel order.");
     }
-  } catch (err) {
-    showAlert("error", err.response?.data?.message || "Failed to cancel order.");
-  }
-};
+  };
 
   // -------------------------------------------------------------
   // PROFILE LOGIC
@@ -180,25 +166,17 @@ export default function ProfilePage() {
 
     const formData = new FormData();
     formData.append("profile_picture", file);
-
     setUploadingPhoto(true);
     setProfileFieldErrors((prev) => ({ ...prev, profile_picture: "" }));
 
     try {
       const res = await api.post("/profile/photo", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
-
       if (res.data?.user) {
         updateUser(res.data.user);
-        setProfile((currentProfile) => ({
-          ...(currentProfile || {}),
-          ...res.data.user,
-        }));
+        setProfile((currentProfile) => ({ ...(currentProfile || {}), ...res.data.user }));
       }
-
       await fetchProfile();
       showAlert("success", "Profile photo updated successfully.");
     } catch (err) {
@@ -396,35 +374,38 @@ export default function ProfilePage() {
     }
   };
 
-  const sendPasswordOtp = async () => {
-    const nextFieldErrors = {
-      current_password: validatePassword(currentPassword, { label: "Current password" }),
-      new_password: validatePassword(newPassword, { label: "New password" }),
-      confirmPassword: validatePasswordConfirmation(newPassword, confirmPassword),
-      otp: "",
-    };
-
-    if (!nextFieldErrors.new_password && currentPassword && newPassword && currentPassword === newPassword) {
-      nextFieldErrors.new_password = "New password must be different from current password.";
-    }
-
-    setPasswordFieldErrors(nextFieldErrors);
-
-    if (Object.values(nextFieldErrors).some(Boolean)) {
-      return;
-    }
-
-    try {
-      await api.post("/profile/password-otp");
-      setPasswordOtpSent(true);
-      showAlert("success", "OTP sent to your email address.");
-    } catch (err) {
-      const normalizedError = normalizeApiValidationErrors(err);
-      setPasswordFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
-      showAlert("error", normalizedError.formError || "Failed to send OTP.");
-    }
+const sendPasswordOtp = async () => {
+  // Standardized inline validation instead of generic modals
+  const nextFieldErrors = {
+    current_password: currentPassword ? "" : "Please enter your current password.",
+    new_password: validatePassword(newPassword, { label: "New password" }),
+    confirmPassword: validatePasswordConfirmation(newPassword, confirmPassword),
+    otp: "",
   };
 
+  if (!nextFieldErrors.new_password && currentPassword && newPassword && currentPassword === newPassword) {
+    nextFieldErrors.new_password = "New password must be different from current password.";
+  }
+
+  setPasswordFieldErrors(nextFieldErrors);
+
+  if (Object.values(nextFieldErrors).some(Boolean)) {
+    return;
+  }
+
+  try {
+    // SEND CURRENT PASSWORD FOR VALIDATION
+    await api.post("/profile/password-otp", {
+      current_password: currentPassword
+    });
+    setPasswordOtpSent(true);
+    showAlert("success", "OTP sent to your email address.");
+  } catch (err) {
+    const normalizedError = normalizeApiValidationErrors(err);
+    setPasswordFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+    showAlert("error", normalizedError.formError || "Failed to send OTP.");
+  }
+};
   const verifyPasswordOtp = async () => {
     const nextFieldErrors = {
       current_password: validatePassword(currentPassword, { label: "Current password" }),
@@ -478,14 +459,13 @@ export default function ProfilePage() {
     );
   }
 
-  // Helper for Order Status colors
   const getStatusStyle = (status) => {
     const s = status?.toLowerCase();
-    if (s === "pending")                        return "bg-amber-100 text-amber-700 border-amber-200";
-    if (s === "processing")                     return "bg-blue-100 text-blue-700 border-blue-200";
-    if (s === "shipped")                        return "bg-purple-100 text-purple-700 border-purple-200";
+    if (s === "pending")        return "bg-amber-100 text-amber-700 border-amber-200";
+    if (s === "processing")     return "bg-blue-100 text-blue-700 border-blue-200";
+    if (s === "shipped")        return "bg-purple-100 text-purple-700 border-purple-200";
     if (s === "delivered" || s === "completed") return "bg-emerald-100 text-emerald-700 border-emerald-200";
-    if (s === "cancelled")                      return "bg-rose-100 text-rose-700 border-rose-200";
+    if (s === "cancelled")      return "bg-rose-100 text-rose-700 border-rose-200";
     return "bg-gray-100 text-gray-600 border-gray-200";
   };
 
@@ -629,7 +609,7 @@ export default function ProfilePage() {
                       <h3 className="font-playfair font-bold text-gray-900">Change Password</h3>
                     </div>
                     <div className="p-6">
-                      <div className="grid md:grid-cols-3 gap-6 mb-6">
+                      <div className="grid md:grid-cols-3 gap-6 mb-4">
                         <div>
                           <FormFieldHeader label="Current Password" required error={passwordFieldErrors.current_password} />
                           <input type="password" value={currentPassword} onChange={(e) => { setCurrentPassword(e.target.value); clearFieldError(setPasswordFieldErrors, "current_password"); }} placeholder="Enter password" className={getValidationInputClassName({ hasError: !!passwordFieldErrors.current_password, baseClassName: "w-full rounded-xl px-3 py-2 text-sm text-gray-800 outline-none", validClassName: "border border-gray-200 bg-white focus:border-[#3b82f6]", invalidClassName: "border border-rose-400 bg-rose-50 focus:border-rose-500" })} />
@@ -643,6 +623,29 @@ export default function ProfilePage() {
                           <input type="password" value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); clearFieldError(setPasswordFieldErrors, "confirmPassword"); }} placeholder="Confirm password" className={getValidationInputClassName({ hasError: !!passwordFieldErrors.confirmPassword, baseClassName: "w-full rounded-xl px-3 py-2 text-sm text-gray-800 outline-none", validClassName: "border border-gray-200 bg-white focus:border-[#3b82f6]", invalidClassName: "border border-rose-400 bg-rose-50 focus:border-rose-500" })} />
                         </div>
                       </div>
+
+                      {/* Password strength hints */}
+                      {newPassword.length > 0 && (
+                        <ul className="text-xs space-y-1 px-1 mb-5">
+                          <li className={`flex items-center gap-1.5 ${passwordStrength.length ? "text-emerald-600" : "text-gray-400"}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${passwordStrength.length ? "bg-emerald-500" : "bg-gray-300"}`} />
+                            At least 8 characters
+                          </li>
+                          <li className={`flex items-center gap-1.5 ${passwordStrength.uppercase ? "text-emerald-600" : "text-gray-400"}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${passwordStrength.uppercase ? "bg-emerald-500" : "bg-gray-300"}`} />
+                            One uppercase letter
+                          </li>
+                          <li className={`flex items-center gap-1.5 ${passwordStrength.number ? "text-emerald-600" : "text-gray-400"}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${passwordStrength.number ? "bg-emerald-500" : "bg-gray-300"}`} />
+                            One number
+                          </li>
+                          <li className={`flex items-center gap-1.5 ${passwordStrength.match ? "text-emerald-600" : "text-gray-400"}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${passwordStrength.match ? "bg-emerald-500" : "bg-gray-300"}`} />
+                            Passwords match
+                          </li>
+                        </ul>
+                      )}
+
                       {!passwordOtpSent ? (
                         <button onClick={sendPasswordOtp} className="bg-[#0f1b2d] text-white border border-[#0f1b2d] px-4 py-2 rounded-full font-medium text-xs hover:bg-white hover:text-[#0f1b2d] transition-all duration-300 ease-out">Send OTP</button>
                       ) : (
@@ -824,40 +827,28 @@ export default function ProfilePage() {
 
       {/* ================= MODALS ================= */}
 
-      {/* --- ACCOUNT DISABLED MODAL --- */}
-{accountDisabledModal && (
-  <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[500] p-4">
-    <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
-      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-500">
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-          <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-        </svg>
-      </div>
-      <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">
-        Account Locked
-      </h3>
-      <p className="text-sm text-gray-500 mb-2 px-2">
-        Your account has been locked because our system flagged repeated cancellations as fraudulent buying behavior.
-      </p>
-      <p className="text-sm text-gray-500 mb-8 px-2">
-        Please check your email for recovery steps, then contact IT support to restore access.
-      </p>
-      <button
-        onClick={() => {
-          setAccountDisabledModal(false);
-          logoutUser();
-          window.location.href = "/login";
-        }}
-        className="rounded-xl bg-gray-900 px-8 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm w-full"
-      >
-        Understood — Log Me Out
-      </button>
-    </div>
-  </div>
-)}
+      {accountDisabledModal && (
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[500] p-4">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-500">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
+            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">Account Locked</h3>
+            <p className="text-sm text-gray-500 mb-2 px-2">Your account has been locked because our system flagged repeated cancellations as fraudulent buying behavior.</p>
+            <p className="text-sm text-gray-500 mb-8 px-2">Please check your email for recovery steps, then contact IT support to restore access.</p>
+            <button
+              onClick={() => { setAccountDisabledModal(false); logoutUser(); window.location.href = "/login"; }}
+              className="rounded-xl bg-gray-900 px-8 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm w-full"
+            >
+              Understood — Log Me Out
+            </button>
+          </div>
+        </div>
+      )}
 
-      {/* --- CANCEL ORDER CONFIRMATION --- */}
       {cancelConfirm.isOpen && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
@@ -875,18 +866,13 @@ export default function ProfilePage() {
               </p>
             </div>
             <div className="flex justify-center gap-3">
-              <button onClick={() => setCancelConfirm({ isOpen: false, orderId: null })} className="rounded-xl px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors">
-                Keep Order
-              </button>
-              <button onClick={cancelOrderCustomer} className="rounded-xl bg-rose-500 px-5 py-2 text-sm font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-600 transition-all duration-300 shadow-sm">
-                Yes, Cancel
-              </button>
+              <button onClick={() => setCancelConfirm({ isOpen: false, orderId: null })} className="rounded-xl px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors">Keep Order</button>
+              <button onClick={cancelOrderCustomer} className="rounded-xl bg-rose-500 px-5 py-2 text-sm font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-600 transition-all duration-300 shadow-sm">Yes, Cancel</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* --- DELETE ACCOUNT CONFIRMATION --- */}
       {deleteAccountConfirm && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
@@ -894,22 +880,15 @@ export default function ProfilePage() {
               <Trash2 size={28} />
             </div>
             <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">Delete Account?</h3>
-            <p className="text-sm text-gray-500 mb-8 px-2">
-              Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be lost.
-            </p>
+            <p className="text-sm text-gray-500 mb-8 px-2">Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be lost.</p>
             <div className="flex justify-center gap-3">
-              <button onClick={() => setDeleteAccountConfirm(false)} className="rounded-xl px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors">
-                Cancel
-              </button>
-              <button onClick={deleteAccount} className="rounded-xl bg-rose-500 px-5 py-2 text-sm font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-600 transition-all duration-300 shadow-sm">
-                Yes, Delete
-              </button>
+              <button onClick={() => setDeleteAccountConfirm(false)} className="rounded-xl px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors">Cancel</button>
+              <button onClick={deleteAccount} className="rounded-xl bg-rose-500 px-5 py-2 text-sm font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-600 transition-all duration-300 shadow-sm">Yes, Delete</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* --- REMOVE ADDRESS CONFIRMATION --- */}
       {removeAddressConfirm.isOpen && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
@@ -917,22 +896,15 @@ export default function ProfilePage() {
               <MapPin size={28} />
             </div>
             <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">Remove Address?</h3>
-            <p className="text-sm text-gray-500 mb-8 px-2">
-              Are you sure you want to remove this address from your account?
-            </p>
+            <p className="text-sm text-gray-500 mb-8 px-2">Are you sure you want to remove this address from your account?</p>
             <div className="flex justify-center gap-3">
-              <button onClick={() => setRemoveAddressConfirm({ isOpen: false, index: null })} className="rounded-xl px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors">
-                Cancel
-              </button>
-              <button onClick={confirmRemoveAddress} className="rounded-xl bg-rose-500 px-5 py-2 text-sm font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-600 transition-all duration-300 shadow-sm">
-                Yes, Remove
-              </button>
+              <button onClick={() => setRemoveAddressConfirm({ isOpen: false, index: null })} className="rounded-xl px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors">Cancel</button>
+              <button onClick={confirmRemoveAddress} className="rounded-xl bg-rose-500 px-5 py-2 text-sm font-bold text-white border-2 border-rose-500 hover:bg-transparent hover:text-rose-600 transition-all duration-300 shadow-sm">Yes, Remove</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* --- STATUS ALERT MODAL --- */}
       {statusModal.isOpen && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[400] p-4">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
@@ -955,7 +927,6 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* --- ADDRESS FORM MODAL --- */}
       {showAddressModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-[2rem] w-full max-w-xl p-6 shadow-xl relative" onClick={(e) => e.stopPropagation()}>
@@ -985,18 +956,8 @@ export default function ProfilePage() {
               </div>
             </div>
             <div className="flex justify-end gap-3">
-              <button
-                onClick={() => { setEditingAddressIndex(null); setShowAddressModal(false); }}
-                className="px-5 py-2 rounded-full text-sm text-gray-900 border border-gray-900 bg-white hover:bg-[#0f1b2d] hover:text-white transition-all duration-300 ease-out"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveAddress}
-                className="bg-[#0f1b2d] text-white border border-[#0f1b2d] px-6 py-2 rounded-full text-sm font-medium hover:bg-white hover:text-[#0f1b2d] transition-all duration-300 ease-out"
-              >
-                Save Address
-              </button>
+              <button onClick={() => { setEditingAddressIndex(null); setShowAddressModal(false); }} className="px-5 py-2 rounded-full text-sm text-gray-900 border border-gray-900 bg-white hover:bg-[#0f1b2d] hover:text-white transition-all duration-300 ease-out">Cancel</button>
+              <button onClick={saveAddress} className="bg-[#0f1b2d] text-white border border-[#0f1b2d] px-6 py-2 rounded-full text-sm font-medium hover:bg-white hover:text-[#0f1b2d] transition-all duration-300 ease-out">Save Address</button>
             </div>
           </div>
         </div>

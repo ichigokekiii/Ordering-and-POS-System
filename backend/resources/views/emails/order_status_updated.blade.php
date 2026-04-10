@@ -102,7 +102,7 @@
     </div>
 
     {{-- Feedback Section (only shown when Delivered) --}}
-    @if($newStatus === 'Delivered')
+    @if($newStatus === 'delivered')
     <div class="feedback-section">
       <div class="emoji">🌸</div>
       <h3>How was your experience?</h3>

@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 /* eslint-disable no-unused-vars */
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -72,6 +73,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
   const [regTermsAcknowledged, setRegTermsAcknowledged] = useState(false);
   const [regTermsAccepted, setRegTermsAccepted] = useState(false);
   const [regFormError, setRegFormError] = useState("");
+  const [regPhoneError, setRegPhoneError] = useState("");
   const [regFieldErrors, setRegFieldErrors] = useState({
     first_name: "",
     last_name: "",
@@ -82,6 +84,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
     terms: "",
   });
   const [regLoading, setRegLoading] = useState(false);
+
   const loginEmailRef = useRef(null);
   const loginPasswordRef = useRef(null);
   const regFirstNameRef = useRef(null);
@@ -123,7 +126,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
   // =====================
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    if (cmsPreview?.enabled) return; 
+    if (cmsPreview?.enabled) return;
     if (countdown > 0 || isLocked) return;
 
     const normalizedEmail = normalizeEmail(loginEmail);
@@ -159,7 +162,17 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
       const loggedInUser = res.data.user || res.data;
 
       localStorage.setItem("pendingUser", JSON.stringify(loggedInUser));
-      navigate("/verify-otp", { state: { email: normalizedEmail, from: 'login' } });
+      
+      // Get returnTo from location.state if it exists
+      const returnTo = location.state?.returnTo;
+      
+      navigate("/verify-otp", { 
+        state: { 
+          email: normalizedEmail, 
+          from: 'login',
+          ...(returnTo && { returnTo }) // Only include if returnTo exists
+        } 
+      });
     } catch (err) {
       const data = err.response?.data;
       const status = err.response?.status;
@@ -191,39 +204,49 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     if (cmsPreview?.enabled) return;
+    setRegFormError("");
+    setRegFieldErrors((prev) => ({ ...prev, terms: "" }));
+
     const normalizedFirstName = normalizeName(regFirstName);
     const normalizedLastName = normalizeName(regLastName);
     const normalizedEmail = normalizeEmail(regEmail);
     const normalizedPhone = normalizePhoneNumber(regPhone);
 
-    const nextFieldErrors = {
-      first_name: validateName(normalizedFirstName, "First name"),
-      last_name: validateName(normalizedLastName, "Last name"),
-      email: validateEmail(normalizedEmail),
-      phone_number: validatePhoneNumber(normalizedPhone),
-      password: validatePassword(regPassword),
-      confirmPassword: validatePasswordConfirmation(regPassword, regConfirmPassword),
-      terms:
-        !regTermsAcknowledged || !regTermsAccepted
-          ? "Please review and accept the Customer Terms & Conditions before continuing."
-          : "",
-    };
+    // 1. Validate Names (No Symbols or Numbers)
+    const nameRegex = /^[A-Za-z\s\-']+$/;
+    if (!nameRegex.test(normalizedFirstName) || !nameRegex.test(normalizedLastName)) {
+      setRegFormError("Names can only contain letters, spaces, and hyphens.");
+      return;
+    }
 
-    setRegFormError("");
-    setRegFieldErrors(nextFieldErrors);
+    // 2. Validate Phone Number (Exactly 11 digits)
+    if (normalizedPhone.length !== 11) {
+      setRegFormError("Phone number must be exactly 11 digits.");
+      return;
+    }
 
-    if (Object.values(nextFieldErrors).some(Boolean)) {
-      focusFirstInvalidField(
-        {
-          first_name: regFirstNameRef,
-          last_name: regLastNameRef,
-          email: regEmailRef,
-          phone_number: regPhoneRef,
-          password: regPasswordRef,
-          confirmPassword: regConfirmPasswordRef,
-        },
-        nextFieldErrors
-      );
+    // 3. Validate Password strength
+    if (regPassword.length < 8) {
+      setRegFormError("Password must be at least 8 characters.");
+      return;
+    }
+    if (!/[A-Z]/.test(regPassword)) {
+      setRegFormError("Password must contain at least one uppercase letter.");
+      return;
+    }
+    if (!/[0-9]/.test(regPassword)) {
+      setRegFormError("Password must contain at least one number.");
+      return;
+    }
+
+    // 4. Validate Passwords match
+    if (regPassword !== regConfirmPassword) {
+      setRegFormError("Passwords do not match.");
+      return;
+    }
+
+    if (!regTermsAcknowledged || !regTermsAccepted) {
+      setRegFieldErrors((prev) => ({ ...prev, terms: "Please review and accept the Customer Terms & Conditions before continuing." }));
       return;
     }
 
@@ -259,6 +282,14 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
 
   const isCoolingDown = countdown > 0;
   const loginFormDisabled = isCoolingDown || isLocked || loginLoading;
+
+  // Password strength indicators for register
+  const regPasswordStrength = {
+    length: regPassword.length >= 8,
+    uppercase: /[A-Z]/.test(regPassword),
+    number: /[0-9]/.test(regPassword),
+    match: regConfirmPassword.length > 0 && regPassword === regConfirmPassword,
+  };
 
   return (
     <div className="min-h-screen bg-[#fcfaf9] flex items-start justify-center pt-10 pb-4">
@@ -347,20 +378,31 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
                   placeholder="09123456789"
                   value={regPhone}
                   onChange={(e) => {
-                    setRegPhone(normalizePhoneNumber(e.target.value).slice(0, PHONE_MAX_LENGTH));
+                    const value = e.target.value.replace(/\D/g, '').slice(0, PHONE_MAX_LENGTH);
+                    setRegPhone(value);
                     clearFieldError(setRegFieldErrors, "phone_number");
+                    
+                    if (value.length === 0) {
+                      setRegPhoneError("");
+                    } else if (value.length < 11) {
+                      setRegPhoneError(`Phone number must be exactly 11 digits (${11 - value.length} more needed)`);
+                    } else {
+                      setRegPhoneError("");
+                    }
                   }}
                   maxLength={PHONE_MAX_LENGTH}
                   required
                 />
+                {regPhoneError && (
+                  <p className="text-xs text-amber-600 px-1 mt-1 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-amber-500" />
+                    {regPhoneError}
+                  </p>
+                )}
               </div>
+              
               <div>
-                <FormFieldHeader
-                  label="Password"
-                  required
-                  error={regFieldErrors.password}
-                  hint={`Minimum ${PASSWORD_MIN_LENGTH} characters`}
-                />
+                <FormFieldHeader label="Password" required error={regFieldErrors.password} />
                 <input
                   ref={regPasswordRef}
                   type="password"
@@ -377,6 +419,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
                   required
                 />
               </div>
+              
               <div>
                 <FormFieldHeader label="Confirm Password" required error={regFieldErrors.confirmPassword} />
                 <input
@@ -395,6 +438,28 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
                   required
                 />
               </div>
+
+              {/* Password strength hints */}
+              {regPassword.length > 0 && (
+                <ul className="text-xs space-y-1 px-1">
+                  <li className={`flex items-center gap-1.5 ${regPasswordStrength.length ? "text-emerald-600" : "text-gray-400"}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${regPasswordStrength.length ? "bg-emerald-500" : "bg-gray-300"}`} />
+                    At least 8 characters
+                  </li>
+                  <li className={`flex items-center gap-1.5 ${regPasswordStrength.uppercase ? "text-emerald-600" : "text-gray-400"}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${regPasswordStrength.uppercase ? "bg-emerald-500" : "bg-gray-300"}`} />
+                    One uppercase letter
+                  </li>
+                  <li className={`flex items-center gap-1.5 ${regPasswordStrength.number ? "text-emerald-600" : "text-gray-400"}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${regPasswordStrength.number ? "bg-emerald-500" : "bg-gray-300"}`} />
+                    One number
+                  </li>
+                  <li className={`flex items-center gap-1.5 ${regPasswordStrength.match ? "text-emerald-600" : "text-gray-400"}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${regPasswordStrength.match ? "bg-emerald-500" : "bg-gray-300"}`} />
+                    Passwords match
+                  </li>
+                </ul>
+              )}
 
               <TermsConsentField
                 scope={TERMS_SCOPE.CUSTOMER}
@@ -502,7 +567,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
 
               <button
                 disabled={loginFormDisabled}
-                className="w-full mt-2 rounded-lg bg-[#4f6fa5] py-3 text-white font-semibold transition-all hover:bg-[#3f5b89] hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full mt-4 rounded-lg bg-[#4f6fa5] py-4 text-lg text-white font-semibold transition-all hover:bg-[#3f5b89] hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loginLoading && <Loader2 className="h-5 w-5 animate-spin" />}
                 {isCoolingDown ? `Wait ${formatCountdown(countdown)}` : "Login"}
@@ -521,6 +586,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
           animate={{ x: isSignIn ? "0%" : "100%" }}
           transition={{ duration: 0.6, ease: "easeInOut" }}
         >
+          {/* Picture shown when Login active (Overlay covers Register on the LEFT) */}
           <motion.div 
             className="absolute inset-0 w-full h-full"
             animate={{ opacity: isSignIn ? 1 : 0 }}
@@ -534,7 +600,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
                 className="absolute inset-0 w-full h-full object-cover brightness-110 contrast-110"
               />
             </CmsEditableRegion>
-            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-10 text-center backdrop-blur-[3px] pointer-events-none">
+            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-12 text-center backdrop-blur-[3px] pointer-events-none">
               <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("auth", "auth_login_title")} className="inline-block w-fit pointer-events-auto mb-4">
                 <h2 className="text-4xl font-bold font-sans tracking-tight">{getContentValue("auth_login_title", "New Here?")}</h2>
               </CmsEditableRegion>
@@ -553,6 +619,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
             </div>
           </motion.div>
 
+          {/* Picture shown when Register active (Overlay covers Login on the RIGHT) */}
           <motion.div 
             className="absolute inset-0 w-full h-full"
             animate={{ opacity: isSignIn ? 0 : 1 }}

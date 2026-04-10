@@ -149,9 +149,17 @@ function Feedback() {
 
           </form>
         ) : (
-          <p className="text-sm text-gray-500">
-            Please <a href="/login" className="text-blue-600 underline">log in</a> to leave feedback.
-          </p>
+          <div className="text-center">
+            <p className="text-sm text-gray-500 mb-4">
+              Please log in to leave feedback.
+            </p>
+            <button
+              onClick={() => navigate('/login', { state: { returnTo: '/feedback' } })}
+              className="px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition"
+            >
+              Log In to Continue
+            </button>
+          </div>
         )}
       </div>
     </div>

@@ -35,10 +35,12 @@ function VerifyOtpPage({ cmsPreview }) {
   const contents = contentContext?.contents || [];
   const getContentValue = (identifier, fallback = "") => getCmsContentValue(contents, "auth", identifier, fallback);
 
-  // When in preview, act as if there is an email so the form renders
   const email = location.state?.email || localStorage.getItem("otp_email") || (cmsPreview?.enabled ? "user@example.com" : null);
-  const purpose = location.state?.purpose;
   const from = location.state?.from || "login";
+  const purpose = location.state?.purpose || (from === "forgot-password" ? "reset-password" : null);
+  
+  // Get returnTo from location.state if it exists
+  const returnTo = location.state?.returnTo;
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -104,13 +106,35 @@ function VerifyOtpPage({ cmsPreview }) {
     setLoading(true);
 
     try {
-      const res = await api.post("/verify-otp", { email, otp: normalizedOtp });
-      if (res.data.token) window.sessionStorage.setItem("token", res.data.token);
+      // Pass the purpose so the backend knows NOT to delete the OTP yet
+      const payload = { email, otp: normalizedOtp };
+      if (purpose === "reset-password") {
+        payload.purpose = "reset-password";
+      }
+
+      const res = await api.post("/verify-otp", payload);
+      
+      // Handle password reset flow - DO NOT LOG IN
+      if (purpose === "reset-password") {
+        setModalMessage("OTP verified! Redirecting to reset password...");
+        setShowModal(true);
+        setTimeout(() => {
+          navigate("/reset-password", { state: { email, otp: normalizedOtp } });
+        }, 1500);
+        setLoading(false);
+        return;
+      }
+
+      // Handle login/register flow - LOG IN
       if (!res.data.token) {
         setFormError("Authentication failed. Please try logging in again.");
         setLoading(false);
         return;
       }
+
+      localStorage.setItem("token", res.data.token);
+      window.sessionStorage.setItem("token", res.data.token);
+
       let userData = null;
       const pendingUser = localStorage.getItem("pendingUser");
       if (pendingUser) {
@@ -121,20 +145,17 @@ function VerifyOtpPage({ cmsPreview }) {
         userData = res.data.user;
         setModalMessage("Account verified successfully! Logging you in...");
       }
-      if (purpose === "reset-password") {
-        setModalMessage("OTP verified! Redirecting to reset password...");
-        setShowModal(true);
-        setTimeout(() => {
-          navigate("/reset-password", { state: { email, otp: normalizedOtp } });
-        }, 1500);
-        return;
-      }
+
       handleLogin(userData);
       localStorage.removeItem("otp_email");
       setShowModal(true);
+      
       setTimeout(() => {
-        navigate(getPostLoginPath(userData));
+        // Use returnTo if it exists, otherwise use default path
+        const redirectPath = returnTo || getPostLoginPath(userData);
+        navigate(redirectPath);
       }, 1500);
+
     } catch (err) {
       const normalizedError = normalizeApiValidationErrors(err);
       setFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));

@@ -58,10 +58,10 @@ function Navbar({ cmsPreview }) {
 
   return (
     <nav
-      // FIXED: Use relative positioning and lower z-index when inside the CMS preview!
       className={`${
-        cmsPreview?.enabled ? "relative z-30" : "sticky top-0 z-[120]"
-      } w-full border-b border-gray-200 backdrop-blur-md`}
+        /* FIXED: Lowered z-[120] to z-40 so modals can sit above it! */
+        cmsPreview?.enabled ? "relative z-30" : "sticky top-0 z-40"
+      } w-full border-b border-gray-200 backdrop-blur-md pointer-events-auto`}
       style={{
         backgroundColor: isDarkMode
           ? "rgba(8, 17, 31, 0.94)"
@@ -76,15 +76,17 @@ function Navbar({ cmsPreview }) {
       }}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
-        <Link
-          to="/"
-          onClick={preventPreviewNavigation}
-          className="cursor-pointer text-lg font-semibold tracking-wide"
+        
+        {/* Brand Section - Elevated Z-index and forced pointer events for CMS */}
+        <CmsEditableRegion
+          cmsPreview={cmsPreview}
+          field={getCmsField("navbar", "navbar_brand")}
+          className="inline-block relative z-[200] pointer-events-auto"
         >
-          <CmsEditableRegion
-            cmsPreview={cmsPreview}
-            field={getCmsField("navbar", "navbar_brand")}
-            className="inline-block"
+          <Link
+            to="/"
+            onClick={preventPreviewNavigation}
+            className="cursor-pointer text-lg font-semibold tracking-wide block"
           >
             <span
               style={{
@@ -95,50 +97,54 @@ function Navbar({ cmsPreview }) {
             >
               {getContentValue("navbar_brand", "petal express")}
             </span>
-          </CmsEditableRegion>
-        </Link>
-
-        <CmsEditableRegion
-          cmsPreview={cmsPreview}
-          field={getCmsField("navbar", "navbar_text_color")}
-          className="absolute left-1/2 hidden -translate-x-1/2 md:block"
-        >
-          <ul
-            className="flex items-center gap-8 text-sm"
-            style={{
-              color: isDarkMode
-                ? "#e2e8f0"
-                : getContentValue("navbar_text_color", "#374151"),
-            }}
-          >
-            <li className="hover:text-[#4f6fa5]">
-              <Link to="/" onClick={preventPreviewNavigation}>
-                Home
-              </Link>
-            </li>
-
-            <li className="hover:text-[#4f6fa5]">
-              <Link to="/about" onClick={preventPreviewNavigation}>
-                About
-              </Link>
-            </li>
-
-            <li className="hover:text-[#4f6fa5]">
-              <Link to="/products" onClick={preventPreviewNavigation}>
-                Showcase
-              </Link>
-            </li>
-
-            <li className="hover:text-[#4f6fa5]">
-              <Link to="/schedule" onClick={preventPreviewNavigation}>
-                Schedule
-              </Link>
-            </li>
-          </ul>
+          </Link>
         </CmsEditableRegion>
 
+        {/* Links Section - Absolute positioning moved to a safe parent div */}
+        <div className="absolute left-1/2 hidden -translate-x-1/2 md:block z-40 pointer-events-none">
+          <CmsEditableRegion
+            cmsPreview={cmsPreview}
+            field={getCmsField("navbar", "navbar_text_color")}
+            className="block"
+          >
+            <ul
+              className="flex items-center gap-8 text-sm px-2 py-1 pointer-events-auto"
+              style={{
+                color: isDarkMode
+                  ? "#e2e8f0"
+                  : getContentValue("navbar_text_color", "#374151"),
+              }}
+            >
+              <li className="hover:text-[#4f6fa5] transition-colors">
+                <Link to="/" onClick={preventPreviewNavigation}>
+                  Home
+                </Link>
+              </li>
+
+              <li className="hover:text-[#4f6fa5] transition-colors">
+                <Link to="/about" onClick={preventPreviewNavigation}>
+                  About
+                </Link>
+              </li>
+
+              <li className="hover:text-[#4f6fa5] transition-colors">
+                <Link to="/products" onClick={preventPreviewNavigation}>
+                  Showcase
+                </Link>
+              </li>
+
+              <li className="hover:text-[#4f6fa5] transition-colors">
+                <Link to="/schedule" onClick={preventPreviewNavigation}>
+                  Schedule
+                </Link>
+              </li>
+            </ul>
+          </CmsEditableRegion>
+        </div>
+
+        {/* Profile Section */}
         {currentUser ? (
-          <div ref={menuRef} className="relative flex items-center gap-4">
+          <div ref={menuRef} className="relative flex items-center gap-4 z-[200] pointer-events-auto">
             <span className="text-sm text-gray-600">
               Hi, {currentUser.first_name}
             </span>
@@ -149,7 +155,7 @@ function Navbar({ cmsPreview }) {
                   setMenuOpen(!menuOpen);
                 }
               }}
-              className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-white hover:border-[#4f6fa5] hover:bg-[#4f6fa5]/10"
+              className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-white hover:border-[#4f6fa5] hover:bg-[#4f6fa5]/10 transition-colors"
             >
               {profilePictureUrl ? (
                 <img
@@ -165,10 +171,10 @@ function Navbar({ cmsPreview }) {
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 top-12 w-44 rounded-lg border bg-white shadow-md">
+              <div className="absolute right-0 top-12 w-44 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden z-[200]">
                 <Link
                   to="/profile"
-                  className="block px-4 py-2 text-sm hover:bg-[#4f6fa5]/10 hover:text-[#4f6fa5]"
+                  className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#4f6fa5] transition-colors"
                   onClick={(event) => {
                     preventPreviewNavigation(event);
                     setMenuOpen(false);
@@ -183,7 +189,7 @@ function Navbar({ cmsPreview }) {
                       toggleTheme();
                     }
                   }}
-                  className="block w-full px-4 py-2 text-left text-sm hover:bg-[#4f6fa5]/10 hover:text-[#4f6fa5]"
+                  className="block w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 hover:text-[#4f6fa5] transition-colors border-t border-gray-50"
                 >
                   {isDarkMode ? "Light Theme" : "Dark Theme"}
                 </button>
@@ -194,7 +200,7 @@ function Navbar({ cmsPreview }) {
                       handleLogout();
                     }
                   }}
-                  className="block w-full px-4 py-2 text-left text-sm hover:bg-[#4f6fa5]/10 hover:text-[#4f6fa5]"
+                  className="block w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-50 font-medium"
                 >
                   Logout
                 </button>
@@ -202,13 +208,15 @@ function Navbar({ cmsPreview }) {
             )}
           </div>
         ) : (
-          <Link
-            to="/login"
-            onClick={preventPreviewNavigation}
-            className="rounded-full border px-5 py-2 text-sm hover:bg-[#4f6fa5]/10 hover:text-[#4f6fa5]"
-          >
-            Login
-          </Link>
+          <div className="relative z-[200] pointer-events-auto">
+            <Link
+              to="/login"
+              onClick={preventPreviewNavigation}
+              className="rounded-full border border-gray-200 px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 hover:text-[#4f6fa5] transition-all shadow-sm block"
+            >
+              Login
+            </Link>
+          </div>
         )}
       </div>
     </nav>

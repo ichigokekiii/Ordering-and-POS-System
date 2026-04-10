@@ -10,25 +10,29 @@ const formatRole = (role) => {
   return role.charAt(0).toUpperCase() + role.slice(1);
 };
 
-// Reusable Log Type Pill
-const LogTypePill = ({ type }) => {
-  const t = (type || "activity").toLowerCase();
+// Reusable Module Pill for the new Activity column
+const ModulePill = ({ moduleName }) => {
+  const m = (moduleName || "general").toLowerCase();
   
   let colorClass = "bg-gray-100 text-gray-600 border-gray-200"; // default
   
-  if (t.includes("delete") || t.includes("remove") || t.includes("fail") || t.includes("error")) {
-    colorClass = "bg-rose-100 text-rose-700 border-rose-200";
-  } else if (t.includes("update") || t.includes("edit") || t.includes("modify")) {
-    colorClass = "bg-amber-100 text-amber-700 border-amber-200";
-  } else if (t.includes("create") || t.includes("add") || t.includes("success") || t.includes("login")) {
+  if (m.includes("user") || m.includes("auth") || m.includes("account")) {
+    colorClass = "bg-purple-100 text-purple-700 border-purple-200";
+  } else if (m.includes("product") || m.includes("inventory")) {
+    colorClass = "bg-indigo-100 text-indigo-700 border-indigo-200";
+  } else if (m.includes("order") || m.includes("checkout") || m.includes("payment")) {
     colorClass = "bg-emerald-100 text-emerald-700 border-emerald-200";
-  } else if (t.includes("view") || t.includes("read") || t.includes("export")) {
+  } else if (m.includes("schedule") || m.includes("event")) {
+    colorClass = "bg-amber-100 text-amber-700 border-amber-200";
+  } else if (m.includes("cms") || m.includes("content")) {
+    colorClass = "bg-pink-100 text-pink-700 border-pink-200";
+  } else {
     colorClass = "bg-blue-100 text-blue-700 border-blue-200";
   }
 
   return (
     <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${colorClass}`}>
-      {t}
+      {m}
     </span>
   );
 };
@@ -60,6 +64,9 @@ function AdminLogsPage() {
     date_to: "",
     page: 1,
   });
+
+  // Check if any filters are actively applied
+  const hasActiveFilters = Boolean(filters.user_id || filters.type || filters.date_from || filters.date_to);
 
   // Handle clicking outside the filter dropdown
   useEffect(() => {
@@ -165,77 +172,99 @@ function AdminLogsPage() {
           <div className="relative" ref={dropdownRef}>
             <button 
               onClick={() => setShowFilterMenu(!showFilterMenu)}
-              className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 hover:border-gray-900 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-[#eaf2ff]"
+              className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 hover:border-gray-900 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] relative"
             >
               <Filter className="w-4 h-4" />
               Filter
+              {hasActiveFilters && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-[#4f6fa5] ring-2 ring-white"></span>
+              )}
               <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showFilterMenu ? "rotate-180" : ""}`} />
             </button>
 
             {showFilterMenu && (
-              <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-100 rounded-3xl shadow-2xl z-50 p-5 animate-in fade-in zoom-in duration-100 max-h-[80vh] overflow-y-auto">
+              <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-100 rounded-3xl shadow-2xl z-50 p-5 animate-in fade-in zoom-in duration-100">
                 
-                {/* User Filter */}
-                <div className="mb-4">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Filter by User</p>
-                  <select 
-                    value={filters.user_id} 
-                    onChange={(e) => handleFilterChange("user_id", e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 focus:bg-white focus:border-[#4f6fa5] focus:ring-2 focus:ring-[#eaf2ff] transition-all"
+                {/* User Filter (Button Stack) */}
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Filter by User</p>
+                <div className="space-y-1 mb-4 max-h-40 overflow-y-auto nice-scrollbar pr-2">
+                  <button
+                    onClick={() => handleFilterChange("user_id", "")}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-colors ${
+                      filters.user_id === "" ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"
+                    }`}
                   >
-                    <option value="">All Users</option>
-                    {filterOptions.users.map((user) => (
-                      <option key={user.id} value={user.id}>{user.name}</option>
-                    ))}
-                  </select>
+                    All Users
+                  </button>
+                  {filterOptions.users.map((user) => (
+                    <button
+                      key={user.id}
+                      onClick={() => handleFilterChange("user_id", String(user.id))}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold truncate transition-colors ${
+                        String(filters.user_id) === String(user.id) ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      {user.name}
+                    </button>
+                  ))}
                 </div>
 
-                {/* Function/Type Filter */}
-                <div className="mb-4 border-t border-gray-50 pt-4">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Filter by Function</p>
-                  <select 
-                    value={filters.type} 
-                    onChange={(e) => handleFilterChange("type", e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 focus:bg-white focus:border-[#4f6fa5] focus:ring-2 focus:ring-[#eaf2ff] transition-all"
+                {/* Function/Type Filter (Button Stack) */}
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-t border-gray-50 pt-4">Filter by Module</p>
+                <div className="space-y-1 mb-4 max-h-40 overflow-y-auto nice-scrollbar pr-2">
+                  <button
+                    onClick={() => handleFilterChange("type", "")}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-colors ${
+                      filters.type === "" ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"
+                    }`}
                   >
-                    <option value="">All Functions</option>
-                    {filterOptions.types.map((type) => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
+                    All Modules
+                  </button>
+                  {filterOptions.types.map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => handleFilterChange("type", type)}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold capitalize truncate transition-colors ${
+                        filters.type === type ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
                 </div>
 
                 {/* Date Filters */}
-                <div className="mb-5 border-t border-gray-50 pt-4">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Date Range</p>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <span className="text-[9px] text-gray-500 font-bold ml-1 mb-1 block">FROM</span>
-                      <input
-                        type="date"
-                        value={filters.date_from}
-                        onChange={(e) => handleFilterChange("date_from", e.target.value)}
-                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs text-gray-700 focus:bg-white focus:border-[#4f6fa5] focus:ring-2 focus:ring-[#eaf2ff] transition-all"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <span className="text-[9px] text-gray-500 font-bold ml-1 mb-1 block">TO</span>
-                      <input
-                        type="date"
-                        value={filters.date_to}
-                        onChange={(e) => handleFilterChange("date_to", e.target.value)}
-                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs text-gray-700 focus:bg-white focus:border-[#4f6fa5] focus:ring-2 focus:ring-[#eaf2ff] transition-all"
-                      />
-                    </div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-t border-gray-50 pt-4">Date Range</p>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <span className="text-[9px] text-gray-500 font-bold ml-1 mb-1 block">FROM</span>
+                    <input
+                      type="date"
+                      value={filters.date_from}
+                      onChange={(e) => handleFilterChange("date_from", e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs text-gray-700 focus:bg-white focus:border-[#4f6fa5] focus:ring-2 focus:ring-[#eaf2ff] transition-all"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-[9px] text-gray-500 font-bold ml-1 mb-1 block">TO</span>
+                    <input
+                      type="date"
+                      value={filters.date_to}
+                      onChange={(e) => handleFilterChange("date_to", e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs text-gray-700 focus:bg-white focus:border-[#4f6fa5] focus:ring-2 focus:ring-[#eaf2ff] transition-all"
+                    />
                   </div>
                 </div>
 
-                <button
-                  onClick={clearFilters}
-                  className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-600 hover:border-gray-900 hover:text-gray-900 transition-all shadow-sm"
-                >
-                  Clear Filters
-                </button>
+                {/* Optional Clear Filters Button */}
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="w-full mt-4 rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 transition-all shadow-sm"
+                  >
+                    Clear Filters
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -262,7 +291,7 @@ function AdminLogsPage() {
              <button onClick={clearFilters} className="text-xs font-bold text-[#4f6fa5] hover:underline mt-2">Clear Filters</button>
           </div>
         ) : (
-          <div className="flex-1 overflow-auto relative">
+          <div className="flex-1 overflow-auto relative nice-scrollbar">
             <table className="min-w-full text-left border-collapse">
               <thead className="sticky top-0 z-10 bg-[#f8fafc] shadow-sm">
                 <tr className="border-b border-gray-50">
@@ -271,7 +300,7 @@ function AdminLogsPage() {
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Event Description</th>
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Date & Time</th>
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Source</th>
-                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Action Type</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right whitespace-nowrap">Activity</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 bg-white">
@@ -299,11 +328,6 @@ function AdminLogsPage() {
                     {/* Event Details */}
                     <td className="px-6 py-5">
                       <p className="text-sm font-semibold text-gray-800 line-clamp-2 max-w-md">{log.event || "No description provided"}</p>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <span className="px-2 py-0.5 text-[9px] rounded font-bold uppercase tracking-wider bg-gray-100 text-gray-500">
-                          Module: {log.module || "General"}
-                        </span>
-                      </div>
                     </td>
 
                     {/* Date */}
@@ -324,9 +348,9 @@ function AdminLogsPage() {
                       <span className="text-xs font-semibold text-gray-500">{log.source || "Application"}</span>
                     </td>
 
-                    {/* Action Type / Status */}
+                    {/* Activity Module Pill */}
                     <td className="px-6 py-5 text-right">
-                      <LogTypePill type={log.type} />
+                      <ModulePill moduleName={log.module} />
                     </td>
 
                   </tr>
@@ -387,8 +411,26 @@ function AdminLogsPage() {
           </div>
         </div>
       )}
+
+      {/* Helper CSS for the dropdown and table scrollbars */}
+      <style>{`
+        .nice-scrollbar::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        .nice-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .nice-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #e5e7eb;
+          border-radius: 10px;
+        }
+        .nice-scrollbar::-webkit-scrollbar-thumb:hover {
+          background-color: #d1d5db;
+        }
+      `}</style>
     </div>
   );
 }
 
-export default AdminLogsPage;
+export default AdminLogsPage; 

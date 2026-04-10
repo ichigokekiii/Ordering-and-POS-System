@@ -20,18 +20,27 @@ use App\Mail\AnalyticsReportMail;
 
 class AnalyticsController extends Controller
 {
+    private function canAccessAnalytics(?User $user): bool
+    {
+        return $user && in_array(strtolower((string) $user->role), ['admin', 'owner', 'staff'], true);
+    }
+
     /**
      * Display the analytics dashboard data.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        if (!$this->canAccessAnalytics($request->user() ?? Auth::user())) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
         return response()->json($this->getRawAnalyticsData());
     }
 
     /**
      * NEW: Handles the request to generate a PDF and email it to the user.
      */
-public function sendReportEmail(Request $request): JsonResponse
+    public function sendReportEmail(Request $request): JsonResponse
     {
         $user = $request->user() ?? Auth::user();
 
@@ -39,6 +48,12 @@ public function sendReportEmail(Request $request): JsonResponse
             return response()->json([
                 'error' => 'You must be logged in to email an analytics report.'
             ], 401);
+        }
+
+        if (!$this->canAccessAnalytics($user)) {
+            return response()->json([
+                'error' => 'Unauthorized'
+            ], 403);
         }
 
         if (empty($user->email)) {
@@ -49,10 +64,14 @@ public function sendReportEmail(Request $request): JsonResponse
 
         $section = $request->input('section', 'overview');
         $context = $request->input('context', 'Full Report');
+        $exportType = $request->input('export_type', 'section');
+        $contextKind = $request->input('context_kind', 'section');
+        $subtitle = $request->input('subtitle');
+        $sectionLabel = $request->input('section_label');
 
         try {
             $fullData = $this->getRawAnalyticsData();
-            $pdfPayload = $this->buildPdfPayload($section, $context, $fullData);
+            $pdfPayload = $this->buildPdfPayload($section, $context, $fullData, $exportType, $contextKind, $subtitle, $sectionLabel);
 
             // Generate PDF
             $pdf = Pdf::loadView('pdf.analytics', $pdfPayload);
@@ -66,168 +85,711 @@ public function sendReportEmail(Request $request): JsonResponse
             return response()->json(['message' => 'Report emailed successfully!']);
             
         } catch (\Throwable $e) {
-            // CHANGED TO \Throwable: This will now catch Fatal Errors (like missing DomPDF or Views) 
-            // and send the exact error message back to your React Modal!
-            return response()->json([
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Unable to email analytics report right now.', $e);
         }
     }
 
-    protected function buildPdfPayload(string $section, string $context, array $fullData): array
+    protected function buildPdfPayload(
+        string $section,
+        string $context,
+        array $fullData,
+        string $exportType = 'section',
+        string $contextKind = 'section',
+        ?string $subtitle = null,
+        ?string $sectionLabel = null
+    ): array {
+        $definitions = $this->getSectionReportDefinitions($fullData);
+        $section = array_key_exists($section, $definitions) ? $section : 'overview';
+
+        if ($exportType === 'single') {
+            return $this->buildSingleContextReportPayload($section, $context, $fullData, $contextKind, $subtitle, $sectionLabel);
+        }
+
+        return $this->buildSectionReportPayload($section, $context, $fullData, $sectionLabel);
+    }
+
+    protected function buildSectionReportPayload(string $section, string $context, array $fullData, ?string $sectionLabel = null): array
     {
-        $sectionCards = $fullData[$section]['kpis'] ?? $fullData['overview']['cards'] ?? [];
+        $definition = $this->getSectionReportDefinition($section, $fullData);
+        $panels = $definition['panels'] ?? [];
 
-        $sliceRows = function ($value, int $limit = 6): array {
-            if ($value instanceof Collection) {
-                return $value->take($limit)->values()->all();
-            }
-
-            return array_slice((array) $value, 0, $limit);
-        };
-
-        $asArray = function ($value): array {
-            if ($value instanceof Collection) {
-                return $value->values()->all();
-            }
-
-            return (array) $value;
-        };
-
-        $payload = [
-            'sectionName' => $context,
+        return [
+            'reportVariant' => 'section',
+            'sectionName' => $context ?: (($sectionLabel ?: $definition['label']) . ' Full Report'),
             'sectionKey' => $section,
-            'cards' => $sliceRows($sectionCards, 8),
-            'columns' => [],
-            'tableRows' => [],
-            'chartBlocks' => [],
+            'sectionLabel' => $sectionLabel ?: $definition['label'],
+            'reportDescription' => $definition['description'],
+            'theme' => $definition['theme'],
+            'summaryCards' => $this->sliceRows($definition['cards'] ?? [], 8),
+            'focusCard' => null,
+            'supportingCards' => [],
+            'visualBlocks' => array_values(array_map(
+                fn (array $panel) => $this->prepareVisualBlock($panel),
+                array_filter($panels, fn (array $panel) => ($panel['kind'] ?? 'chart') !== 'table')
+            )),
+            'detailTables' => array_values(array_map(
+                fn (array $panel) => $this->prepareTableBlock($panel),
+                array_filter($panels, fn (array $panel) => ($panel['kind'] ?? 'chart') === 'table')
+            )),
         ];
+    }
 
-        if ($section === 'products') {
-            $payload['columns'] = [
-                ['label' => 'Product Name', 'key' => 'name'],
-                ['label' => 'Units Sold', 'key' => 'quantity'],
-                ['label' => 'Total Revenue', 'key' => 'revenue', 'format' => 'currency'],
-            ];
-            $payload['tableRows'] = $asArray($fullData['products']['top_products'] ?? []);
-            $payload['chartBlocks'] = [
-                [
-                    'title' => 'Top Products Revenue',
-                    'subtitle' => 'Best-performing products by revenue',
-                    'type' => 'bar',
-                    'seriesKey' => 'revenue',
-                    'seriesLabel' => 'Revenue',
-                    'format' => 'currency',
-                    'points' => $sliceRows($fullData['products']['top_products'] ?? [], 6),
-                ],
-                [
-                    'title' => 'Category Performance',
-                    'subtitle' => 'Revenue by product category',
-                    'type' => 'bar',
-                    'seriesKey' => 'revenue',
-                    'seriesLabel' => 'Revenue',
-                    'format' => 'currency',
-                    'points' => $sliceRows($fullData['products']['category_performance'] ?? [], 6),
-                ],
-            ];
+    protected function buildSingleContextReportPayload(
+        string $section,
+        string $context,
+        array $fullData,
+        string $contextKind = 'panel',
+        ?string $subtitle = null,
+        ?string $sectionLabel = null
+    ): array {
+        $definition = $this->getSectionReportDefinition($section, $fullData);
+        $cards = $this->asArray($definition['cards'] ?? []);
+        $panels = $definition['panels'] ?? [];
+        $visualPanels = array_values(array_filter($panels, fn (array $panel) => ($panel['kind'] ?? 'chart') !== 'table'));
+        $tablePanels = array_values(array_filter($panels, fn (array $panel) => ($panel['kind'] ?? 'chart') === 'table'));
 
-            return $payload;
+        $matchLabel = $this->normalizeExportLabel($context);
+        $matchedCard = collect($cards)->first(fn (array $card) => $this->normalizeExportLabel($card['label'] ?? '') === $matchLabel);
+        $matchedPanel = collect($panels)->first(fn (array $panel) => $this->normalizeExportLabel($panel['title'] ?? '') === $matchLabel);
+
+        $focusCard = null;
+        $supportingCards = [];
+        $visualBlocks = [];
+        $detailTables = [];
+        $reportDescription = $subtitle ?: $definition['description'];
+
+        if ($contextKind === 'metric' || ($matchedCard && $contextKind !== 'panel')) {
+            $focusCard = $matchedCard ?: ($cards[0] ?? null);
+            $supportingCards = array_values(array_filter(
+                $this->sliceRows($cards, 4),
+                fn (array $card) => ($card['label'] ?? null) !== ($focusCard['label'] ?? null)
+            ));
+            $supportingCards = array_slice($supportingCards, 0, 3);
+            $visualBlocks = array_values(array_map(
+                fn (array $panel) => $this->prepareVisualBlock($panel),
+                array_slice($visualPanels, 0, 2)
+            ));
+            $detailTables = array_values(array_map(
+                fn (array $panel) => $this->prepareTableBlock($panel),
+                array_slice($tablePanels, 0, 1)
+            ));
+            $reportDescription = $focusCard['description'] ?? ($subtitle ?: 'Focused metric snapshot from the analytics workspace.');
+        } else {
+            $focusPanel = $matchedPanel ?: ($panels[0] ?? null);
+
+            if ($focusPanel) {
+                if (($focusPanel['kind'] ?? 'chart') === 'table') {
+                    $detailTables[] = $this->prepareTableBlock($focusPanel);
+                    if (!empty($visualPanels)) {
+                        $visualBlocks[] = $this->prepareVisualBlock($visualPanels[0]);
+                    }
+                } else {
+                    $visualBlocks[] = $this->prepareVisualBlock($focusPanel);
+                    if (!empty($tablePanels)) {
+                        $detailTables[] = $this->prepareTableBlock($tablePanels[0]);
+                    }
+                }
+
+                $reportDescription = $focusPanel['subtitle'] ?? ($subtitle ?: $definition['description']);
+            }
+
+            $supportingCards = $this->sliceRows($cards, 4);
         }
 
-        if ($section === 'payments') {
-            $payload['columns'] = [
-                ['label' => 'Order ID', 'key' => 'order_id'],
-                ['label' => 'Method', 'key' => 'method'],
-                ['label' => 'Status', 'key' => 'status'],
-                ['label' => 'Amount', 'key' => 'amount', 'format' => 'currency'],
-            ];
-            $payload['tableRows'] = $asArray($fullData['payments']['pending_queue'] ?? []);
-            $payload['chartBlocks'] = [
-                [
-                    'title' => 'Payment Status Breakdown',
-                    'subtitle' => 'Tracked payment statuses',
-                    'type' => 'bar',
-                    'seriesKey' => 'value',
-                    'seriesLabel' => 'Count',
-                    'format' => 'number',
-                    'points' => $asArray($fullData['payments']['status_breakdown'] ?? []),
-                ],
-                [
-                    'title' => 'Payment Method Breakdown',
-                    'subtitle' => 'How customers pay',
-                    'type' => 'bar',
-                    'seriesKey' => 'value',
-                    'seriesLabel' => 'Count',
-                    'format' => 'number',
-                    'points' => $asArray($fullData['payments']['method_breakdown'] ?? []),
-                ],
-            ];
+        return [
+            'reportVariant' => 'single',
+            'sectionName' => $context ?: ($sectionLabel ?: $definition['label']),
+            'sectionKey' => $section,
+            'sectionLabel' => $sectionLabel ?: $definition['label'],
+            'reportDescription' => $reportDescription,
+            'theme' => $definition['theme'],
+            'summaryCards' => [],
+            'focusCard' => $focusCard,
+            'supportingCards' => $supportingCards,
+            'visualBlocks' => $visualBlocks,
+            'detailTables' => $detailTables,
+        ];
+    }
 
-            return $payload;
-        }
+    protected function getSectionReportDefinition(string $section, array $fullData): array
+    {
+        $definitions = $this->getSectionReportDefinitions($fullData);
 
-        if ($section === 'pos') {
-            $payload['columns'] = [
-                ['label' => 'Item', 'key' => 'name'],
-                ['label' => 'Units Sold', 'key' => 'quantity'],
-                ['label' => 'Revenue', 'key' => 'revenue', 'format' => 'currency'],
-            ];
-            $payload['tableRows'] = $asArray($fullData['pos']['top_items'] ?? []);
-            $payload['chartBlocks'] = [
-                [
-                    'title' => 'POS Sales Trend',
-                    'subtitle' => 'Monthly in-store sales',
-                    'type' => 'line',
-                    'series' => [
-                        ['key' => 'sales', 'label' => 'Sales', 'color' => '#4f6fa5'],
+        return $definitions[$section] ?? $definitions['overview'];
+    }
+
+    protected function getSectionReportDefinitions(array $fullData): array
+    {
+        $salesTrend = $this->asArray($fullData['sales']['revenue_trend'] ?? []);
+        $salesDelivery = $this->asArray($fullData['sales']['delivery_breakdown'] ?? []);
+        $salesPayments = $this->asArray($fullData['sales']['payment_method_breakdown'] ?? []);
+        $overviewCards = $this->asArray($fullData['overview']['cards'] ?? []);
+        $productTop = $this->asArray($fullData['products']['top_products'] ?? []);
+        $productCategories = $this->asArray($fullData['products']['category_performance'] ?? []);
+        $productTypes = $this->asArray($fullData['products']['type_performance'] ?? []);
+
+        return [
+            'overview' => [
+                'label' => 'Overview',
+                'description' => 'Executive snapshot of revenue, orders, customers, and product momentum across the workspace.',
+                'theme' => $this->buildReportTheme('#4f6fa5', '#eaf2ff', '#1d4ed8'),
+                'cards' => $overviewCards,
+                'panels' => [
+                    [
+                        'title' => 'Revenue Trend',
+                        'subtitle' => 'Daily online vs POS',
+                        'kind' => 'chart',
+                        'type' => 'line',
+                        'series' => [
+                            ['key' => 'online', 'label' => 'Online', 'color' => '#4f6fa5'],
+                            ['key' => 'pos', 'label' => 'POS', 'color' => '#f43f5e'],
+                        ],
+                        'format' => 'currency',
+                        'points' => $salesTrend,
                     ],
-                    'format' => 'currency',
-                    'points' => $asArray($fullData['pos']['trend'] ?? []),
+                    [
+                        'title' => 'Top Products',
+                        'subtitle' => 'Best sellers across channels.',
+                        'kind' => 'chart',
+                        'type' => 'bar',
+                        'seriesKey' => 'revenue',
+                        'seriesLabel' => 'Revenue',
+                        'format' => 'currency',
+                        'color' => '#4f6fa5',
+                        'points' => $this->sliceRows($productTop, 6),
+                    ],
+                    [
+                        'title' => 'Recent Transactions',
+                        'subtitle' => 'Payments that still need review or confirmation.',
+                        'kind' => 'table',
+                        'columns' => [
+                            ['label' => 'Order ID', 'key' => 'order_id'],
+                            ['label' => 'Method', 'key' => 'method'],
+                            ['label' => 'Amount', 'key' => 'amount', 'format' => 'currency'],
+                            ['label' => 'Status', 'key' => 'status'],
+                        ],
+                        'rows' => $fullData['payments']['pending_queue'] ?? [],
+                        'emptyMessage' => 'No recent transactions available yet.',
+                    ],
                 ],
-                [
-                    'title' => 'Busiest POS Hours',
-                    'subtitle' => 'Hourly in-store sales pattern',
-                    'type' => 'bar',
-                    'seriesKey' => 'sales',
-                    'seriesLabel' => 'Sales',
-                    'format' => 'currency',
-                    'points' => $sliceRows($fullData['pos']['hourly'] ?? [], 8),
+            ],
+            'sales' => [
+                'label' => 'Sales',
+                'description' => 'Channel performance, delivery revenue mix, and payment behavior for tracked sales activity.',
+                'theme' => $this->buildReportTheme('#e76f51', '#fff1eb', '#c2410c'),
+                'cards' => $this->buildSalesSummaryCards($fullData['sales'] ?? []),
+                'panels' => [
+                    [
+                        'title' => 'Revenue by Channel',
+                        'subtitle' => 'Daily website revenue compared with POS revenue.',
+                        'kind' => 'chart',
+                        'type' => 'line',
+                        'series' => [
+                            ['key' => 'online', 'label' => 'Online', 'color' => '#4f6fa5'],
+                            ['key' => 'pos', 'label' => 'POS', 'color' => '#f43f5e'],
+                        ],
+                        'format' => 'currency',
+                        'points' => $salesTrend,
+                    ],
+                    [
+                        'title' => 'Delivery Breakdown',
+                        'subtitle' => 'Revenue share by delivery method.',
+                        'kind' => 'chart',
+                        'type' => 'distribution',
+                        'seriesKey' => 'value',
+                        'seriesLabel' => 'Revenue',
+                        'format' => 'currency',
+                        'color' => '#e76f51',
+                        'points' => $salesDelivery,
+                    ],
+                    [
+                        'title' => 'Payment Methods',
+                        'subtitle' => 'How customers pay across tracked transactions.',
+                        'kind' => 'chart',
+                        'type' => 'distribution',
+                        'seriesKey' => 'value',
+                        'seriesLabel' => 'Count',
+                        'format' => 'number',
+                        'color' => '#0f766e',
+                        'points' => $salesPayments,
+                    ],
                 ],
-            ];
+            ],
+            'orders' => [
+                'label' => 'Orders',
+                'description' => 'Order completion health, order mix, and basket size behavior from recent transactions.',
+                'theme' => $this->buildReportTheme('#d97706', '#fff7e6', '#b45309'),
+                'cards' => $this->asArray($fullData['orders']['kpis'] ?? []),
+                'panels' => [
+                    [
+                        'title' => 'Order Status Trend',
+                        'subtitle' => 'Monthly view of pending, confirmed, completed, and cancelled orders.',
+                        'kind' => 'chart',
+                        'type' => 'line',
+                        'series' => [
+                            ['key' => 'pending', 'label' => 'Pending', 'color' => '#eab308'],
+                            ['key' => 'confirmed', 'label' => 'Confirmed', 'color' => '#4f6fa5'],
+                            ['key' => 'completed', 'label' => 'Completed', 'color' => '#10b981'],
+                            ['key' => 'cancelled', 'label' => 'Cancelled', 'color' => '#f43f5e'],
+                        ],
+                        'format' => 'number',
+                        'points' => $fullData['orders']['status_trend'] ?? [],
+                    ],
+                    [
+                        'title' => 'Order Mix',
+                        'subtitle' => 'Custom versus premade ordering behavior.',
+                        'kind' => 'chart',
+                        'type' => 'distribution',
+                        'seriesKey' => 'value',
+                        'seriesLabel' => 'Orders',
+                        'format' => 'number',
+                        'color' => '#d97706',
+                        'points' => $fullData['orders']['mix'] ?? [],
+                    ],
+                    [
+                        'title' => 'Largest Baskets',
+                        'subtitle' => 'Orders with the highest item counts.',
+                        'kind' => 'table',
+                        'columns' => [
+                            ['label' => 'Order ID', 'key' => 'label'],
+                            ['label' => 'Item Count', 'key' => 'items', 'format' => 'number'],
+                        ],
+                        'rows' => $fullData['orders']['basket_sizes'] ?? [],
+                        'emptyMessage' => 'No order basket data available yet.',
+                    ],
+                ],
+            ],
+            'products' => [
+                'label' => 'Products',
+                'description' => 'Product leaders, category winners, and type-level revenue distribution across channels.',
+                'theme' => $this->buildReportTheme('#7c3aed', '#f5f3ff', '#6d28d9'),
+                'cards' => $this->buildProductSummaryCards($fullData['products'] ?? []),
+                'panels' => [
+                    [
+                        'title' => 'Top Products by Revenue',
+                        'subtitle' => 'Best-performing products across online and POS channels.',
+                        'kind' => 'chart',
+                        'type' => 'bar',
+                        'seriesKey' => 'revenue',
+                        'seriesLabel' => 'Revenue',
+                        'format' => 'currency',
+                        'color' => '#7c3aed',
+                        'points' => $this->sliceRows($productTop, 8),
+                    ],
+                    [
+                        'title' => 'Category Performance',
+                        'subtitle' => 'Revenue distribution by category.',
+                        'kind' => 'chart',
+                        'type' => 'bar',
+                        'seriesKey' => 'revenue',
+                        'seriesLabel' => 'Revenue',
+                        'format' => 'currency',
+                        'color' => '#8b5cf6',
+                        'points' => $productCategories,
+                    ],
+                    [
+                        'title' => 'Type Performance',
+                        'subtitle' => 'Revenue by product type.',
+                        'kind' => 'chart',
+                        'type' => 'bar',
+                        'seriesKey' => 'revenue',
+                        'seriesLabel' => 'Revenue',
+                        'format' => 'currency',
+                        'color' => '#06b6d4',
+                        'points' => $productTypes,
+                    ],
+                    [
+                        'title' => 'Product Revenue Table',
+                        'subtitle' => 'Detailed product ranking by revenue and units sold.',
+                        'kind' => 'table',
+                        'columns' => [
+                            ['label' => 'Product', 'key' => 'name'],
+                            ['label' => 'Units Sold', 'key' => 'quantity', 'format' => 'number'],
+                            ['label' => 'Revenue', 'key' => 'revenue', 'format' => 'currency'],
+                        ],
+                        'rows' => $productTop,
+                        'emptyMessage' => 'No product performance data available yet.',
+                    ],
+                ],
+            ],
+            'customers' => [
+                'label' => 'Customers',
+                'description' => 'Growth, repeat-buyer behavior, and spend distribution for customer accounts.',
+                'theme' => $this->buildReportTheme('#059669', '#ecfdf5', '#047857'),
+                'cards' => $this->asArray($fullData['customers']['kpis'] ?? []),
+                'panels' => [
+                    [
+                        'title' => 'Customer Growth',
+                        'subtitle' => 'New versus returning customers over time.',
+                        'kind' => 'chart',
+                        'type' => 'line',
+                        'series' => [
+                            ['key' => 'new', 'label' => 'New', 'color' => '#4f6fa5'],
+                            ['key' => 'returning', 'label' => 'Returning', 'color' => '#10b981'],
+                        ],
+                        'format' => 'number',
+                        'points' => $fullData['customers']['growth'] ?? [],
+                    ],
+                    [
+                        'title' => 'Spend Distribution',
+                        'subtitle' => 'How customer spend is distributed across brackets.',
+                        'kind' => 'chart',
+                        'type' => 'bar',
+                        'seriesKey' => 'value',
+                        'seriesLabel' => 'Customers',
+                        'format' => 'number',
+                        'color' => '#f97316',
+                        'points' => $fullData['customers']['spend_distribution'] ?? [],
+                    ],
+                    [
+                        'title' => 'Top Customers',
+                        'subtitle' => 'Highest-spending customer accounts.',
+                        'kind' => 'table',
+                        'columns' => [
+                            ['label' => 'Customer', 'key' => 'name'],
+                            ['label' => 'Orders', 'key' => 'orders', 'format' => 'number'],
+                            ['label' => 'Spend', 'key' => 'spend', 'format' => 'currency'],
+                        ],
+                        'rows' => $fullData['customers']['top_customers'] ?? [],
+                        'emptyMessage' => 'No customer spend data available yet.',
+                    ],
+                ],
+            ],
+            'payments' => [
+                'label' => 'Payments',
+                'description' => 'Payment success, approval queues, and method usage for the current payment pipeline.',
+                'theme' => $this->buildReportTheme('#2563eb', '#eff6ff', '#1d4ed8'),
+                'cards' => $this->asArray($fullData['payments']['kpis'] ?? []),
+                'panels' => [
+                    [
+                        'title' => 'Payment Status',
+                        'subtitle' => 'Breakdown of tracked payment states.',
+                        'kind' => 'chart',
+                        'type' => 'distribution',
+                        'seriesKey' => 'value',
+                        'seriesLabel' => 'Payments',
+                        'format' => 'number',
+                        'color' => '#2563eb',
+                        'points' => $fullData['payments']['status_breakdown'] ?? [],
+                    ],
+                    [
+                        'title' => 'Payment Methods',
+                        'subtitle' => 'Method usage across payments.',
+                        'kind' => 'chart',
+                        'type' => 'distribution',
+                        'seriesKey' => 'value',
+                        'seriesLabel' => 'Payments',
+                        'format' => 'number',
+                        'color' => '#4f46e5',
+                        'points' => $fullData['payments']['method_breakdown'] ?? [],
+                    ],
+                    [
+                        'title' => 'Pending Payment Queue',
+                        'subtitle' => 'Payments that still need review or confirmation.',
+                        'kind' => 'table',
+                        'columns' => [
+                            ['label' => 'Payment ID', 'key' => 'payment_id'],
+                            ['label' => 'Order ID', 'key' => 'order_id'],
+                            ['label' => 'Method', 'key' => 'method'],
+                            ['label' => 'Status', 'key' => 'status'],
+                            ['label' => 'Amount', 'key' => 'amount', 'format' => 'currency'],
+                        ],
+                        'rows' => $fullData['payments']['pending_queue'] ?? [],
+                        'emptyMessage' => 'No pending payments in the queue.',
+                    ],
+                ],
+            ],
+            'pos' => [
+                'label' => 'POS',
+                'description' => 'In-store sales patterns, payment mix, and item demand from the point-of-sale workflow.',
+                'theme' => $this->buildReportTheme('#0891b2', '#ecfeff', '#0e7490'),
+                'cards' => $this->asArray($fullData['pos']['kpis'] ?? []),
+                'panels' => [
+                    [
+                        'title' => 'POS Sales Trend',
+                        'subtitle' => 'Monthly in-store sales and transaction volume.',
+                        'kind' => 'chart',
+                        'type' => 'line',
+                        'series' => [
+                            ['key' => 'sales', 'label' => 'Sales', 'color' => '#4f6fa5'],
+                            ['key' => 'transactions', 'label' => 'Transactions', 'color' => '#10b981'],
+                        ],
+                        'format' => 'number',
+                        'points' => $fullData['pos']['trend'] ?? [],
+                    ],
+                    [
+                        'title' => 'POS Payment Mix',
+                        'subtitle' => 'Payment methods recorded in the POS flow.',
+                        'kind' => 'chart',
+                        'type' => 'distribution',
+                        'seriesKey' => 'value',
+                        'seriesLabel' => 'Transactions',
+                        'format' => 'number',
+                        'color' => '#0891b2',
+                        'points' => $fullData['pos']['method_breakdown'] ?? [],
+                    ],
+                    [
+                        'title' => 'Busiest POS Hours',
+                        'subtitle' => 'Hourly in-store sales pattern.',
+                        'kind' => 'chart',
+                        'type' => 'bar',
+                        'seriesKey' => 'sales',
+                        'seriesLabel' => 'Sales',
+                        'format' => 'currency',
+                        'color' => '#06b6d4',
+                        'points' => $fullData['pos']['hourly'] ?? [],
+                    ],
+                    [
+                        'title' => 'Top POS Items',
+                        'subtitle' => 'Best-selling items in the point-of-sale flow.',
+                        'kind' => 'table',
+                        'columns' => [
+                            ['label' => 'Item', 'key' => 'name'],
+                            ['label' => 'Units Sold', 'key' => 'quantity', 'format' => 'number'],
+                            ['label' => 'Revenue', 'key' => 'revenue', 'format' => 'currency'],
+                        ],
+                        'rows' => $fullData['pos']['top_items'] ?? [],
+                        'emptyMessage' => 'No POS item data available yet.',
+                    ],
+                ],
+            ],
+            'schedules' => [
+                'label' => 'Schedules',
+                'description' => 'Booking momentum, event popularity, and upcoming schedule activity for event operations.',
+                'theme' => $this->buildReportTheme('#9333ea', '#faf5ff', '#7e22ce'),
+                'cards' => $this->asArray($fullData['schedules']['kpis'] ?? []),
+                'panels' => [
+                    [
+                        'title' => 'Booking Trend',
+                        'subtitle' => 'Monthly schedule booking activity.',
+                        'kind' => 'chart',
+                        'type' => 'line',
+                        'series' => [
+                            ['key' => 'bookings', 'label' => 'Bookings', 'color' => '#4f6fa5'],
+                        ],
+                        'format' => 'number',
+                        'points' => $fullData['schedules']['trend'] ?? [],
+                    ],
+                    [
+                        'title' => 'Bookings per Event',
+                        'subtitle' => 'Most popular schedules and events.',
+                        'kind' => 'chart',
+                        'type' => 'bar',
+                        'seriesKey' => 'value',
+                        'seriesLabel' => 'Bookings',
+                        'format' => 'number',
+                        'color' => '#8b5cf6',
+                        'points' => $fullData['schedules']['bookings_per_event'] ?? [],
+                    ],
+                    [
+                        'title' => 'Upcoming Events',
+                        'subtitle' => 'Scheduled events with location and booking counts.',
+                        'kind' => 'table',
+                        'columns' => [
+                            ['label' => 'Event', 'key' => 'name'],
+                            ['label' => 'Date', 'key' => 'date'],
+                            ['label' => 'Location', 'key' => 'location'],
+                            ['label' => 'Bookings', 'key' => 'bookings', 'format' => 'number'],
+                        ],
+                        'rows' => $fullData['schedules']['upcoming'] ?? [],
+                        'emptyMessage' => 'No upcoming events scheduled yet.',
+                    ],
+                ],
+            ],
+            'operations' => [
+                'label' => 'Operations',
+                'description' => 'Workspace activity, user action volume, and recent operational events from the admin logs.',
+                'theme' => $this->buildReportTheme('#0f766e', '#f0fdfa', '#115e59'),
+                'cards' => $this->asArray($fullData['operations']['kpis'] ?? []),
+                'panels' => [
+                    [
+                        'title' => 'Activity Trend',
+                        'subtitle' => 'Recent admin and staff activity over time.',
+                        'kind' => 'chart',
+                        'type' => 'line',
+                        'series' => [
+                            ['key' => 'actions', 'label' => 'Actions', 'color' => '#4f6fa5'],
+                        ],
+                        'format' => 'number',
+                        'points' => $fullData['operations']['activity_trend'] ?? [],
+                    ],
+                    [
+                        'title' => 'Actions by User',
+                        'subtitle' => 'Most active accounts in the logs.',
+                        'kind' => 'chart',
+                        'type' => 'bar',
+                        'seriesKey' => 'value',
+                        'seriesLabel' => 'Actions',
+                        'format' => 'number',
+                        'color' => '#10b981',
+                        'points' => $fullData['operations']['actions_by_user'] ?? [],
+                    ],
+                    [
+                        'title' => 'Recent Activity Feed',
+                        'subtitle' => 'Latest operational events from your logs.',
+                        'kind' => 'table',
+                        'columns' => [
+                            ['label' => 'Time', 'key' => 'time'],
+                            ['label' => 'User', 'key' => 'user'],
+                            ['label' => 'Role', 'key' => 'role'],
+                            ['label' => 'Event', 'key' => 'event'],
+                            ['label' => 'Module', 'key' => 'module'],
+                        ],
+                        'rows' => $fullData['operations']['recent'] ?? [],
+                        'emptyMessage' => 'No activity logs available yet.',
+                    ],
+                ],
+            ],
+        ];
+    }
 
-            return $payload;
+    protected function buildSalesSummaryCards(array $salesData): array
+    {
+        $trend = $this->asArray($salesData['revenue_trend'] ?? []);
+        $delivery = $this->asArray($salesData['delivery_breakdown'] ?? []);
+        $paymentMethods = $this->asArray($salesData['payment_method_breakdown'] ?? []);
+        $onlineRevenue = collect($trend)->sum('online');
+        $posRevenue = collect($trend)->sum('pos');
+        $totalRevenue = collect($trend)->sum('total');
+        $peakDay = collect($trend)->sortByDesc('total')->first();
+
+        return [
+            [
+                'label' => 'Tracked Revenue',
+                'value' => round($totalRevenue, 2),
+                'format' => 'currency',
+                'description' => 'Combined online and POS revenue in the tracked window',
+            ],
+            [
+                'label' => 'Online Share',
+                'value' => $totalRevenue > 0 ? round(($onlineRevenue / $totalRevenue) * 100, 1) : 0,
+                'format' => 'percent',
+                'description' => 'Share of revenue attributed to website orders',
+            ],
+            [
+                'label' => 'Delivery Modes',
+                'value' => count($delivery),
+                'format' => 'number',
+                'description' => 'Distinct delivery methods contributing to revenue',
+            ],
+            [
+                'label' => 'Peak Day',
+                'value' => $peakDay['label'] ?? 'No data',
+                'format' => 'text',
+                'description' => 'Highest combined revenue day in the trend view',
+            ],
+            [
+                'label' => 'POS Revenue',
+                'value' => round($posRevenue, 2),
+                'format' => 'currency',
+                'description' => 'Revenue from point-of-sale transactions',
+            ],
+            [
+                'label' => 'Payment Methods',
+                'value' => count($paymentMethods),
+                'format' => 'number',
+                'description' => 'Tracked payment methods across the revenue set',
+            ],
+        ];
+    }
+
+    protected function buildProductSummaryCards(array $productsData): array
+    {
+        $topProducts = $this->asArray($productsData['top_products'] ?? []);
+        $categories = $this->asArray($productsData['category_performance'] ?? []);
+        $types = $this->asArray($productsData['type_performance'] ?? []);
+        $topProduct = $topProducts[0] ?? null;
+
+        return [
+            [
+                'label' => 'Tracked Products',
+                'value' => count($topProducts),
+                'format' => 'number',
+                'description' => 'Products captured in the ranked performance list',
+            ],
+            [
+                'label' => 'Top Product',
+                'value' => $topProduct['name'] ?? 'No data',
+                'format' => 'text',
+                'description' => 'Highest revenue product in the current analytics set',
+            ],
+            [
+                'label' => 'Top Product Revenue',
+                'value' => $topProduct['revenue'] ?? 0,
+                'format' => 'currency',
+                'description' => 'Revenue generated by the best-performing product',
+            ],
+            [
+                'label' => 'Categories',
+                'value' => count($categories),
+                'format' => 'number',
+                'description' => 'Product categories represented in this report',
+            ],
+            [
+                'label' => 'Product Types',
+                'value' => count($types),
+                'format' => 'number',
+                'description' => 'Unique product types contributing to revenue',
+            ],
+        ];
+    }
+
+    protected function buildReportTheme(string $accent, string $soft, string $deep): array
+    {
+        return [
+            'accent' => $accent,
+            'soft' => $soft,
+            'deep' => $deep,
+        ];
+    }
+
+    protected function prepareVisualBlock(array $panel): array
+    {
+        return [
+            'title' => $panel['title'],
+            'subtitle' => $panel['subtitle'] ?? null,
+            'type' => $panel['type'] ?? 'bar',
+            'series' => $panel['series'] ?? [],
+            'seriesKey' => $panel['seriesKey'] ?? 'value',
+            'seriesLabel' => $panel['seriesLabel'] ?? 'Value',
+            'format' => $panel['format'] ?? 'number',
+            'color' => $panel['color'] ?? '#4f6fa5',
+            'points' => $this->asArray($panel['points'] ?? []),
+        ];
+    }
+
+    protected function prepareTableBlock(array $panel): array
+    {
+        return [
+            'title' => $panel['title'],
+            'subtitle' => $panel['subtitle'] ?? null,
+            'columns' => $panel['columns'] ?? [],
+            'rows' => $this->asArray($panel['rows'] ?? []),
+            'emptyMessage' => $panel['emptyMessage'] ?? 'No records available for this report.',
+        ];
+    }
+
+    protected function sliceRows($value, int $limit = 6): array
+    {
+        if ($value instanceof Collection) {
+            return $value->take($limit)->values()->all();
         }
 
-        $payload['columns'] = [
-            ['label' => 'Product Name', 'key' => 'name'],
-            ['label' => 'Units Sold', 'key' => 'quantity'],
-            ['label' => 'Total Revenue', 'key' => 'revenue', 'format' => 'currency'],
-        ];
-        $payload['tableRows'] = $asArray($fullData['products']['top_products'] ?? []);
-        $payload['chartBlocks'] = [
-            [
-                'title' => 'Revenue Trend',
-                'subtitle' => 'Online versus POS performance over time',
-                'type' => 'line',
-                'series' => [
-                    ['key' => 'online', 'label' => 'Online', 'color' => '#4f6fa5'],
-                    ['key' => 'pos', 'label' => 'POS', 'color' => '#c88b6b'],
-                ],
-                'format' => 'currency',
-                'points' => $asArray($fullData['sales']['revenue_trend'] ?? []),
-            ],
-            [
-                'title' => 'Top Products',
-                'subtitle' => 'Highest revenue contributors',
-                'type' => 'bar',
-                'seriesKey' => 'revenue',
-                'seriesLabel' => 'Revenue',
-                'format' => 'currency',
-                'points' => $sliceRows($fullData['products']['top_products'] ?? [], 6),
-            ],
-        ];
+        return array_slice((array) $value, 0, $limit);
+    }
 
-        return $payload;
+    protected function asArray($value): array
+    {
+        if ($value instanceof Collection) {
+            return $value->values()->all();
+        }
+
+        return array_values((array) $value);
+    }
+
+    protected function normalizeExportLabel(?string $value): string
+    {
+        return strtolower(trim((string) $value));
     }
 
     /**

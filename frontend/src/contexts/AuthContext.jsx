@@ -5,26 +5,73 @@ import api from "../services/api"; // Make sure to import your api instance
 
 export const AuthContext = createContext();
 
+const mapProfileToSessionUser = (profile) => {
+  if (!profile) return null;
+
+  return {
+    id: profile.id,
+    first_name: profile.first_name,
+    last_name: profile.last_name,
+    email: profile.email,
+    phone_number: profile.phone_number,
+    profile_picture: profile.profile_picture,
+    role: profile.role,
+  };
+};
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem("user");
-    return storedUser ? JSON.parse(storedUser) : null;
-  });
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
+    let isMounted = true;
 
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (err) {
-        console.error("Failed to parse stored user:", err);
+    const syncAuthenticatedUser = async () => {
+      const token = window.sessionStorage.getItem("token");
+
+      if (!token) {
         localStorage.removeItem("user");
+        if (isMounted) {
+          setUser(null);
+          setLoading(false);
+        }
+        return;
       }
-    }
 
-    setLoading(false);
+      try {
+        const res = await api.get("/profile");
+        if (isMounted) {
+          setUser(mapProfileToSessionUser(res.data));
+        }
+      } catch (err) {
+        console.error("Failed to restore authenticated user:", err.response?.data || err.message);
+        window.sessionStorage.removeItem("token");
+        localStorage.removeItem("user");
+        if (isMounted) {
+          setUser(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    const handleAuthStateChange = () => {
+      setLoading(true);
+      syncAuthenticatedUser();
+    };
+
+    syncAuthenticatedUser();
+
+    window.addEventListener("storage", handleAuthStateChange);
+    window.addEventListener("userUpdated", handleAuthStateChange);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener("storage", handleAuthStateChange);
+      window.removeEventListener("userUpdated", handleAuthStateChange);
+    };
   }, []);
 
   const handleLogin = (userData) => {
@@ -32,11 +79,8 @@ export function AuthProvider({ children }) {
     const normalizedUser = userData?.user ? userData.user : userData;
 
     setUser(normalizedUser);
-    localStorage.setItem("user", JSON.stringify(normalizedUser));
+    localStorage.removeItem("user");
     
-    // Note: Ensure your login component is also doing localStorage.setItem("token", ...)
-    // after a successful login!
-
     window.dispatchEvent(new Event("userUpdated"));
   };
 
@@ -51,7 +95,7 @@ export function AuthProvider({ children }) {
       // ALWAYS clear frontend state, even if the backend request fails
       setUser(null);
       localStorage.removeItem("user");
-      localStorage.removeItem("token"); // <-- THIS WAS THE MISSING PIECE!
+      window.sessionStorage.removeItem("token");
       
       // Optional: Clear any stored cart data for security
       window.sessionStorage.removeItem("staff-pos-cart"); 

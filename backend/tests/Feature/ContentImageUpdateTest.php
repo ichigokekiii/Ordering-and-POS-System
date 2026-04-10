@@ -96,6 +96,45 @@ class ContentImageUpdateTest extends TestCase
             ->assertJsonValidationErrors(['content_image']);
     }
 
+    public function test_text_content_cannot_be_created_with_only_whitespace(): void
+    {
+        Sanctum::actingAs($this->createAdminUser('content-text-validator@example.com'));
+
+        $response = $this
+            ->withHeader('Accept', 'application/json')
+            ->post('/api/contents', [
+                'identifier' => 'auth_login_title',
+                'page' => 'auth',
+                'type' => 'text',
+                'content_text' => '   ',
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['content_text']);
+    }
+
+    public function test_existing_text_content_cannot_be_updated_to_only_whitespace(): void
+    {
+        Sanctum::actingAs($this->createAdminUser('content-text-editor@example.com'));
+
+        $content = Content::query()->create([
+            'identifier' => 'auth_login_subtitle',
+            'page' => 'auth',
+            'type' => 'text',
+            'content_text' => 'Existing content',
+            'isArchived' => false,
+        ]);
+
+        $response = $this
+            ->withHeader('Accept', 'application/json')
+            ->post("/api/contents/{$content->id}?_method=PUT", [
+                'content_text' => " \n\t ",
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['content_text']);
+    }
+
     private function createAdminUser(string $email): User
     {
         return User::query()->create([

@@ -148,6 +148,41 @@ class BackendContractRefactorTest extends TestCase
             ->assertJsonValidationErrors(['image']);
     }
 
+    public function test_admin_product_creation_rejects_images_over_effective_upload_limit(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::query()->create([
+            'first_name' => 'Admin',
+            'last_name' => 'User',
+            'email' => 'admin-product-large@example.com',
+            'password' => bcrypt('secret123'),
+            'role' => 'admin',
+            'is_verified' => true,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->post(
+            '/api/products',
+            [
+                'name' => 'Large Bouquet',
+                'description' => 'Oversized uploads should be rejected.',
+                'category' => 'Bouquets',
+                'type' => 'custom',
+                'price' => '999.00',
+                'isAvailable' => 1,
+                'required_main_count' => 2,
+                'required_filler_count' => 4,
+                'image' => UploadedFile::fake()->image('large-bouquet.jpg')->size(3000),
+            ],
+            ['Accept' => 'application/json']
+        );
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['image']);
+    }
+
     public function test_admin_premade_creation_rejects_gif_images(): void
     {
         Storage::fake('public');
@@ -181,6 +216,39 @@ class BackendContractRefactorTest extends TestCase
             ->assertJsonValidationErrors(['image']);
     }
 
+    public function test_admin_premade_creation_rejects_images_over_effective_upload_limit(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::query()->create([
+            'first_name' => 'Admin',
+            'last_name' => 'User',
+            'email' => 'admin-premade-large@example.com',
+            'password' => bcrypt('secret123'),
+            'role' => 'admin',
+            'is_verified' => true,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->post(
+            '/api/premades',
+            [
+                'name' => 'Large Premade',
+                'description' => 'Oversized uploads should be rejected.',
+                'category' => 'Roses',
+                'type' => 'Mixed',
+                'price' => '899.00',
+                'isAvailable' => 1,
+                'image' => UploadedFile::fake()->image('large-premade.jpg')->size(3000),
+            ],
+            ['Accept' => 'application/json']
+        );
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['image']);
+    }
+
     public function test_schedule_booking_duplicate_is_blocked_without_changing_api(): void
     {
         Mail::fake();
@@ -205,10 +273,11 @@ class BackendContractRefactorTest extends TestCase
             'email' => 'customer@example.com',
         ]);
 
-        $secondResponse->assertStatus(400)
+        $secondResponse->assertStatus(422)
             ->assertJson([
                 'message' => 'You have already booked this event.',
-            ]);
+            ])
+            ->assertJsonPath('errors.email.0', 'You have already booked this event.');
 
         $this->assertDatabaseCount('schedule_bookings', 1);
     }
@@ -260,6 +329,34 @@ class BackendContractRefactorTest extends TestCase
             'event_date' => now()->addDays(7)->toDateString(),
             'isAvailable' => 1,
             'image' => UploadedFile::fake()->image('schedule.gif'),
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['image']);
+    }
+
+    public function test_admin_schedule_creation_rejects_images_over_effective_upload_limit(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::query()->create([
+            'first_name' => 'Admin',
+            'last_name' => 'User',
+            'email' => 'admin-schedule-large@example.com',
+            'password' => bcrypt('secret123'),
+            'role' => 'admin',
+            'is_verified' => true,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->post('/api/schedules', [
+            'schedule_name' => 'Large Event',
+            'location' => 'Main Branch',
+            'schedule_description' => 'Oversized uploads should be rejected.',
+            'event_date' => now()->addDays(7)->toDateString(),
+            'isAvailable' => 1,
+            'image' => UploadedFile::fake()->image('large-schedule.jpg')->size(3000),
         ]);
 
         $response->assertStatus(422)

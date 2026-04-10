@@ -3,11 +3,13 @@ import { useEffect, useState } from "react";
 import { useSchedules } from "../../contexts/ScheduleContext";
 import { CalendarPlus, MapPin, CalendarClock, Pencil, Archive, ArchiveRestore, CheckCircle2, X } from "lucide-react";
 import { canManageAdminDashboard } from "../../utils/adminAccess";
-
-const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
-const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png)$/i;
-const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,image/jpeg,image/png";
+import {
+  ADMIN_IMAGE_ACCEPT,
+  MAX_ADMIN_IMAGE_SIZE_LABEL,
+  getFirstValidationErrorMessage,
+  prepareAdminImageForUpload,
+  validateAdminImageFile,
+} from "../../utils/adminImageUpload";
 
 function AdminSchedulePage({ user }) {
   const {
@@ -55,18 +57,9 @@ function AdminSchedulePage({ user }) {
       return;
     }
 
-    const hasValidMimeType = !file.type || ALLOWED_IMAGE_TYPES.includes(file.type);
-    const hasValidExtension = ALLOWED_IMAGE_NAME_REGEX.test(file.name || "");
-
-    if (!hasValidMimeType || !hasValidExtension) {
-      setErrors((prev) => ({ ...prev, image: ["Only JPG, JPEG, and PNG files are allowed."] }));
-      setImage(null);
-      e.target.value = "";
-      return;
-    }
-
-    if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      setErrors((prev) => ({ ...prev, image: ["Image must be 5MB or smaller."] }));
+    const imageError = validateAdminImageFile(file);
+    if (imageError) {
+      setErrors((prev) => ({ ...prev, image: [imageError] }));
       setImage(null);
       e.target.value = "";
       return;
@@ -159,7 +152,15 @@ function AdminSchedulePage({ user }) {
       formData.append("isAvailable", isAvailable);
 
       if (image) {
-        formData.append("image", image);
+        const { file: optimizedImage, error: imageError } = await prepareAdminImageForUpload(image);
+
+        if (imageError) {
+          setErrors((prev) => ({ ...prev, image: [imageError] }));
+          showModalAlert("error", imageError);
+          return;
+        }
+
+        formData.append("image", optimizedImage, optimizedImage.name);
       }
 
       if (editingSchedule) {
@@ -178,6 +179,7 @@ function AdminSchedulePage({ user }) {
       console.error("Schedule operation failed", error);
       if (error.response && error.response.status === 422) {
         setErrors(error.response.data.errors);
+        showModalAlert("error", getFirstValidationErrorMessage(error, "Operation failed. Please try again."));
       } else {
         showModalAlert("error", "Operation failed. Please try again.");
       }
@@ -466,7 +468,7 @@ function AdminSchedulePage({ user }) {
               <fieldset disabled={!canEdit} className="space-y-5 disabled:opacity-100">
               <div className="flex gap-4 items-end">
                 <div className="flex-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Event Name</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Event Name <span className="text-rose-500">*</span></label>
                   <input
                     type="text"
                     value={scheduleName}
@@ -479,7 +481,7 @@ function AdminSchedulePage({ user }) {
                   />
                 </div>
                 <div className="w-[140px]">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Event Date</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Event Date <span className="text-rose-500">*</span></label>
                   <input
                     type="date"
                     value={eventDate}
@@ -506,7 +508,7 @@ function AdminSchedulePage({ user }) {
               </div>
 
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Location</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Location <span className="text-rose-500">*</span></label>
                 <input
                   type="text"
                   value={location}
@@ -525,7 +527,7 @@ function AdminSchedulePage({ user }) {
               </div>
 
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Description</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Description <span className="text-rose-500">*</span></label>
                 <textarea
                   value={scheduleDescription}
                   onChange={(e) => {
@@ -573,7 +575,7 @@ function AdminSchedulePage({ user }) {
               </div>
 
               <div className="pt-2 border-t border-gray-100">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Cover Image</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Cover Image {!editingSchedule && <span className="text-rose-500">*</span>}</label>
                 {editingSchedule?.image && !image && (
                   <div className="mb-3 h-24 w-full rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
                     <img src={getImageUrl(editingSchedule.image)} alt="Current cover" className="h-full w-full object-cover opacity-70" />
@@ -586,7 +588,9 @@ function AdminSchedulePage({ user }) {
                   className={`w-full text-sm file:mr-4 file:rounded-full file:border-0 ${errors.image ? 'file:bg-rose-100 file:text-rose-600' : 'file:bg-gray-100 file:text-gray-600'} file:px-4 file:py-2.5 file:text-xs file:font-bold hover:file:bg-gray-200 transition-all cursor-pointer`}
                 />
                 <p className="mt-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                  JPG, JPEG, PNG, or GIF only. Max 5MB.
+                  {editingSchedule
+                    ? `Optional on edit. JPG, JPEG, or PNG only. Max ${MAX_ADMIN_IMAGE_SIZE_LABEL}. Larger images are auto-resized when possible.`
+                    : `Required for new events. JPG, JPEG, or PNG only. Max ${MAX_ADMIN_IMAGE_SIZE_LABEL}. Larger images are auto-resized when possible.`}
                 </p>
                 {!image && editingSchedule && (
                   <p className="mt-2 text-[10px] font-bold text-amber-500 uppercase tracking-wider">

@@ -46,7 +46,9 @@ export function ScheduleProvider({ children }) {
 
       // If the data is already FormData (used when editing with image upload)
       if (updatedData instanceof FormData) {
-        updatedData.append("_method", "PUT");
+        if (!updatedData.has("_method")) {
+          updatedData.append("_method", "PUT");
+        }
         payload = updatedData;
       } else {
         // If it's a normal object (used when toggling archive/restore)

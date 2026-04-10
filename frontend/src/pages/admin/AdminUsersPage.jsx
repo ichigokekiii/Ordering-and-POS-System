@@ -23,6 +23,9 @@ import { canManageUsersAdmin } from "../../utils/adminAccess";
 import TermsAndConditionsModal from "../../components/TermsAndConditionsModal";
 import TermsConsentField from "../../components/TermsConsentField";
 import { resolveTermsScopeFromRole } from "../../utils/termsAndConditions";
+import FormFieldHeader from "../../components/form/FormFieldHeader";
+import { getValidationInputClassName } from "../../components/form/fieldStyles";
+import { normalizeApiValidationErrors, sanitizeSearchTerm } from "../../utils/formValidation";
 
 const NAME_MAX_LENGTH = 50;
 const EMAIL_MAX_LENGTH = 255;
@@ -87,6 +90,15 @@ function AdminUsersPage({ user }) {
   const [createTermsAcknowledged, setCreateTermsAcknowledged] = useState(false);
   const [createTermsAccepted, setCreateTermsAccepted] = useState(false);
   const [createTermsError, setCreateTermsError] = useState("");
+  const [createFieldErrors, setCreateFieldErrors] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone_number: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [searchQuery, setSearchQuery] = useState("");
 
   const dropdownRef = useRef(null);
   const sortRef = useRef(null);
@@ -118,6 +130,16 @@ function AdminUsersPage({ user }) {
   const [emailOtpSent, setEmailOtpSent] = useState(false);
   const [passwordOtp, setPasswordOtp] = useState("");
   const [passwordOtpSent, setPasswordOtpSent] = useState(false);
+  const [editFieldErrors, setEditFieldErrors] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone_number: "",
+    password: "",
+    confirmPassword: "",
+    email_otp: "",
+    password_otp: "",
+  });
 
   useEffect(() => {
     fetchUsersFromDatabase();
@@ -153,6 +175,14 @@ function AdminUsersPage({ user }) {
     setCreateTermsAcknowledged(false);
     setCreateTermsAccepted(false);
     setCreateTermsError("");
+    setCreateFieldErrors({
+      first_name: "",
+      last_name: "",
+      email: "",
+      phone_number: "",
+      password: "",
+      confirmPassword: "",
+    });
   };
 
   const handleNewUserFieldChange = (field, value) => {
@@ -171,6 +201,7 @@ function AdminUsersPage({ user }) {
     }
 
     setNewUser((prev) => ({ ...prev, [field]: nextValue }));
+    setCreateFieldErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
   const handleEditFieldChange = (field, value) => {
@@ -196,6 +227,7 @@ function AdminUsersPage({ user }) {
     }
 
     setEditForm((prev) => ({ ...prev, [field]: nextValue }));
+    setEditFieldErrors((prev) => ({ ...prev, [field]: "", email_otp: field === "email" ? "" : prev.email_otp, password_otp: field === "password" ? "" : prev.password_otp }));
   };
 
   const fetchUsersFromDatabase = () => {
@@ -228,6 +260,13 @@ function AdminUsersPage({ user }) {
   const filteredUsers = useMemo(() => {
     let result = [...users];
     result = result.filter((u) => Boolean(u.isArchived) === (filterArchive === "archived"));
+    if (searchQuery.trim()) {
+      const normalizedQuery = searchQuery.trim().toLowerCase();
+      result = result.filter((u) =>
+        `${u.first_name || ""} ${u.last_name || ""}`.toLowerCase().includes(normalizedQuery) ||
+        (u.email || "").toLowerCase().includes(normalizedQuery)
+      );
+    }
 
     if (filterRole !== "all") result = result.filter((u) => formatRole(u.role).toLowerCase() === filterRole);
     if (filterStatus !== "all") {
@@ -239,7 +278,7 @@ function AdminUsersPage({ user }) {
       if (sortBy === "created_at") return new Date(b.created_at) - new Date(a.created_at);
       return (a[sortBy] || "").toString().localeCompare((b[sortBy] || "").toString());
     });
-  }, [users, filterArchive, filterRole, filterStatus, sortBy]);
+  }, [users, filterArchive, filterRole, filterStatus, sortBy, searchQuery]);
 
   const handleArchiveFilterChange = (nextFilter) => {
     setFilterArchive(nextFilter);
@@ -304,6 +343,16 @@ function AdminUsersPage({ user }) {
     setEmailOtpSent(false);
     setPasswordOtp("");
     setPasswordOtpSent(false);
+    setEditFieldErrors({
+      first_name: "",
+      last_name: "",
+      email: "",
+      phone_number: "",
+      password: "",
+      confirmPassword: "",
+      email_otp: "",
+      password_otp: "",
+    });
     setShowEditModal(true);
   };
 
@@ -322,23 +371,26 @@ function AdminUsersPage({ user }) {
     };
 
     const createValidationError =
-      validateNameField(normalizedNewUser.first_name, "First name") ||
-      validateNameField(normalizedNewUser.last_name, "Last name") ||
-      validateEmailField(normalizedNewUser.email) ||
-      validatePhoneNumber(normalizedNewUser.phone_number);
-
-    if (createValidationError) {
-      showModalAlert("error", createValidationError);
-      return;
-    }
+      {
+        first_name: validateNameField(normalizedNewUser.first_name, "First name"),
+        last_name: validateNameField(normalizedNewUser.last_name, "Last name"),
+        email: validateEmailField(normalizedNewUser.email),
+        phone_number: validatePhoneNumber(normalizedNewUser.phone_number),
+        password: "",
+        confirmPassword: "",
+      };
 
     if (!normalizedNewUser.password || normalizedNewUser.password.length < PASSWORD_MIN_LENGTH) {
-      showModalAlert("error", `Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
-      return;
+      createValidationError.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters`;
     }
 
     if (normalizedNewUser.password !== normalizedNewUser.confirmPassword) {
-      showModalAlert("error", "Passwords do not match");
+      createValidationError.confirmPassword = "Passwords do not match";
+    }
+
+    setCreateFieldErrors(createValidationError);
+
+    if (Object.values(createValidationError).some(Boolean)) {
       return;
     }
 
@@ -360,7 +412,9 @@ function AdminUsersPage({ user }) {
         resetCreateForm();
       })
       .catch((err) => {
-        showModalAlert("error", err.response?.data?.error || err.response?.data?.message || "Failed to create user");
+        const normalizedError = normalizeApiValidationErrors(err, { terms_accepted: "terms" });
+        setCreateFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+        showModalAlert("error", normalizedError.formError || "Failed to create user");
       });
   };
 
@@ -373,28 +427,32 @@ function AdminUsersPage({ user }) {
       phone_number: sanitizePhoneNumber(editForm.phone_number),
     };
 
-    const editValidationError =
-      validateNameField(normalizedEditForm.first_name, "First name") ||
-      validateNameField(normalizedEditForm.last_name, "Last name") ||
-      validateEmailField(normalizedEditForm.email) ||
-      validatePhoneNumber(normalizedEditForm.phone_number);
+    const nextEditErrors = {
+      first_name: validateNameField(normalizedEditForm.first_name, "First name"),
+      last_name: validateNameField(normalizedEditForm.last_name, "Last name"),
+      email: validateEmailField(normalizedEditForm.email),
+      phone_number: validatePhoneNumber(normalizedEditForm.phone_number),
+      password: "",
+      confirmPassword: "",
+      email_otp: "",
+      password_otp: "",
+    };
 
-    if (editValidationError) {
-      showModalAlert("error", editValidationError);
+    if (normalizedEditForm.password && normalizedEditForm.password.length < PASSWORD_MIN_LENGTH) {
+      nextEditErrors.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters`;
+    }
+    if (normalizedEditForm.password && normalizedEditForm.password !== normalizedEditForm.confirmPassword) {
+      nextEditErrors.confirmPassword = "Passwords do not match";
+    }
+
+    setEditFieldErrors(nextEditErrors);
+
+    if (Object.values(nextEditErrors).some(Boolean)) {
       return;
     }
 
     const emailChanged = normalizedEditForm.email !== selectedUser.email;
     const passwordChanged = normalizedEditForm.password !== "";
-
-    if (passwordChanged && normalizedEditForm.password.length < PASSWORD_MIN_LENGTH) {
-      showModalAlert("error", `Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
-      return;
-    }
-    if (passwordChanged && normalizedEditForm.password !== normalizedEditForm.confirmPassword) {
-      showModalAlert("error", "Passwords do not match");
-      return;
-    }
 
     if (emailChanged && !emailOtpSent) {
       sendEmailOtp();
@@ -405,7 +463,11 @@ function AdminUsersPage({ user }) {
       return;
     }
     if ((emailChanged && !emailOtp) || (passwordChanged && !passwordOtp)) {
-      showModalAlert("error", "Please enter the OTP codes");
+      setEditFieldErrors((prev) => ({
+        ...prev,
+        email_otp: emailChanged && !emailOtp ? "Email OTP is required" : prev.email_otp,
+        password_otp: passwordChanged && !passwordOtp ? "Password OTP is required" : prev.password_otp,
+      }));
       return;
     }
 
@@ -426,7 +488,9 @@ function AdminUsersPage({ user }) {
       setEmailOtpSent(true);
       showModalAlert("success", "OTP sent to new email address");
     } catch (err) {
-      showModalAlert("error", err.response?.data?.message || "Failed to send email OTP");
+      const normalizedError = normalizeApiValidationErrors(err);
+      setEditFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+      showModalAlert("error", normalizedError.formError || "Failed to send email OTP");
     }
   };
 
@@ -446,7 +510,9 @@ function AdminUsersPage({ user }) {
       setPasswordOtpSent(true);
       showModalAlert("success", "OTP sent to user's email");
     } catch (err) {
-      showModalAlert("error", err.response?.data?.message || "Failed to send password OTP");
+      const normalizedError = normalizeApiValidationErrors(err);
+      setEditFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+      showModalAlert("error", normalizedError.formError || "Failed to send password OTP");
     }
   };
 
@@ -488,7 +554,12 @@ function AdminUsersPage({ user }) {
         showModalAlert("success", "User updated successfully");
       })
       .catch((err) => {
-        showModalAlert("error", err.response?.data?.error || err.response?.data?.message || "Failed to update user");
+        const normalizedError = normalizeApiValidationErrors(err, {
+          email_otp: "email_otp",
+          password_otp: "password_otp",
+        });
+        setEditFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+        showModalAlert("error", normalizedError.formError || "Failed to update user");
       });
   };
 
@@ -534,6 +605,9 @@ function AdminUsersPage({ user }) {
            <input 
              type="text" 
              placeholder="Search by name or email..." 
+             value={searchQuery}
+             onChange={(e) => setSearchQuery(sanitizeSearchTerm(e.target.value))}
+             maxLength={100}
              className="w-full bg-slate-50 border border-gray-100 rounded-2xl pl-11 pr-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#eaf2ff] transition-all"
            />
         </div>
@@ -722,67 +796,47 @@ function AdminUsersPage({ user }) {
       {/* ADD USER MODAL */}
       {showCreateModal && canManageUsers && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300]">
-          <div className="bg-white rounded-3xl w-[90%] max-w-lg shadow-2xl border border-white/20 p-8 animate-in zoom-in-95 duration-200">
-            <h2 className="text-2xl font-playfair font-bold mb-6 text-gray-900">Add New User</h2>
+          <div className="w-full max-w-md rounded-3xl border border-white/20 bg-white p-6 shadow-2xl max-h-[88vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+            <h2 className="mb-5 text-2xl font-playfair font-bold text-gray-900">Add New User</h2>
 
-            <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="First Name"
-                value={newUser.first_name}
-                onChange={(e) => handleNewUserFieldChange("first_name", e.target.value)}
-                maxLength={NAME_MAX_LENGTH}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
-              />
+            <div className="space-y-3.5">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                <FormFieldHeader label="First Name" required error={createFieldErrors.first_name} />
+                <input type="text" placeholder="First Name" value={newUser.first_name} onChange={(e) => handleNewUserFieldChange("first_name", e.target.value)} maxLength={NAME_MAX_LENGTH} className={getValidationInputClassName({ hasError: !!createFieldErrors.first_name, baseClassName: "w-full rounded-xl border px-4 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all", validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" })} />
+                </div>
 
-              <input
-                type="text"
-                placeholder="Last Name"
-                value={newUser.last_name}
-                onChange={(e) => handleNewUserFieldChange("last_name", e.target.value)}
-                maxLength={NAME_MAX_LENGTH}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
-              />
-
-              <input
-                type="email"
-                placeholder="Email Address"
-                value={newUser.email}
-                onChange={(e) => handleNewUserFieldChange("email", e.target.value)}
-                maxLength={EMAIL_MAX_LENGTH}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
-              />
-
-              <input
-                type="tel"
-                placeholder="Phone Number (11 digits)"
-                value={newUser.phone_number}
-                onChange={(e) => handleNewUserFieldChange("phone_number", e.target.value)}
-                maxLength={PHONE_MAX_LENGTH}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
-              />
-
-              <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="password"
-                  placeholder="New Password"
-                  value={newUser.password}
-                  onChange={(e) => handleNewUserFieldChange("password", e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
-                />
-
-                <input
-                  type="password"
-                  placeholder="Confirm Password"
-                  value={newUser.confirmPassword}
-                  onChange={(e) => handleNewUserFieldChange("confirmPassword", e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
-                />
+                <div>
+                <FormFieldHeader label="Last Name" required error={createFieldErrors.last_name} />
+                <input type="text" placeholder="Last Name" value={newUser.last_name} onChange={(e) => handleNewUserFieldChange("last_name", e.target.value)} maxLength={NAME_MAX_LENGTH} className={getValidationInputClassName({ hasError: !!createFieldErrors.last_name, baseClassName: "w-full rounded-xl border px-4 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all", validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" })} />
+                </div>
               </div>
 
-              <div className="pt-2">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">System Access Role</p>
-                <div className="space-y-2 text-sm">
+              <div>
+                <FormFieldHeader label="Email Address" required error={createFieldErrors.email} />
+                <input type="email" placeholder="Email Address" value={newUser.email} onChange={(e) => handleNewUserFieldChange("email", e.target.value)} maxLength={EMAIL_MAX_LENGTH} className={getValidationInputClassName({ hasError: !!createFieldErrors.email, baseClassName: "w-full rounded-xl border px-4 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all", validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" })} />
+              </div>
+
+              <div>
+                <FormFieldHeader label="Phone Number" required error={createFieldErrors.phone_number} />
+                <input type="tel" placeholder="Phone Number (11 digits)" value={newUser.phone_number} onChange={(e) => handleNewUserFieldChange("phone_number", e.target.value)} maxLength={PHONE_MAX_LENGTH} className={getValidationInputClassName({ hasError: !!createFieldErrors.phone_number, baseClassName: "w-full rounded-xl border px-4 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all", validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" })} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <FormFieldHeader label="New Password" required error={createFieldErrors.password} />
+                  <input type="password" placeholder="New Password" value={newUser.password} onChange={(e) => handleNewUserFieldChange("password", e.target.value)} className={getValidationInputClassName({ hasError: !!createFieldErrors.password, baseClassName: "w-full rounded-xl border px-4 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all", validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" })} />
+                </div>
+
+                <div>
+                  <FormFieldHeader label="Confirm Password" required error={createFieldErrors.confirmPassword} />
+                  <input type="password" placeholder="Confirm Password" value={newUser.confirmPassword} onChange={(e) => handleNewUserFieldChange("confirmPassword", e.target.value)} className={getValidationInputClassName({ hasError: !!createFieldErrors.confirmPassword, baseClassName: "w-full rounded-xl border px-4 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all", validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" })} />
+                </div>
+              </div>
+
+              <div className="pt-1">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">System Access Role</p>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                   {["customer", "staff", "admin", "owner"].map((role) => (
                     <label key={role} className="flex items-center gap-3 cursor-pointer">
                       <input
@@ -812,7 +866,7 @@ function AdminUsersPage({ user }) {
               />
             </div>
 
-            <div className="flex justify-end gap-3 mt-8 pt-4">
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
               <button
                 onClick={() => {
                   setShowCreateModal(false);
@@ -866,33 +920,21 @@ function AdminUsersPage({ user }) {
 
             <fieldset disabled={!canManageUsers} className="space-y-4 disabled:opacity-100">
               <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  placeholder="First Name"
-                  value={editForm.first_name}
-                  onChange={(e) => handleEditFieldChange("first_name", e.target.value)}
-                  maxLength={NAME_MAX_LENGTH}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
-                />
+                <div>
+                  <FormFieldHeader label="First Name" required error={editFieldErrors.first_name} />
+                  <input type="text" placeholder="First Name" value={editForm.first_name} onChange={(e) => handleEditFieldChange("first_name", e.target.value)} maxLength={NAME_MAX_LENGTH} className={getValidationInputClassName({ hasError: !!editFieldErrors.first_name, baseClassName: "w-full rounded-xl border px-4 py-3 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all", validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" })} />
+                </div>
 
-                <input
-                  type="text"
-                  placeholder="Last Name"
-                  value={editForm.last_name}
-                  onChange={(e) => handleEditFieldChange("last_name", e.target.value)}
-                  maxLength={NAME_MAX_LENGTH}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
-                />
+                <div>
+                  <FormFieldHeader label="Last Name" required error={editFieldErrors.last_name} />
+                  <input type="text" placeholder="Last Name" value={editForm.last_name} onChange={(e) => handleEditFieldChange("last_name", e.target.value)} maxLength={NAME_MAX_LENGTH} className={getValidationInputClassName({ hasError: !!editFieldErrors.last_name, baseClassName: "w-full rounded-xl border px-4 py-3 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all", validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" })} />
+                </div>
               </div>
 
-              <input
-                type="tel"
-                placeholder="Phone Number (11 digits)"
-                value={editForm.phone_number}
-                onChange={(e) => handleEditFieldChange("phone_number", e.target.value)}
-                maxLength={PHONE_MAX_LENGTH}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
-              />
+              <div>
+                <FormFieldHeader label="Phone Number" required error={editFieldErrors.phone_number} />
+                <input type="tel" placeholder="Phone Number (11 digits)" value={editForm.phone_number} onChange={(e) => handleEditFieldChange("phone_number", e.target.value)} maxLength={PHONE_MAX_LENGTH} className={getValidationInputClassName({ hasError: !!editFieldErrors.phone_number, baseClassName: "w-full rounded-xl border px-4 py-3 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all", validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" })} />
+              </div>
 
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Account Status</label>
@@ -908,14 +950,8 @@ function AdminUsersPage({ user }) {
 
               <div className="border-t border-gray-100 pt-5 mt-2">
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Update Email Address</h3>
-                <input
-                  type="email"
-                  placeholder="New Email"
-                  value={editForm.email}
-                  onChange={(e) => handleEditFieldChange("email", e.target.value)}
-                  maxLength={EMAIL_MAX_LENGTH}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all mb-3"
-                />
+                <FormFieldHeader label="New Email" required error={editFieldErrors.email} />
+                <input type="email" placeholder="New Email" value={editForm.email} onChange={(e) => handleEditFieldChange("email", e.target.value)} maxLength={EMAIL_MAX_LENGTH} className={getValidationInputClassName({ hasError: !!editFieldErrors.email, baseClassName: "w-full rounded-xl border px-4 py-3 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all mb-3", validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" })} />
 
                 {editForm.email !== selectedUser.email && !emailOtpSent && (
                   <button
@@ -927,34 +963,25 @@ function AdminUsersPage({ user }) {
                 )}
 
                 {emailOtpSent && (
-                  <input
-                    type="text"
-                    placeholder="Enter 6-Digit Email OTP"
-                    value={emailOtp}
-                    onChange={(e) => setEmailOtp(e.target.value)}
-                    className="w-full rounded-xl border-2 border-emerald-200 bg-emerald-50 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 transition-all font-mono font-bold tracking-widest text-center"
-                  />
+                  <div>
+                    <FormFieldHeader label="Email OTP" required error={editFieldErrors.email_otp} />
+                    <input type="text" placeholder="Enter 6-Digit Email OTP" value={emailOtp} onChange={(e) => { setEmailOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setEditFieldErrors((prev) => ({ ...prev, email_otp: "" })); }} className={getValidationInputClassName({ hasError: !!editFieldErrors.email_otp, baseClassName: "w-full rounded-xl border-2 px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all font-mono font-bold tracking-widest text-center", validClassName: "border-emerald-200 bg-emerald-50 focus:border-emerald-500 focus:ring-emerald-200", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500 focus:ring-rose-100" })} />
+                  </div>
                 )}
               </div>
 
               <div className="border-t border-gray-100 pt-5 mt-2">
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Reset Security Password</h3>
                 <div className="grid grid-cols-2 gap-4 mb-3">
-                  <input
-                    type="password"
-                    placeholder="New Password"
-                    value={editForm.password}
-                    onChange={(e) => handleEditFieldChange("password", e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
-                  />
+                  <div>
+                    <FormFieldHeader label="New Password" error={editFieldErrors.password} />
+                    <input type="password" placeholder="New Password" value={editForm.password} onChange={(e) => handleEditFieldChange("password", e.target.value)} className={getValidationInputClassName({ hasError: !!editFieldErrors.password, baseClassName: "w-full rounded-xl border px-4 py-3 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all", validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" })} />
+                  </div>
 
-                  <input
-                    type="password"
-                    placeholder="Confirm Password"
-                    value={editForm.confirmPassword}
-                    onChange={(e) => handleEditFieldChange("confirmPassword", e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
-                  />
+                  <div>
+                    <FormFieldHeader label="Confirm Password" error={editFieldErrors.confirmPassword} />
+                    <input type="password" placeholder="Confirm Password" value={editForm.confirmPassword} onChange={(e) => handleEditFieldChange("confirmPassword", e.target.value)} className={getValidationInputClassName({ hasError: !!editFieldErrors.confirmPassword, baseClassName: "w-full rounded-xl border px-4 py-3 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all", validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" })} />
+                  </div>
                 </div>
 
                 {editForm.password && !passwordOtpSent && (
@@ -967,13 +994,10 @@ function AdminUsersPage({ user }) {
                 )}
 
                 {passwordOtpSent && (
-                  <input
-                    type="text"
-                    placeholder="Enter 6-Digit Password OTP"
-                    value={passwordOtp}
-                    onChange={(e) => setPasswordOtp(e.target.value)}
-                    className="w-full rounded-xl border-2 border-emerald-200 bg-emerald-50 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 transition-all font-mono font-bold tracking-widest text-center"
-                  />
+                  <div>
+                    <FormFieldHeader label="Password OTP" required error={editFieldErrors.password_otp} />
+                    <input type="text" placeholder="Enter 6-Digit Password OTP" value={passwordOtp} onChange={(e) => { setPasswordOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setEditFieldErrors((prev) => ({ ...prev, password_otp: "" })); }} className={getValidationInputClassName({ hasError: !!editFieldErrors.password_otp, baseClassName: "w-full rounded-xl border-2 px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all font-mono font-bold tracking-widest text-center", validClassName: "border-emerald-200 bg-emerald-50 focus:border-emerald-500 focus:ring-emerald-200", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500 focus:ring-rose-100" })} />
+                  </div>
                 )}
               </div>
             </fieldset>

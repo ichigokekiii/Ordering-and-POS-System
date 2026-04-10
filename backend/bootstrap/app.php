@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
+            'admin.dashboard' => \App\Http\Middleware\AdminDashboardAccess::class,
             'admin.owner' => \App\Http\Middleware\AdminOrOwner::class,
             'admin.only'  => \App\Http\Middleware\AdminOnly::class,
         ]);

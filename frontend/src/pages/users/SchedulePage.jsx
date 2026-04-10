@@ -10,6 +10,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../../contexts/CartContext";
 import { useNavbar } from "../../contexts/NavbarContext";
 import CmsEditableRegion from "../../components/admin/CmsEditableRegion";
+import FormFieldHeader from "../../components/form/FormFieldHeader";
+import { getValidationInputClassName } from "../../components/form/fieldStyles";
+import { EMAIL_MAX_LENGTH, validateEmail } from "../../utils/authValidation";
+import { clearFieldError, normalizeApiValidationErrors, sanitizeSearchTerm } from "../../utils/formValidation";
 import {
   getCmsField,
   getCmsAssetUrl,
@@ -36,6 +40,7 @@ function SchedulePage({ cmsPreview }) {
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [isBooking, setIsBooking] = useState(false);
   const [bookingEmail, setBookingEmail] = useState("");
+  const [bookingFieldErrors, setBookingFieldErrors] = useState({ email: "" });
   const [scheduleSwitchConfirm, setScheduleSwitchConfirm] = useState(null);
   const { currentUser } = useNavbar();
 
@@ -178,6 +183,7 @@ const getOrderLabel = (schedule) => {
     setSelectedSchedule(null);
     setIsBooking(false);
     setBookingEmail("");
+    setBookingFieldErrors({ email: "" });
   };
 
   const handleOrderNow = () => {
@@ -206,20 +212,28 @@ const getOrderLabel = (schedule) => {
 
   const handleSubmitBooking = async (e) => {
     e.preventDefault();
+    const nextFieldErrors = {
+      email: validateEmail(bookingEmail),
+    };
+
+    setBookingFieldErrors(nextFieldErrors);
+
+    if (Object.values(nextFieldErrors).some(Boolean)) {
+      return;
+    }
+
     try {
       const res = await api.post(`/schedules/${selectedSchedule.id}/book`, { email: bookingEmail });
       setBookingStatus("success");
       setBookingMessage(res.data.message);
       setBookingEmail("");
+      setBookingFieldErrors({ email: "" });
       setIsBooking(false);
     } catch (error) {
-      if (error.response && error.response.data?.message) {
-        setBookingStatus("error");
-        setBookingMessage(error.response.data.message);
-      } else {
-        setBookingStatus("error");
-        setBookingMessage("Something went wrong. Please try again.");
-      }
+      const normalizedError = normalizeApiValidationErrors(error);
+      setBookingFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+      setBookingStatus("error");
+      setBookingMessage(normalizedError.message || "Something went wrong. Please try again.");
     }
   };
 
@@ -312,8 +326,9 @@ const getOrderLabel = (schedule) => {
              <input 
                type="text"
                value={searchTerm}
-               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+               onChange={(e) => { setSearchTerm(sanitizeSearchTerm(e.target.value)); setCurrentPage(1); }}
                placeholder="Search events..."
+               maxLength={100}
                className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-[#4f6fa5]/20 focus:border-[#4f6fa5] transition-all shadow-sm"
              />
              <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
@@ -483,14 +498,27 @@ const getOrderLabel = (schedule) => {
                       <p className="text-gray-500 mb-8 leading-relaxed">Please enter your email to secure your free reservation at {selectedSchedule.schedule_name}.</p>
                       
                       <form onSubmit={handleSubmitBooking} className="flex flex-col gap-4">
-                        <input
-                          type="email"
-                          required
-                          value={bookingEmail}
-                          onChange={(e) => setBookingEmail(e.target.value)}
-                          placeholder="Email address"
-                          className="w-full border-b-2 border-gray-200 py-3 text-lg focus:outline-none focus:border-gray-900 transition-colors bg-transparent"
-                        />
+                        <div>
+                          <FormFieldHeader label="Email Address" required error={bookingFieldErrors.email} />
+                          <input
+                            type="email"
+                            required
+                            value={bookingEmail}
+                            onChange={(e) => {
+                              setBookingEmail(e.target.value);
+                              clearFieldError(setBookingFieldErrors, "email");
+                            }}
+                            maxLength={EMAIL_MAX_LENGTH}
+                            placeholder="Email address"
+                            className={getValidationInputClassName({
+                              hasError: !!bookingFieldErrors.email,
+                              baseClassName:
+                                "w-full border-b-2 py-3 text-lg focus:outline-none transition-colors bg-transparent",
+                              validClassName: "border-gray-200 focus:border-gray-900",
+                              invalidClassName: "border-rose-400 bg-rose-50/30 focus:border-rose-500",
+                            })}
+                          />
+                        </div>
 
                         <button
                           type="submit"

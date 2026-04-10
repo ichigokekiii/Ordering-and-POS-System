@@ -71,7 +71,11 @@ export function ProductProvider({ children }) {
   // Update product
   const updateProduct = async (id, formData) => {
     try {
-      const res = await api.post(`/products/${id}?_method=PUT`, formData);
+      if (!formData.has("_method")) {
+        formData.append("_method", "PUT");
+      }
+
+      const res = await api.post(`/products/${id}`, formData);
       setProducts((prev) =>
         prev.map((p) => (p.id === id ? res.data : p))
       );
@@ -85,7 +89,11 @@ export function ProductProvider({ children }) {
   // Update premade
   const updatePremade = async (id, formData) => {
     try {
-      const res = await api.post(`/premades/${id}?_method=PUT`, formData);
+      if (!formData.has("_method")) {
+        formData.append("_method", "PUT");
+      }
+
+      const res = await api.post(`/premades/${id}`, formData);
       setPremades((prev) =>
         prev.map((p) => (p.id === id ? res.data : p))
       );

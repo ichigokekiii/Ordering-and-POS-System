@@ -6,6 +6,7 @@ use App\Models\PremadeProduct;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Support\AdminImageUpload;
 use App\Support\ProductService;
 
 class PremadeController extends Controller
@@ -41,17 +42,14 @@ class PremadeController extends Controller
     {
         $request->validate([
             'name'        => 'required|string',
-            'image'       => 'required|image|mimes:jpg,jpeg,png|max:5120',
+            'image'       => 'required|image|mimes:jpg,jpeg,png|max:' . AdminImageUpload::maxKilobytes(),
             'description' => 'sometimes|required|string',
             'category'    => 'nullable|string',
             'type'        => 'nullable|string',
             'price'       => 'required|numeric',
             'isAvailable' => 'required|boolean',
             'isArchived'  => 'sometimes|boolean',
-        ], [
-            'image.mimes' => 'Only JPG, JPEG, and PNG files are allowed.',
-            'image.max' => 'Image must be 5MB or smaller.',
-        ]);
+        ], AdminImageUpload::validationMessages());
 
         // Store file in storage/app/public/premades
         $imagePath = $request->file('image')->store('premades', 'public');
@@ -80,17 +78,14 @@ class PremadeController extends Controller
     {
         $request->validate([
             'name'        => 'sometimes|required|string',
-            'image'       => 'sometimes|image|mimes:jpg,jpeg,png|max:5120',
+            'image'       => 'sometimes|image|mimes:jpg,jpeg,png|max:' . AdminImageUpload::maxKilobytes(),
             'description' => 'sometimes|required|string',
             'category'    => 'sometimes|nullable|string',
             'type'        => 'sometimes|nullable|string',
             'price'       => 'sometimes|required|numeric',
             'isAvailable' => 'sometimes|required|boolean',
             'isArchived'  => 'sometimes|required|boolean',
-        ], [
-            'image.mimes' => 'Only JPG, JPEG, and PNG files are allowed.',
-            'image.max' => 'Image must be 5MB or smaller.',
-        ]);
+        ], AdminImageUpload::validationMessages());
 
         $premade = PremadeProduct::findOrFail($id);
 

@@ -1,8 +1,9 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom"; 
-import { LogOut } from "lucide-react"; 
+import { CheckCircle2, LogOut, XCircle } from "lucide-react"; 
 import { useProducts } from "../../contexts/ProductContext";
+import { useAuth } from "../../contexts/AuthContext";
 import api from "../../services/api";
 import ProductGrid from "../../components/staff/ProductGrid";
 import Sidebar from "../../components/staff/Sidebar";
@@ -18,6 +19,7 @@ const STAFF_POS_CART_STORAGE_KEY = "staff-pos-cart";
 
 function StaffPage({ children, customCategories }) {
   const navigate = useNavigate(); 
+  const { handleLogout: logoutAuthUser } = useAuth();
   const { products, loading } = useProducts();
   const isVisibleForStaff = (product) => !product.isArchived && product.isAvailable;
 
@@ -59,6 +61,13 @@ function StaffPage({ children, customCategories }) {
   const [cashModal, setCashModal] = useState(false);
   const [qrModal, setQrModal] = useState(false);
   const [cashReceived, setCashReceived] = useState(0);
+  const [isSubmittingTransaction, setIsSubmittingTransaction] = useState(false);
+  const [transactionResult, setTransactionResult] = useState({
+    isOpen: false,
+    type: "success",
+    title: "",
+    message: "",
+  });
 
   const available = products.filter(isVisibleForStaff);
 
@@ -101,14 +110,8 @@ function StaffPage({ children, customCategories }) {
   // --- LOGOUT FUNCTIONALITY ---
   const handleLogout = async () => {
     try {
-      await api.post("/logout"); 
-    } catch (err) {
-      console.error("Logout failed on server", err);
+      await logoutAuthUser();
     } finally {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.sessionStorage.removeItem(STAFF_POS_CART_STORAGE_KEY);
-      
       navigate("/");
     }
   };
@@ -393,7 +396,20 @@ function StaffPage({ children, customCategories }) {
 
   const clearCart = () => setCart([]);
 
+  const closeTransactionResult = () => {
+    setTransactionResult({
+      isOpen: false,
+      type: "success",
+      title: "",
+      message: "",
+    });
+  };
+
   const finalizeTransaction = async (paymentMethod) => {
+    if (!cart.length || isSubmittingTransaction) return;
+
+    setIsSubmittingTransaction(true);
+
     try {
       await api.post("/pos-transactions", {
         items: cart.map((item) => ({
@@ -405,17 +421,28 @@ function StaffPage({ children, customCategories }) {
         cash_received: paymentMethod === 'CASH' ? cashReceived : total
       });
 
-      showToast("success", "Transaction completed");
       setCart([]);
       setMethodModal(false);
       setCashModal(false);
       setQrModal(false);
       setCashReceived(0);
+      setTransactionResult({
+        isOpen: true,
+        type: "success",
+        title: "Order Successful",
+        message: `The POS order was completed successfully via ${paymentMethod}.`,
+      });
     } catch (err) {
       console.error("Failed to save transaction", err);
-      showToast("error", err.response?.data?.message || "Failed to save transaction");
+      setTransactionResult({
+        isOpen: true,
+        type: "error",
+        title: "Transaction Failed",
+        message: err.response?.data?.message || "Failed to save transaction",
+      });
+    } finally {
+      setIsSubmittingTransaction(false);
     }
-
   };
 
   const bgColors = [
@@ -580,6 +607,42 @@ function StaffPage({ children, customCategories }) {
 
       {/* --- PAYMENT MODALS --- */}
 
+      {transactionResult.isOpen && (
+        <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className={`w-full max-w-md rounded-[2rem] border p-8 text-center shadow-2xl ${dm ? "border-gray-700 bg-gray-800" : "border-white/20 bg-white"}`}>
+            <div
+              className={`mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full ${
+                transactionResult.type === "success"
+                  ? "bg-emerald-100 text-emerald-500"
+                  : "bg-rose-100 text-rose-500"
+              }`}
+            >
+              {transactionResult.type === "success" ? (
+                <CheckCircle2 className="h-8 w-8" />
+              ) : (
+                <XCircle className="h-8 w-8" />
+              )}
+            </div>
+            <h3 className={`text-2xl font-bold ${dm ? "text-gray-100" : "text-gray-900"}`}>
+              {transactionResult.title}
+            </h3>
+            <p className={`mt-3 text-sm ${dm ? "text-gray-300" : "text-gray-500"}`}>
+              {transactionResult.message}
+            </p>
+            <button
+              onClick={closeTransactionResult}
+              className={`mt-8 rounded-xl px-8 py-2.5 text-sm font-bold transition-all duration-300 border-2 shadow-sm ${
+                dm
+                  ? "border-gray-100 bg-gray-100 text-gray-900 hover:bg-transparent hover:text-gray-100"
+                  : "border-gray-900 bg-gray-900 text-white hover:bg-transparent hover:text-gray-900"
+              }`}
+            >
+              Okay
+            </button>
+          </div>
+        </div>
+      )}
+
       <PaymentModals
         methodModal={methodModal}
         cashModal={cashModal}
@@ -593,6 +656,7 @@ function StaffPage({ children, customCategories }) {
         finalizeTransaction={finalizeTransaction}
         dm={dm}
         quickAmounts={quickAmounts}
+        isSubmittingTransaction={isSubmittingTransaction}
       />
     </div>
   );

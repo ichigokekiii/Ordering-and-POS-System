@@ -2,6 +2,14 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../../services/api";
 import { Loader2 } from "lucide-react";
+import FormFieldHeader from "../../components/form/FormFieldHeader";
+import { getValidationInputClassName } from "../../components/form/fieldStyles";
+import {
+  EMAIL_MAX_LENGTH,
+  normalizeEmail,
+  validateEmail,
+} from "../../utils/authValidation";
+import { clearFieldError, normalizeApiValidationErrors } from "../../utils/formValidation";
 
 // CMS IMPORTS
 import { useContents } from "../../contexts/ContentContext";
@@ -10,7 +18,8 @@ import { getCmsField, getCmsAssetUrl, getContentValue as getCmsContentValue } fr
 
 function ForgotPasswordPage({ cmsPreview }) {
   const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({ email: "" });
+  const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
@@ -23,16 +32,31 @@ function ForgotPasswordPage({ cmsPreview }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (cmsPreview?.enabled) return;
-    setError("");
+    const normalizedEmail = normalizeEmail(email);
+
+    const nextFieldErrors = {
+      email: validateEmail(normalizedEmail),
+    };
+
+    setFieldErrors(nextFieldErrors);
+    setFormError("");
+
+    if (Object.values(nextFieldErrors).some(Boolean)) {
+      return;
+    }
+
+    setEmail(normalizedEmail);
     setLoading(true);
 
     try {
-      await api.post("/forgot-password", { email });
+      await api.post("/forgot-password", { email: normalizedEmail });
       navigate("/verify-otp", {
-        state: { email, purpose: "reset-password" }
+        state: { email: normalizedEmail, purpose: "reset-password" }
       });
     } catch (err) {
-      setError(err.response?.data?.message || "Something went wrong. Please try again.");
+      const normalizedError = normalizeApiValidationErrors(err);
+      setFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+      setFormError(normalizedError.formError || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -72,18 +96,30 @@ function ForgotPasswordPage({ cmsPreview }) {
             Please enter your registered email address. We'll send you a 6-digit OTP to verify your identity.
           </p>
 
-          {error && <p className="mb-6 text-sm text-red-500 bg-red-50 py-3 px-4 rounded-lg border border-red-100">{error}</p>}
+          {formError && <p className="mb-6 text-sm text-red-500 bg-red-50 py-3 px-4 rounded-lg border border-red-100">{formError}</p>}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <input
-              type="email"
-              className="w-full rounded-xl border border-gray-300 px-4 py-3.5 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f6fa5] focus:border-transparent transition-all shadow-sm"
-              placeholder="Email Address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={loading}
-            />
+            <div>
+              <FormFieldHeader label="Email Address" required error={fieldErrors.email} />
+              <input
+                type="email"
+                className={getValidationInputClassName({
+                  hasError: !!fieldErrors.email,
+                  baseClassName:
+                    "w-full rounded-xl border px-4 py-3.5 focus:bg-white focus:outline-none focus:ring-2 transition-all shadow-sm",
+                })}
+                placeholder="Email Address"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  clearFieldError(setFieldErrors, "email");
+                  setFormError("");
+                }}
+                maxLength={EMAIL_MAX_LENGTH}
+                required
+                disabled={loading}
+              />
+            </div>
 
             <button
               disabled={loading}

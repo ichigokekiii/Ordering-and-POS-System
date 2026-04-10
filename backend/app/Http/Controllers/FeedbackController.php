@@ -23,13 +23,18 @@ class FeedbackController extends Controller
     {
         $validated = $request->validate([
             'feedback_rating' => 'required|integer|min:1|max:5',
-            'feedback_text'   => 'required|string',
+            'feedback_text'   => ['required', 'string', 'max:500', 'not_regex:/^\s*$/'],
+        ], [
+            'feedback_rating.required' => 'A rating is required.',
+            'feedback_text.required' => 'Feedback is required.',
+            'feedback_text.max' => 'Feedback must not exceed 500 characters.',
+            'feedback_text.not_regex' => 'Feedback is required.',
         ]);
 
         $feedback = Feedback::create([
             'user_id'         => Auth::id(),
             'feedback_rating' => $validated['feedback_rating'],
-            'feedback_text'   => $validated['feedback_text'],
+            'feedback_text'   => trim($validated['feedback_text']),
         ]);
 
         return response()->json($feedback, 201);

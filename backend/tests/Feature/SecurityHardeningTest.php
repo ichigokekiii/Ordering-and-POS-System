@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\Otp;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
@@ -24,7 +25,11 @@ class SecurityHardeningTest extends TestCase
             'otp' => '123456',
             'password' => 'new-password',
             'password_confirmation' => 'new-password',
-        ])->assertStatus(400);
+        ])->assertStatus(422)
+            ->assertJson([
+                'message' => 'Invalid or expired OTP',
+            ])
+            ->assertJsonPath('errors.otp.0', 'Invalid or expired OTP');
 
         Otp::query()->create([
             'user_id' => $user->id,
@@ -46,6 +51,34 @@ class SecurityHardeningTest extends TestCase
         ]);
     }
 
+    public function test_login_rejects_a_whitespace_only_password(): void
+    {
+        $user = $this->createUser('whitespace-login@example.com');
+
+        $this->postJson('/api/login', [
+            'email' => $user->email,
+            'password' => '   ',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['password']);
+    }
+
+    public function test_register_rejects_a_whitespace_only_password(): void
+    {
+        $this->postJson('/api/register', [
+            'first_name' => 'Test',
+            'last_name' => 'Customer',
+            'email' => 'whitespace-register@example.com',
+            'password' => '      ',
+            'phone_number' => '09123456789',
+            'terms_accepted' => true,
+            'terms_scope' => 'customer',
+        ])->assertStatus(422)
+            ->assertJson([
+                'message' => 'The given data was invalid.',
+            ])
+            ->assertJsonPath('errors.password.0', 'Password is required.');
+    }
+
     public function test_customer_cannot_view_another_customers_orders(): void
     {
         $owner = $this->createUser('owner-orders@example.com');
@@ -59,6 +92,32 @@ class SecurityHardeningTest extends TestCase
 
         $this->getJson("/api/orders/{$order->order_id}")
             ->assertForbidden();
+    }
+
+    public function test_customer_cannot_access_staff_analytics_or_logs(): void
+    {
+        $customer = $this->createUser('customer-metrics@example.com');
+
+        Sanctum::actingAs($customer);
+
+        $this->getJson('/api/analytics')
+            ->assertForbidden();
+
+        $this->getJson('/api/logs')
+            ->assertForbidden();
+    }
+
+    public function test_server_errors_do_not_expose_raw_exception_messages(): void
+    {
+        Schema::drop('contents');
+
+        $response = $this->getJson('/api/contents');
+
+        $response->assertStatus(500)
+            ->assertJson([
+                'message' => 'Failed to fetch content',
+            ])
+            ->assertJsonMissingPath('error');
     }
 
     private function createUser(string $email): User

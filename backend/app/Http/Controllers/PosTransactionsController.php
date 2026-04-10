@@ -13,11 +13,57 @@ use Illuminate\Support\Facades\Log;
 
 class PosTransactionsController extends Controller
 {
+    private function canAccessPosTransactions(?User $user): bool
+    {
+        return $user && in_array(strtolower((string) $user->role), ['admin', 'owner', 'staff'], true);
+    }
+
+    public function index(Request $request)
+    {
+        if (!$this->canAccessPosTransactions($request->user())) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        try {
+            $transactions = PosTransactions::with(['items.product'])
+                ->latest()
+                ->get();
+
+            return response()->json($transactions);
+        } catch (\Exception $e) {
+            return $this->serverErrorResponse('Failed to fetch POS transactions.', $e);
+        }
+    }
+
+    public function update(Request $request, $id)
+    {
+        $actorRole = strtolower((string) optional($request->user())->role);
+
+        if (!in_array($actorRole, ['admin', 'owner'], true)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'isArchived' => 'required|boolean',
+        ]);
+
+        try {
+            $transaction = PosTransactions::with(['items.product'])->findOrFail($id);
+            $transaction->isArchived = $request->boolean('isArchived');
+            $transaction->save();
+            $transaction->load(['items.product']);
+
+            return response()->json($transaction);
+        } catch (\Exception $e) {
+            return $this->serverErrorResponse('Failed to update POS transaction.', $e);
+        }
+    }
+
     public function store(Request $request)
     {
         $user = $request->user();
 
-        if (!$user || !in_array(strtolower((string) $user->role), ['admin', 'owner', 'staff'], true)) {
+        if (!$this->canAccessPosTransactions($user)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -58,10 +104,32 @@ class PosTransactionsController extends Controller
 
             return response()->json(['message' => 'Sale recorded!'], 201);
         } catch (\Exception $e) {
+            return $this->serverErrorResponse('Sale could not be recorded right now.', $e);
+        }
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        if (strtolower((string) optional($request->user())->role) !== 'admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        try {
+            $transaction = PosTransactions::findOrFail($id);
+
+            if (!$transaction->isArchived) {
+                return response()->json([
+                    'message' => 'Archive this POS transaction before deleting it.',
+                ], 409);
+            }
+
+            $transaction->delete();
+
             return response()->json([
-                'message' => 'Database crash',
-                'error' => $e->getMessage(),
-            ], 500);
+                'message' => 'POS transaction deleted successfully.',
+            ]);
+        } catch (\Exception $e) {
+            return $this->serverErrorResponse('Failed to delete POS transaction.', $e);
         }
     }
 
@@ -152,10 +220,7 @@ class PosTransactionsController extends Controller
         } catch (\Exception $e) {
             Log::error('analytics() failed: ' . $e->getMessage());
 
-            return response()->json([
-                'message' => 'Failed to load analytics',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->serverErrorResponse('Failed to load analytics', $e);
         }
     }
 }

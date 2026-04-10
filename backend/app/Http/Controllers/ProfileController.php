@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use App\Models\User;
+use Illuminate\Support\Facades\Validator;
 
 class ProfileController extends Controller
 {
@@ -81,12 +82,16 @@ class ProfileController extends Controller
         $user = Auth::user();
 
         if ($request->email === $user->email) {
-            return response()->json(['message' => 'New email must be different from current email'], 422);
+            return $this->fieldErrorResponse('email', 'New email must be different from current email');
         }
 
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'email' => 'required|email|unique:users,email',
         ]);
+
+        if ($validator->fails()) {
+            return $this->validationErrorResponse($validator->errors());
+        }
 
         $otpCode = rand(100000, 999999);
 
@@ -114,10 +119,10 @@ class ProfileController extends Controller
         $user = Auth::user();
 
         if ($request->has('email')) {
-            return response()->json(['message' => 'Use email change flow with OTP to update email'], 422);
+            return $this->fieldErrorResponse('email', 'Use email change flow with OTP to update email');
         }
 
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'first_name' => 'sometimes|string|max:255',
             'last_name' => 'sometimes|string|max:255',
             'phone_number' => 'nullable|string|max:20',
@@ -129,6 +134,12 @@ class ProfileController extends Controller
             'addresses.*.city' => ['required','string','max:255','regex:/^[a-zA-Z\s\-\']+$/'],
             'addresses.*.zip_code' => 'required|digits:4',
         ]);
+
+        if ($validator->fails()) {
+            return $this->validationErrorResponse($validator->errors());
+        }
+
+        $validated = $validator->validated();
 
         $user->update([
             'first_name' => $validated['first_name'] ?? $user->first_name,
@@ -160,7 +171,7 @@ class ProfileController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'profile_picture' => 'required|image|mimes:jpg,jpeg,png,gif|max:5120',
         ], [
             'profile_picture.required' => 'Please select an image to upload.',
@@ -168,6 +179,10 @@ class ProfileController extends Controller
             'profile_picture.mimes' => 'Only JPG, JPEG, PNG, and GIF files are allowed.',
             'profile_picture.max' => 'Image must be 5MB or smaller.',
         ]);
+
+        if ($validator->fails()) {
+            return $this->validationErrorResponse($validator->errors());
+        }
 
         $this->deleteProfilePicture($user->profile_picture);
 
@@ -193,13 +208,17 @@ class ProfileController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'email' => 'required|email|unique:users,email',
             'otp' => 'required|digits:6',
         ]);
 
+        if ($validator->fails()) {
+            return $this->validationErrorResponse($validator->errors());
+        }
+
         if ($request->email === $user->email) {
-            return response()->json(['message' => 'New email must be different from current email'], 422);
+            return $this->fieldErrorResponse('email', 'New email must be different from current email');
         }
 
         $otp = Otp::where('user_id', $user->id)
@@ -208,7 +227,7 @@ class ProfileController extends Controller
             ->first();
 
         if (!$otp) {
-            return response()->json(['message' => 'Invalid or expired OTP'], 400);
+            return $this->fieldErrorResponse('otp', 'Invalid or expired OTP');
         }
 
         $user->email = $request->email;
@@ -252,18 +271,22 @@ class ProfileController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'current_password' => 'required|string',
             'otp' => 'required|digits:6',
             'new_password' => 'required|string|min:6|confirmed',
         ]);
 
+        if ($validator->fails()) {
+            return $this->validationErrorResponse($validator->errors());
+        }
+
         if (!Hash::check($request->current_password, $user->password)) {
-            return response()->json(['message' => 'Current password is incorrect'], 422);
+            return $this->fieldErrorResponse('current_password', 'Current password is incorrect');
         }
 
         if (Hash::check($request->new_password, $user->password)) {
-            return response()->json(['message' => 'New password must be different from current password'], 422);
+            return $this->fieldErrorResponse('new_password', 'New password must be different from current password');
         }
 
         $otp = Otp::where('user_id', $user->id)
@@ -272,7 +295,7 @@ class ProfileController extends Controller
             ->first();
 
         if (!$otp) {
-            return response()->json(['message' => 'Invalid or expired OTP'], 400);
+            return $this->fieldErrorResponse('otp', 'Invalid or expired OTP');
         }
 
         $user->password = Hash::make($request->new_password);

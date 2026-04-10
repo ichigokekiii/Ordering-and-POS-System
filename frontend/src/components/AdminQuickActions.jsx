@@ -51,6 +51,7 @@ function AdminQuickActions({ user }) {
   
   const buttonSize = 56; // 14 * 4px (h-14 w-14)
   const padding = 24; // 6 * 4px (bottom-6 right-6)
+  const getMaxY = () => window.innerHeight - buttonSize - padding;
 
   const canUseQuickActions = hasAdminDashboardAccess(user);
   const isStaffRoute = location.pathname.startsWith("/staff");
@@ -83,8 +84,8 @@ function AdminQuickActions({ user }) {
 
     const handleResize = () => {
       setPosition((prev) => ({
-        x: Math.min(prev.x, window.innerWidth - buttonSize - padding),
-        y: Math.min(prev.y, window.innerHeight - buttonSize - padding),
+        x: Math.min(Math.max(padding, prev.x), window.innerWidth - buttonSize - padding),
+        y: Math.min(Math.max(padding, prev.y), getMaxY()),
       }));
     };
 
@@ -146,7 +147,7 @@ function AdminQuickActions({ user }) {
       dragInfo.current.hasMoved = true;
       setPosition((prev) => ({
         x: Math.max(0, Math.min(window.innerWidth - buttonSize, prev.x + dx)),
-        y: Math.max(0, Math.min(window.innerHeight - buttonSize, prev.y + dy)),
+        y: Math.max(padding, Math.min(getMaxY(), prev.y + dy)),
       }));
       
       dragInfo.current.startX = e.clientX;
@@ -168,22 +169,13 @@ function AdminQuickActions({ user }) {
   const snapToEdge = () => {
     setPosition((prev) => {
       const centerX = prev.x + buttonSize / 2;
-      const centerY = prev.y + buttonSize / 2;
-
       const distLeft = centerX;
       const distRight = window.innerWidth - centerX;
-      const distTop = centerY;
-      const distBottom = window.innerHeight - centerY;
-
-      const min = Math.min(distLeft, distRight, distTop, distBottom);
-
-      let newX = prev.x;
-      let newY = prev.y;
-
-      if (min === distLeft) newX = padding;
-      else if (min === distRight) newX = window.innerWidth - buttonSize - padding;
-      else if (min === distTop) newY = padding;
-      else if (min === distBottom) newY = window.innerHeight - buttonSize - padding;
+      const newX =
+        distLeft <= distRight
+          ? padding
+          : window.innerWidth - buttonSize - padding;
+      const newY = Math.min(Math.max(padding, prev.y), getMaxY());
 
       // Save the new position to localStorage
       try {
@@ -237,6 +229,17 @@ function AdminQuickActions({ user }) {
 
   const isLeftHalf = position.x < window.innerWidth / 2;
   const isTopHalf = position.y < window.innerHeight / 2;
+  const quickActionButtonStyle = currentDarkMode
+    ? {
+        backgroundColor: "#ffffff",
+        borderColor: "#cbd5e1",
+        color: "#0f172a",
+      }
+    : {
+        backgroundColor: "#0f172a",
+        borderColor: "#0f172a",
+        color: "#ffffff",
+      };
 
   return (
     <div
@@ -289,7 +292,8 @@ function AdminQuickActions({ user }) {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onClick={toggleMenu}
-        className="pointer-events-auto flex h-full w-full items-center justify-center rounded-full bg-[#4f6fa5] text-white shadow-[0_18px_40px_rgba(79,111,165,0.35)] transition-colors hover:bg-[#3f5b89] dark:bg-sky-500 dark:hover:bg-sky-400 cursor-grab active:cursor-grabbing"
+        className="pointer-events-auto flex h-full w-full items-center justify-center rounded-full border transition-colors cursor-grab active:cursor-grabbing"
+        style={quickActionButtonStyle}
         aria-label={isOpen ? "Close quick actions" : "Open quick actions"}
       >
         <Plus className={`h-6 w-6 transition-transform duration-300 ${isOpen ? "rotate-45" : "rotate-0"}`} />

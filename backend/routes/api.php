@@ -43,9 +43,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/feedbacks', [FeedbackController::class, 'store']);
 });
 
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'admin.dashboard'])->group(function () {
     Route::get('/analytics', [AnalyticsController::class, 'index']);
     Route::post('/analytics/email', [AnalyticsController::class, 'sendReportEmail']);
+    Route::get('/logs', [LogController::class, 'index']);
+    Route::get('/logs/export', [LogController::class, 'export']);
 });
 
 // Product & Premade routes (Public so customers can see menu)
@@ -67,10 +69,6 @@ Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
-
-// Analytics routes
-Route::get('/analytics', [AnalyticsController::class, 'index']);
-
 
 /*
 |--------------------------------------------------------------------------
@@ -119,11 +117,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/orders/{id}', [OrderController::class, 'update']);
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/{id}', [UserController::class, 'show']);
-    Route::get('/logs', [LogController::class, 'index']);
-    Route::get('/logs/export', [LogController::class, 'export']);
-    Route::get('/analytics', [AnalyticsController::class, 'index']);
-    Route::post('/analytics/email', [AnalyticsController::class, 'sendReportEmail']);
+    Route::get('/pos-transactions', [PosTransactionsController::class, 'index']);
     Route::post('/pos-transactions', [PosTransactionsController::class, 'store']);
+    Route::put('/pos-transactions/{id}', [PosTransactionsController::class, 'update']);
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -155,6 +151,7 @@ Route::middleware(['auth:sanctum', 'admin.owner'])->group(function () {
     Route::middleware('admin.only')->group(function () {
         Route::post('/users', [UserController::class, 'store']);
         Route::delete('/users/{id}', [UserController::class, 'destroy']);
+        Route::delete('/pos-transactions/{id}', [PosTransactionsController::class, 'destroy']);
 
         // OTP endpoints for admin user management
         Route::post('/users/{id}/email-otp', [UserController::class, 'sendEmailOtp']);

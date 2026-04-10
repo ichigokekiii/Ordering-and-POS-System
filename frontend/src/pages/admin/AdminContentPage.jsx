@@ -2,6 +2,8 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
+import FormFieldHeader from "../../components/form/FormFieldHeader";
+import { getValidationInputClassName } from "../../components/form/fieldStyles";
 import AuthPage from "../users/AuthPage";
 import VerifyOtpPage from "../users/VerifyOtpPage";
 import ForgotPasswordPage from "../users/ForgotPasswordPage";
@@ -18,6 +20,7 @@ import {
   canManageUsersAdmin,
   isStaffReadOnlyAdmin,
 } from "../../utils/adminAccess";
+import { normalizeApiValidationErrors } from "../../utils/formValidation";
 
 const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
@@ -248,6 +251,7 @@ function AdminContentPage({ user }) {
   const [editorField, setEditorField] = useState(null);
   const [editingContent, setEditingContent] = useState(null);
   const [formDataState, setFormDataState] = useState(createEmptyFormState());
+  const [editorErrors, setEditorErrors] = useState({ content_text: "", content_image: "" });
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -323,6 +327,7 @@ function AdminContentPage({ user }) {
     setEditorField(null);
     setEditingContent(null);
     setFormDataState(createEmptyFormState());
+    setEditorErrors({ content_text: "", content_image: "" });
   };
 
   const handlePermanentDelete = async (item) => {
@@ -617,12 +622,19 @@ function AdminContentPage({ user }) {
                 formData.append("type", formDataState.type);
                 
                 if (formDataState.type === "text") {
-                  formData.set("content_text", formDataState.content_text || "");
+                  const trimmedContentText = (formDataState.content_text || "").trim();
+
+                  if (!trimmedContentText) {
+                    setEditorErrors({ content_text: "Content text cannot be empty.", content_image: "" });
+                    return;
+                  }
+
+                  formData.set("content_text", trimmedContentText);
                 }
                 
                 const imageFile = formData.get("content_image");
                 if (formDataState.type === "image" && !editingContent && (!imageFile || imageFile.size === 0)) {
-                  showModalAlert("error", "Please upload an image before saving.");
+                  setEditorErrors({ content_text: "", content_image: "Please upload an image before saving." });
                   return;
                 }
 
@@ -631,24 +643,26 @@ function AdminContentPage({ user }) {
                   const hasValidExtension = ALLOWED_IMAGE_NAME_REGEX.test(imageFile.name || "");
 
                   if (!hasValidMimeType || !hasValidExtension) {
-                    showModalAlert("error", "Only JPG, JPEG, and PNG files are allowed.");
+                    setEditorErrors({ content_text: "", content_image: "Only JPG, JPEG, and PNG files are allowed." });
                     return;
                   }
 
                   const optimizedImageFile = await optimizeImageForUpload(imageFile);
 
                   if (!optimizedImageFile) {
-                    showModalAlert("error", `Image must be ${MAX_IMAGE_SIZE_LABEL} or smaller. Try a smaller image.`);
+                    setEditorErrors({ content_text: "", content_image: `Image must be ${MAX_IMAGE_SIZE_LABEL} or smaller. Try a smaller image.` });
                     return;
                   }
 
                   if (optimizedImageFile.size > MAX_IMAGE_SIZE_BYTES) {
-                    showModalAlert("error", `Image must be ${MAX_IMAGE_SIZE_LABEL} or smaller.`);
+                    setEditorErrors({ content_text: "", content_image: `Image must be ${MAX_IMAGE_SIZE_LABEL} or smaller.` });
                     return;
                   }
 
                   formData.set("content_image", optimizedImageFile, optimizedImageFile.name);
                 }
+
+                setEditorErrors({ content_text: "", content_image: "" });
 
                 try {
                   if (editingContent) { 
@@ -661,31 +675,33 @@ function AdminContentPage({ user }) {
                   closeEditor();
                 } catch (error) { 
                   console.error("Failed to save", error.response?.data || error.message);
+                  const normalizedError = normalizeApiValidationErrors(error);
+                  setEditorErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
                   showModalAlert("error", getContentRequestErrorMessage(error, "Failed to save changes."));
                 }
               }}
             >
               {formDataState.type === "text" && formDataState.input === "color" && (
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Color Value</label>
+                  <FormFieldHeader label="Color Value" required error={editorErrors.content_text} />
                   <div className="flex items-center gap-3">
-                    <input type="color" value={formDataState.content_text || "#ffffff"} onChange={(e) => setFormDataState((prev) => ({ ...prev, content_text: e.target.value }))} disabled={!canManageContent} className="h-12 w-16 cursor-pointer rounded-xl border border-gray-200 disabled:cursor-not-allowed disabled:opacity-60" />
-                    <input type="text" value={formDataState.content_text} onChange={(e) => setFormDataState((prev) => ({ ...prev, content_text: e.target.value }))} readOnly={!canManageContent} disabled={!canManageContent} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500" placeholder="#ffffff" />
+                    <input type="color" value={formDataState.content_text || "#ffffff"} onChange={(e) => { setFormDataState((prev) => ({ ...prev, content_text: e.target.value.slice(0, 7) })); setEditorErrors((prev) => ({ ...prev, content_text: "" })); }} disabled={!canManageContent} className="h-12 w-16 cursor-pointer rounded-xl border border-gray-200 disabled:cursor-not-allowed disabled:opacity-60" />
+                    <input type="text" value={formDataState.content_text} onChange={(e) => { setFormDataState((prev) => ({ ...prev, content_text: e.target.value.slice(0, 7) })); setEditorErrors((prev) => ({ ...prev, content_text: "" })); }} readOnly={!canManageContent} disabled={!canManageContent} className={getValidationInputClassName({ hasError: !!editorErrors.content_text, baseClassName: "w-full rounded-xl border px-4 py-3 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500", validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" })} placeholder="#ffffff" />
                   </div>
                 </div>
               )}
 
               {formDataState.type === "text" && formDataState.input === "textarea" && (
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Text Content</label>
-                  <textarea name="content_text" value={formDataState.content_text} onChange={(e) => setFormDataState((prev) => ({ ...prev, content_text: e.target.value }))} readOnly={!canManageContent} disabled={!canManageContent} className="min-h-32 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500" placeholder="Enter content..." />
+                  <FormFieldHeader label="Text Content" required error={editorErrors.content_text} count={formDataState.content_text.length} max={1000} />
+                  <textarea name="content_text" value={formDataState.content_text} onChange={(e) => { setFormDataState((prev) => ({ ...prev, content_text: e.target.value.slice(0, 1000) })); setEditorErrors((prev) => ({ ...prev, content_text: "" })); }} readOnly={!canManageContent} disabled={!canManageContent} className={getValidationInputClassName({ hasError: !!editorErrors.content_text, baseClassName: "min-h-32 w-full rounded-xl border px-4 py-3 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500", validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" })} placeholder="Enter content..." />
                 </div>
               )}
 
               {formDataState.type === "text" && formDataState.input === "text" && (
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Text Content</label>
-                  <input type="text" name="content_text" value={formDataState.content_text} onChange={(e) => setFormDataState((prev) => ({ ...prev, content_text: e.target.value }))} readOnly={!canManageContent} disabled={!canManageContent} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500" placeholder="Enter content..." />
+                  <FormFieldHeader label="Text Content" required error={editorErrors.content_text} count={formDataState.content_text.length} max={255} />
+                  <input type="text" name="content_text" value={formDataState.content_text} onChange={(e) => { setFormDataState((prev) => ({ ...prev, content_text: e.target.value.slice(0, 255) })); setEditorErrors((prev) => ({ ...prev, content_text: "" })); }} readOnly={!canManageContent} disabled={!canManageContent} className={getValidationInputClassName({ hasError: !!editorErrors.content_text, baseClassName: "w-full rounded-xl border px-4 py-3 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500", validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5]", invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500" })} placeholder="Enter content..." />
                 </div>
               )}
 
@@ -696,8 +712,8 @@ function AdminContentPage({ user }) {
                       <img src={getCmsAssetUrl(editingContent.content_image)} alt="Preview" className="h-48 w-full object-cover" />
                     </div>
                   )}
-                  <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Upload New Image</label>
-                  <input type="file" name="content_image" disabled={!canManageContent} className="w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-gray-700 hover:file:bg-gray-200 transition-all disabled:cursor-not-allowed disabled:opacity-60" accept={ADMIN_IMAGE_ACCEPT} />
+                  <FormFieldHeader label="Upload New Image" required={!editingContent} error={editorErrors.content_image} />
+                  <input type="file" name="content_image" disabled={!canManageContent} className={getValidationInputClassName({ hasError: !!editorErrors.content_image, baseClassName: "w-full rounded-xl border px-3 py-2 text-sm file:mr-4 file:rounded-full file:border-0 file:bg-gray-100 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-gray-700 hover:file:bg-gray-200 transition-all disabled:cursor-not-allowed disabled:opacity-60", validClassName: "border-gray-200 bg-white", invalidClassName: "border-rose-400 bg-rose-50" })} accept={ADMIN_IMAGE_ACCEPT} />
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
                     {editingContent ? `Optional on edit. JPG, JPEG, or PNG only. Max ${MAX_IMAGE_SIZE_LABEL}. Larger images are auto-resized when possible.` : `Required for new image content. JPG, JPEG, or PNG only. Max ${MAX_IMAGE_SIZE_LABEL}. Larger images are auto-resized when possible.`}
                   </p>

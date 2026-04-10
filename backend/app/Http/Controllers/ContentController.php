@@ -11,6 +11,31 @@ class ContentController extends Controller
 {
     private const CMS_IMAGE_UPLOAD_LIMIT_LABEL = '2MB';
 
+    private function normalizeContentInput(Request $request): void
+    {
+        $normalizedInput = [];
+
+        if ($request->has('page')) {
+            $normalizedInput['page'] = trim((string) $request->input('page'));
+        }
+
+        if ($request->has('identifier')) {
+            $normalizedInput['identifier'] = trim((string) $request->input('identifier'));
+        }
+
+        if ($request->has('type')) {
+            $normalizedInput['type'] = trim((string) $request->input('type'));
+        }
+
+        if ($request->exists('content_text')) {
+            $normalizedInput['content_text'] = trim((string) $request->input('content_text'));
+        }
+
+        if (!empty($normalizedInput)) {
+            $request->merge($normalizedInput);
+        }
+    }
+
     private function canManageContent(Request $request): bool
     {
         $user = $request->user();
@@ -40,10 +65,7 @@ class ContentController extends Controller
 
             return response()->json($contents);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to fetch content',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Failed to fetch content', $e);
         }
     }
 
@@ -56,20 +78,23 @@ class ContentController extends Controller
 
             return response()->json($content);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to fetch content',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Failed to fetch content', $e);
         }
     }
 
     // Create new content
     public function store(Request $request)
     {
+        $this->normalizeContentInput($request);
+
         $request->validate([
             'page' => 'required|string|max:255',
             'type' => 'required|in:text,image',
-            'content_text' => 'nullable|string',
+            'content_text' => [
+                Rule::requiredIf($request->input('type') === 'text'),
+                'string',
+                'regex:/\S/',
+            ],
             'content_image' => [
                 Rule::requiredIf($request->input('type') === 'image'),
                 'image',
@@ -82,7 +107,10 @@ class ContentController extends Controller
                 'max:255',
                 Rule::unique('contents')->where(fn ($query) => $query->where('page', $request->page)->where('isArchived', false)),
             ],
-        ], $this->imageValidationMessages());
+        ], array_merge($this->imageValidationMessages(), [
+            'content_text.required' => 'Content text is required.',
+            'content_text.regex' => 'Content text cannot be empty.',
+        ]));
 
         try {
             $content = new Content();
@@ -107,19 +135,17 @@ class ContentController extends Controller
                 'content' => $content
             ], 201);
         } catch (\Exception $e) {
-            report($e);
-
-            return response()->json([
-                'message' => 'Failed to create content',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Failed to create content', $e);
         }
     }
 
     // Update content
     public function update(Request $request, $id)
     {
+        $this->normalizeContentInput($request);
+
         $content = Content::findOrFail($id);
+        $contentType = $request->input('type', $content->type);
 
         if ($request->filled('identifier') || $request->filled('page')) {
             $request->validate([
@@ -136,8 +162,18 @@ class ContentController extends Controller
         }
 
         $request->validate([
+            'type' => 'sometimes|in:text,image',
+            'content_text' => [
+                Rule::requiredIf($contentType === 'text' && $request->exists('content_text')),
+                'nullable',
+                'string',
+                'regex:/\S/',
+            ],
             'content_image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        ], $this->imageValidationMessages());
+        ], array_merge($this->imageValidationMessages(), [
+            'content_text.required' => 'Content text is required.',
+            'content_text.regex' => 'Content text cannot be empty.',
+        ]));
 
         try {
             if ($request->filled('identifier')) {
@@ -148,8 +184,8 @@ class ContentController extends Controller
                 $content->page = $request->page;
             }
 
-            if ($request->has('content_text')) {
-                $content->content_text = $request->content_text;
+            if ($request->exists('content_text')) {
+                $content->content_text = $request->input('content_text');
             }
 
             if ($request->hasFile('content_image')) {
@@ -172,12 +208,7 @@ class ContentController extends Controller
                 'content' => $content
             ]);
         } catch (\Exception $e) {
-            report($e);
-
-            return response()->json([
-                'message' => 'Failed to update content',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Failed to update content', $e);
         }
     }
 
@@ -197,10 +228,7 @@ class ContentController extends Controller
                 'message' => 'Content deleted successfully'
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to delete content',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Failed to delete content', $e);
         }
     }
 
@@ -228,10 +256,7 @@ class ContentController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to delete archived content',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverErrorResponse('Failed to delete archived content', $e);
         }
     }
 }

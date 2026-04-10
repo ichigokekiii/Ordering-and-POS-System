@@ -4,21 +4,30 @@ import { useNavigate, useOutletContext } from "react-router-dom";
 import { useProducts } from "../../contexts/ProductContext";
 import { useCart } from "../../contexts/CartContext";
 import { useSchedules } from "../../contexts/ScheduleContext";
+import FormFieldHeader from "../../components/form/FormFieldHeader";
+import { getValidationInputClassName } from "../../components/form/fieldStyles";
+import {
+  GREETING_CARD_MAX_LENGTH,
+  validateGreetingCardMessage,
+} from "../../utils/authValidation";
 
-const MAX_GREETING_CHARS = 150;
 const GREETING_CARD_PRICE = 5;
 
 function OrderModal({ product, onClose, onConfirm }) {
   const [quantity, setQuantity] = useState(1);
   const [greetingCard, setGreetingCard] = useState(false);
   const [greetingMessage, setGreetingMessage] = useState("");
+  const [greetingError, setGreetingError] = useState("");
 
   const subtotal = product.price * quantity + (greetingCard ? GREETING_CARD_PRICE : 0);
 
   const handleConfirm = () => {
-    if (greetingCard && !greetingMessage.trim()) {
-      alert("Please write a greeting card message or uncheck the greeting card option.");
-      return;
+    if (greetingCard) {
+      const nextGreetingError = validateGreetingCardMessage(greetingMessage);
+      setGreetingError(nextGreetingError);
+      if (nextGreetingError) {
+        return;
+      }
     }
 
     onConfirm(product, quantity, greetingCard ? greetingMessage.trim() : null);
@@ -127,18 +136,25 @@ function OrderModal({ product, onClose, onConfirm }) {
                     Your message
                   </label>
                   <span className="text-[11px] font-semibold text-gray-400">
-                    {greetingMessage.length}/{MAX_GREETING_CHARS}
+                    {greetingMessage.length}/{GREETING_CARD_MAX_LENGTH}
                   </span>
                 </div>
+                <FormFieldHeader label="Greeting Card Message" required error={greetingError} className="mb-2" />
                 <textarea
                   rows={3}
                   value={greetingMessage}
                   onChange={(e) => {
-                    if (e.target.value.length <= MAX_GREETING_CHARS) {
-                      setGreetingMessage(e.target.value);
-                    }
+                    setGreetingMessage(e.target.value.slice(0, GREETING_CARD_MAX_LENGTH));
+                    setGreetingError("");
                   }}
-                  className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 focus:border-[#4f6fa5] focus:outline-none focus:ring-2 focus:ring-[#4f6fa5]/15"
+                  maxLength={GREETING_CARD_MAX_LENGTH}
+                  className={getValidationInputClassName({
+                    hasError: !!greetingError,
+                    baseClassName:
+                      "w-full resize-none rounded-2xl border px-4 py-3 text-sm text-gray-700 focus:outline-none focus:ring-2",
+                    validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5] focus:ring-[#4f6fa5]/15",
+                    invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500 focus:ring-rose-100",
+                  })}
                   placeholder="Write your heartfelt message here..."
                 />
               </div>

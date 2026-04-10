@@ -4,6 +4,9 @@ import { useNavigate, useOutletContext } from "react-router-dom";
 import { useProducts } from "../../contexts/ProductContext";
 import { useCart } from "../../contexts/CartContext";
 import { useSchedules } from "../../contexts/ScheduleContext";
+import FormFieldHeader from "../../components/form/FormFieldHeader";
+import { getValidationInputClassName } from "../../components/form/fieldStyles";
+import { validateGreetingCardMessage } from "../../utils/authValidation";
 
 const MAX_GREETING_CHARS = 150;
 const GREETING_CARD_PRICE = 5;
@@ -180,6 +183,7 @@ function OrderCustom() {
   const [additionalCounts, setAdditionalCounts] = useState({});
   const [greetingCard, setGreetingCard] = useState(false);
   const [greetingMessage, setGreetingMessage] = useState("");
+  const [greetingError, setGreetingError] = useState("");
   const [added, setAdded] = useState(false);
 
   const availableProducts = products.filter(
@@ -385,6 +389,15 @@ function OrderCustom() {
   };
 
   const handleAddToCart = () => {
+    if (greetingCard) {
+      const nextGreetingError = validateGreetingCardMessage(greetingMessage);
+      setGreetingError(nextGreetingError);
+      if (nextGreetingError) {
+        scrollToSection(personalSectionRef);
+        return;
+      }
+    }
+
     if (!canAddToCart) {
       return;
     }
@@ -794,6 +807,7 @@ function OrderCustom() {
                   onClick={() => {
                     setAdded(false);
                     setGreetingCard((prev) => !prev);
+                    setGreetingError("");
 
                     if (greetingCard) {
                       setGreetingMessage("");
@@ -814,12 +828,15 @@ function OrderCustom() {
               {greetingCard && (
                 <div className="mt-6">
                   <div className="mb-2 flex justify-between">
-                    <label className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">
-                      Your message
-                    </label>
-                    <span className="text-[11px] font-semibold text-gray-400">
-                      {greetingMessage.length}/{MAX_GREETING_CHARS}
-                    </span>
+                    <div className="w-full">
+                      <FormFieldHeader
+                        label="Greeting Card Message"
+                        required
+                        error={greetingError}
+                        count={greetingMessage.length}
+                        max={MAX_GREETING_CHARS}
+                      />
+                    </div>
                   </div>
                   <textarea
                     rows={4}
@@ -828,10 +845,17 @@ function OrderCustom() {
                       if (event.target.value.length <= MAX_GREETING_CHARS) {
                         setAdded(false);
                         setGreetingMessage(event.target.value);
+                        setGreetingError("");
                       }
                     }}
                     placeholder="Write your heartfelt message here..."
-                    className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 focus:border-[#4f6fa5] focus:outline-none focus:ring-2 focus:ring-[#4f6fa5]/15"
+                    className={getValidationInputClassName({
+                      hasError: !!greetingError,
+                      baseClassName:
+                        "w-full resize-none rounded-2xl border px-4 py-3 text-sm text-gray-700 focus:outline-none focus:ring-2",
+                      validClassName: "border-gray-200 bg-gray-50 focus:border-[#4f6fa5] focus:ring-[#4f6fa5]/15",
+                      invalidClassName: "border-rose-400 bg-rose-50 focus:border-rose-500 focus:ring-rose-100",
+                    })}
                   />
                 </div>
               )}

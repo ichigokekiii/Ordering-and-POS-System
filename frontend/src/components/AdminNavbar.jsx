@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, ChevronDown, Search, User, LogOut } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { sanitizeSearchTerm } from "../utils/formValidation";
 
 const ADMIN_ROUTES = [
   { label: "Overview", path: "/admin", keywords: ["dashboard", "overview", "home"] },
@@ -16,7 +17,7 @@ const ADMIN_ROUTES = [
 ];
 
 const NOTIFICATION_STORAGE_PREFIX = "admin-navbar-notifications";
-const NOTIFICATION_FETCH_LIMIT = 6;
+const NOTIFICATION_FETCH_LIMIT = 10;
 const NOTIFICATION_POLL_INTERVAL = 15000;
 
 const getDisplayName = (user) => {
@@ -259,13 +260,15 @@ function AdminNavbar({ user, onLogout }) {
     [recentLogs, notificationState.clearedLogId]
   );
 
-  const hasUnreadNotifications = useMemo(
+  const unreadNotificationCount = useMemo(
     () =>
-      recentLogs.some(
+      recentLogs.filter(
         (log) => normalizeLogId(log?.log_id) > notificationState.seenLogId
-      ),
+      ).length,
     [recentLogs, notificationState.seenLogId]
   );
+
+  const unreadNotificationLabel = unreadNotificationCount > 9 ? "9+" : String(unreadNotificationCount);
 
   const handleSearchSubmit = (event) => {
     event.preventDefault();
@@ -328,7 +331,8 @@ function AdminNavbar({ user, onLogout }) {
           <input
             type="text"
             value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
+            onChange={(event) => setSearchTerm(sanitizeSearchTerm(event.target.value))}
+            maxLength={100}
             placeholder="What do you want to find?"
             className="w-full rounded-full bg-gray-100 py-2.5 pl-11 pr-4 text-sm text-gray-700 outline-none transition-all border border-gray-100 focus:bg-white focus:ring-2 focus:ring-[#eaf2ff] focus:border-[#4f6fa5]"
           />
@@ -351,8 +355,10 @@ function AdminNavbar({ user, onLogout }) {
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5" />
-            {hasUnreadNotifications && (
-              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-red-500" />
+            {unreadNotificationCount > 0 && (
+              <span className="absolute -right-2.5 -top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                {unreadNotificationLabel}
+              </span>
             )}
           </button>
 

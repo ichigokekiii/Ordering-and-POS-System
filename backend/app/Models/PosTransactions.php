@@ -13,6 +13,11 @@ class PosTransactions extends Model
         'total_amount',
         'payment_method',
         'cash_received',
+        'isArchived',
+    ];
+
+    protected $casts = [
+        'isArchived' => 'boolean',
     ];
 
     public function items()

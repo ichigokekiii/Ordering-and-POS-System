@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
@@ -62,6 +61,29 @@ const formatValue = (value, format = "number") => {
   return Number(value || 0).toLocaleString();
 };
 
+const PieLegendList = ({ data = [], format = "number" }) => {
+  if (!data.length) return null;
+
+  return (
+    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {data.map((entry, index) => (
+        <div key={entry.name} className="flex items-center justify-between rounded-xl border border-gray-100 bg-[#f8fafc] px-3 py-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
+            />
+            <span className="truncate text-xs font-semibold text-gray-600">{entry.name}</span>
+          </div>
+          <span className="ml-3 shrink-0 text-xs font-bold text-gray-900">
+            {formatValue(entry.value, format)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const CardMenu = ({ onEmail }) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
@@ -81,8 +103,8 @@ const CardMenu = ({ onEmail }) => {
       </button>
       {isOpen && (
         <div className="absolute right-0 top-full mt-1 w-44 rounded-xl border border-gray-100 bg-white p-1 shadow-xl z-[100] animate-in fade-in zoom-in duration-100">
-          <button 
-            onClick={() => { setIsOpen(false); onEmail(); }}
+          <button
+            onClick={() => { setIsOpen(false); onEmail?.(); }}
             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-gray-600 hover:bg-[#eaf2ff] hover:text-[#4f6fa5] transition-colors"
           >
             <Mail className="h-4 w-4" /> Email this Data
@@ -107,7 +129,14 @@ const MetricCard = ({ metric, icon: Icon, onEmail }) => {
            </div>
            <p className="text-sm font-semibold text-gray-600">{metric.label}</p>
         </div>
-        <CardMenu onEmail={() => onEmail(metric.label)} />
+        <CardMenu
+          onEmail={() => onEmail?.({
+            contextName: metric.label,
+            exportType: "single",
+            contextKind: "metric",
+            subtitle: metric.description,
+          })}
+        />
       </div>
       <div className="flex items-end gap-3 mt-2">
         <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{formatValue(metric.value, metric.format)}</h3>
@@ -132,7 +161,16 @@ const AnalyticsPanel = ({ title, subtitle, children, action, className = "", onE
       </div>
       <div className="flex items-center gap-2">
         {action && <div>{action}</div>}
-        {onEmail && <CardMenu onEmail={() => onEmail(title)} />}
+        {onEmail && (
+          <CardMenu
+            onEmail={() => onEmail({
+              contextName: title,
+              exportType: "single",
+              contextKind: "panel",
+              subtitle,
+            })}
+          />
+        )}
       </div>
     </div>
     <div className="flex-1 min-h-[300px]">{children}</div>
@@ -228,12 +266,24 @@ function AdminAnalyticsPage() {
     }
   };
 
-  const handleEmailReport = async (contextName) => {
+  const handleEmailReport = async ({
+    contextName,
+    exportType = "section",
+    contextKind = "section",
+    subtitle = "",
+  }) => {
     // Show loading state in modal while it compiles
     setStatusModal({ isOpen: true, type: "loading", message: `Generating PDF for ${contextName}...` });
     
     try {
-      await api.post('/analytics/email', { section: activeSection, context: contextName });
+      await api.post('/analytics/email', {
+        section: activeSection,
+        context: contextName,
+        export_type: exportType,
+        context_kind: contextKind,
+        subtitle,
+        section_label: activeOption.label,
+      });
       showModalAlert("success", `Report sent successfully to your email!`);
     } catch (err) {
       // The backend catch(\Throwable) block will now pass the EXACT PHP error here
@@ -360,30 +410,36 @@ function AdminAnalyticsPage() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <AnalyticsPanel title="Delivery Breakdown" subtitle="Revenue share by delivery method." onEmail={handleEmailReport}>
             {deliveryBreakdown.length ? (
-              <div className="h-[280px] w-full mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={deliveryBreakdown} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
-                      {deliveryBreakdown.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="mt-4">
+                <div className="h-[220px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={deliveryBreakdown} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
+                        {deliveryBreakdown.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <PieLegendList data={deliveryBreakdown} format="currency" />
               </div>
             ) : <div className="h-full flex items-center justify-center text-gray-400">No delivery data found</div>}
           </AnalyticsPanel>
 
           <AnalyticsPanel title="Payment Methods" subtitle="How customers pay across tracked transactions." onEmail={handleEmailReport}>
             {paymentMethods.length ? (
-              <div className="h-[280px] w-full mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={paymentMethods} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
-                      {paymentMethods.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="mt-4">
+                <div className="h-[220px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={paymentMethods} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
+                        {paymentMethods.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <PieLegendList data={paymentMethods} />
               </div>
             ) : <div className="h-full flex items-center justify-center text-gray-400">No payment method data found</div>}
           </AnalyticsPanel>
@@ -432,15 +488,18 @@ function AdminAnalyticsPage() {
 
           <AnalyticsPanel title="Order Mix" subtitle="Custom versus premade ordering behavior." onEmail={handleEmailReport}>
             {mix.length ? (
-              <div className="h-[320px] w-full mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={mix} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
-                      {mix.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="mt-4">
+                <div className="h-[220px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={mix} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
+                        {mix.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <PieLegendList data={mix} />
               </div>
             ) : <div className="h-full flex items-center justify-center text-gray-400">No order mix data found</div>}
           </AnalyticsPanel>
@@ -602,30 +661,36 @@ function AdminAnalyticsPage() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <AnalyticsPanel title="Payment Status" subtitle="Breakdown of tracked payment states." onEmail={handleEmailReport}>
             {statusBreakdown.length ? (
-              <div className="h-[300px] w-full mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={statusBreakdown} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
-                      {statusBreakdown.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="mt-4">
+                <div className="h-[220px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={statusBreakdown} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
+                        {statusBreakdown.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <PieLegendList data={statusBreakdown} />
               </div>
             ) : <div className="h-full flex items-center justify-center text-gray-400">No payment status data found</div>}
           </AnalyticsPanel>
 
           <AnalyticsPanel title="Payment Methods" subtitle="Method usage across payments." onEmail={handleEmailReport}>
             {methodBreakdown.length ? (
-              <div className="h-[300px] w-full mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={methodBreakdown} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
-                      {methodBreakdown.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="mt-4">
+                <div className="h-[220px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={methodBreakdown} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
+                        {methodBreakdown.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <PieLegendList data={methodBreakdown} />
               </div>
             ) : <div className="h-full flex items-center justify-center text-gray-400">No payment method data found</div>}
           </AnalyticsPanel>
@@ -686,15 +751,18 @@ function AdminAnalyticsPage() {
 
           <AnalyticsPanel title="POS Payment Mix" subtitle="Payment methods recorded in the POS flow." onEmail={handleEmailReport}>
             {methodBreakdown.length ? (
-              <div className="h-[320px] w-full mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={methodBreakdown} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
-                      {methodBreakdown.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="mt-4">
+                <div className="h-[220px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={methodBreakdown} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3}>
+                        {methodBreakdown.map((entry, index) => <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <PieLegendList data={methodBreakdown} />
               </div>
             ) : <div className="h-full flex items-center justify-center text-gray-400">No POS payment data found</div>}
           </AnalyticsPanel>
@@ -900,7 +968,15 @@ function AdminAnalyticsPage() {
           <p className="mt-1.5 max-w-2xl text-sm font-medium text-gray-500">Workspace for revenue, orders, products, and operations.</p>
         </div>
         <div className="flex items-center gap-4">
-        <button onClick={() => handleEmailReport(`${activeOption.label} Full Report`)} className="flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm active:scale-95">
+        <button
+          onClick={() => handleEmailReport({
+            contextName: `${activeOption.label} Full Report`,
+            exportType: "section",
+            contextKind: "section",
+            subtitle: `${activeOption.label} analytics summary`,
+          })}
+          className="flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm active:scale-95"
+        >
           <Mail className="w-4 h-4" />
           Email Report
         </button>

@@ -107,13 +107,13 @@ function AboutPage({ cmsPreview }) {
   }, []);
 
   return (
-    <div className="bg-[#fcfaf9] text-gray-900 font-sans min-h-screen overflow-x-hidden pt-20 pb-0">
+    <div className="bg-[#fcfaf9] text-gray-900 font-sans min-h-screen overflow-x-hidden pt-24 md:pt-28 pb-0">
       
       {/* 1. HUMBLE BEGINNINGS (Hero & Stats) */}
       <section className="max-w-[1400px] mx-auto px-6 md:px-12 mb-32">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           
-          <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="order-2 lg:order-1 relative z-50">
+          <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="order-2 lg:order-1 relative z-0 min-w-0">
             <div className="mb-4">
                <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("about", "about_hero_label")} className="inline-block w-fit pointer-events-auto">
                  <p className="text-[#4f6fa5] font-semibold tracking-widest uppercase text-sm">
@@ -122,12 +122,14 @@ function AboutPage({ cmsPreview }) {
                </CmsEditableRegion>
             </div>
 
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-playfair font-bold text-gray-900 leading-[1.05] tracking-tight mb-8 flex flex-col items-start gap-1">
-              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("about", "about_hero_title_intro")} className="inline-block w-fit pointer-events-auto">
-                <span>{getContentValue("about_hero_title_intro", "Explore our")}</span>
+            <h1 className="mb-8 flex max-w-full flex-col items-start gap-1 text-5xl font-playfair font-bold leading-[1.02] tracking-tight text-gray-900 sm:text-6xl md:text-7xl lg:text-[5.25rem] xl:text-[6.25rem]">
+              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("about", "about_hero_title_intro")} className="block max-w-full pointer-events-auto">
+                <span className="block max-w-full whitespace-normal break-words">
+                  {getContentValue("about_hero_title_intro", "Explore our")}
+                </span>
               </CmsEditableRegion>
-              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("about", "about_hero_title_accent")} className="inline-block w-fit pointer-events-auto">
-                <span className="block font-dancing text-[#4f6fa5] font-normal text-6xl md:text-8xl lg:text-9xl leading-[0.9] mt-3 lg:ml-2 transform -rotate-2">
+              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("about", "about_hero_title_accent")} className="block max-w-full pointer-events-auto">
+                <span className="mt-3 block max-w-full whitespace-normal break-words font-dancing text-6xl font-normal leading-[0.96] text-[#4f6fa5] sm:text-7xl md:text-8xl lg:ml-2 lg:text-[6.25rem] xl:text-[7rem] -rotate-2">
                   {getContentValue("about_hero_title_accent", "humble beginnings")}
                 </span>
               </CmsEditableRegion>

@@ -140,42 +140,46 @@ function LandingPage({ cmsPreview }) {
   );
 
   return (
-    <div className="bg-[#fcfaf9] text-gray-900 min-h-screen pt-20 pb-12 overflow-x-hidden font-sans">
-      <section className="mx-auto max-w-[1400px] px-4 sm:px-8 mb-32 -mt-4">
+    <div className="bg-[#fcfaf9] text-gray-900 min-h-screen pt-24 md:pt-28 pb-12 overflow-x-hidden font-sans">
+      <section className="mx-auto max-w-[1400px] px-4 sm:px-8 mb-32 mt-2 md:mt-4">
         
         {/* Top Text Block */}
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-8 lg:gap-10 items-start mb-12">
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-8 lg:gap-10 items-start mb-12">
           
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }} className="max-w-4xl relative z-[80]">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }} className="relative z-0 min-w-0">
             
             <div className="mb-4">
-               <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("home", "home_hero_label")} className="relative z-[60] inline-block w-fit pointer-events-auto">
+               <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("home", "home_hero_label")} className="relative z-0 inline-block w-fit pointer-events-auto">
                  <p className="text-[#4f6fa5] font-semibold tracking-widest uppercase text-sm">
                    {getContentValue("home_hero_label", "Floral Discovery")}
                  </p>
                </CmsEditableRegion>
             </div>
 
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-playfair font-bold leading-[1.15] text-gray-900 tracking-tight flex flex-col items-start gap-1">
+            <h1 className="flex max-w-full flex-col items-start gap-1 text-5xl font-playfair font-bold leading-[1.02] tracking-tight text-gray-900 sm:text-6xl md:text-7xl lg:text-[5.5rem] xl:text-[6.5rem]">
               
-              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("home", "home_hero_title_intro")} className="relative z-[60] inline-block w-fit pointer-events-auto">
-                <span>{getContentValue("home_hero_title_intro", "Discover the perfect")}</span>
+              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("home", "home_hero_title_intro")} className="relative z-0 block max-w-full pointer-events-auto">
+                <span className="block max-w-full whitespace-normal break-words">
+                  {getContentValue("home_hero_title_intro", "Discover the perfect")}
+                </span>
               </CmsEditableRegion>
               
-              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("home", "home_hero_title_accent")} className="relative z-[60] inline-block w-fit pointer-events-auto">
-                <span className="font-dancing text-[#4f6fa5] font-normal leading-[0.85] block mt-1 lg:ml-4 transform -rotate-2 text-6xl md:text-8xl lg:text-9xl">
+              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("home", "home_hero_title_accent")} className="relative z-0 block max-w-full pointer-events-auto">
+                <span className="mt-1 block max-w-full whitespace-normal break-words font-dancing text-6xl font-normal leading-[0.92] text-[#4f6fa5] sm:text-7xl md:text-8xl lg:ml-4 lg:text-[6.5rem] xl:text-[7.5rem] -rotate-2">
                   {getContentValue("home_hero_title_accent", "Flowers")}
                 </span>
               </CmsEditableRegion>
               
-              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("home", "home_hero_title_outro")} className="relative z-[60] inline-block w-fit pointer-events-auto">
-                <span className="inline-block mt-2">{getContentValue("home_hero_title_outro", "just for you")}</span>
+              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("home", "home_hero_title_outro")} className="relative z-0 block max-w-full pointer-events-auto">
+                <span className="mt-2 block max-w-full whitespace-normal break-words">
+                  {getContentValue("home_hero_title_outro", "just for you")}
+                </span>
               </CmsEditableRegion>
 
             </h1>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.12, ease: "easeOut" }} className="hidden lg:flex min-h-[360px] items-center justify-end relative z-[80]">
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.12, ease: "easeOut" }} className="hidden lg:flex min-h-[360px] items-center justify-end relative z-0">
             <div className="max-w-[320px] pr-2">
               <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("home", "home_hero_cta_text")} className="inline-block pointer-events-auto">
                 <p className="text-base md:text-lg leading-relaxed text-gray-600 font-light">

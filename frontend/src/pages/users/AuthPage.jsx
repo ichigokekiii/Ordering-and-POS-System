@@ -272,16 +272,20 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
 
   return (
     <div className="min-h-screen bg-[#fcfaf9] flex items-start justify-center pt-10 pb-4">
-      <div className="relative overflow-hidden w-full max-w-4xl min-h-[520px] md:min-h-[600px] bg-white rounded-3xl shadow-2xl flex flex-col md:flex-row">
+      {/* Reduced min-height slightly to make it feel more compact */}
+      <div className="relative overflow-hidden w-full max-w-4xl min-h-[500px] md:min-h-[560px] bg-white rounded-3xl shadow-2xl flex flex-col md:flex-row">
         
         {/* REGISTER FORM */}
-        <div className="w-full md:w-1/2 flex flex-col justify-center px-8 sm:px-12 py-10 order-2 md:order-none z-0 mt-20 md:mt-0 relative">
+        {/* Reduced vertical padding (py-10 -> py-6) */}
+        <div className="w-full md:w-1/2 flex flex-col justify-center px-8 sm:px-12 py-6 order-2 md:order-none z-0 mt-16 md:mt-0 relative">
           <div className={`md:hidden ${!isSignIn ? 'block' : 'hidden'}`}></div>
-          <div className="w-full pt-4 pb-8 md:pt-0" style={{ pointerEvents: !isSignIn ? 'auto' : 'none' }}>
-            <h2 className="text-3xl font-bold mb-6 text-gray-800">Create Account</h2>
-            {regFormError && <p className="mb-4 text-sm text-red-500 bg-red-50 py-2 px-3 rounded border border-red-200">{regFormError}</p>}
+          <div className="w-full pt-2 pb-6 md:pt-0" style={{ pointerEvents: !isSignIn ? 'auto' : 'none' }}>
+            {/* Reduced margin bottom on title */}
+            <h2 className="text-3xl font-bold mb-4 text-gray-800">Create Account</h2>
+            {regFormError && <p className="mb-4 text-xs font-semibold text-red-500 bg-red-50 py-2 px-3 rounded border border-red-200">{regFormError}</p>}
             
-            <form onSubmit={handleRegisterSubmit} className="space-y-4">
+            {/* Tightened form gaps (space-y-4 -> space-y-3) */}
+            <form onSubmit={handleRegisterSubmit} className="space-y-3">
               <div className="flex gap-2">
                 <div className="w-full">
                   <FormFieldHeader label="First Name" required error={regFieldErrors.first_name} />
@@ -289,7 +293,8 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
                     ref={regFirstNameRef}
                     className={getValidationInputClassName({
                       hasError: !!regFieldErrors.first_name,
-                      baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all",
+                      // Reduced input padding to save vertical space
+                      baseClassName: "w-full rounded-lg border px-4 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 transition-all",
                     })}
                     placeholder="First Name"
                     value={regFirstName}
@@ -307,7 +312,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
                     ref={regLastNameRef}
                     className={getValidationInputClassName({
                       hasError: !!regFieldErrors.last_name,
-                      baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all",
+                      baseClassName: "w-full rounded-lg border px-4 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 transition-all",
                     })}
                     placeholder="Last Name"
                     value={regLastName}
@@ -327,7 +332,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
                   type="email"
                   className={getValidationInputClassName({
                     hasError: !!regFieldErrors.email,
-                    baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all",
+                    baseClassName: "w-full rounded-lg border px-4 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 transition-all",
                   })}
                   placeholder="Email Address"
                   value={regEmail}
@@ -347,7 +352,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
                   inputMode="numeric"
                   className={getValidationInputClassName({
                     hasError: !!regFieldErrors.phone_number,
-                    baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all",
+                    baseClassName: "w-full rounded-lg border px-4 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 transition-all",
                   })}
                   placeholder="09123456789"
                   value={regPhone}
@@ -428,23 +433,23 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
 
               <button
                 disabled={regLoading || !regTermsAccepted}
-                className="w-full mt-2 rounded-lg bg-[#4f6fa5] py-3 text-white font-semibold transition-all hover:bg-[#3f5b89] hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full mt-2 rounded-lg bg-[#4f6fa5] py-2.5 text-sm text-white font-semibold transition-all hover:bg-[#3f5b89] hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {regLoading && <Loader2 className="h-5 w-5 animate-spin" />}
+                {regLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                 Sign Up
               </button>
             </form>
 
-            <p className="mt-6 md:hidden text-gray-600 text-sm">
+            <p className="mt-4 md:hidden text-gray-600 text-sm">
               Already have an account? <button type="button" onClick={() => setIsSignIn(true)} className="text-[#4f6fa5] font-semibold hover:underline">Log In</button>
             </p>
           </div>
         </div>
 
         {/* LOGIN FORM */}
-        <div className="absolute top-0 right-0 w-full md:w-1/2 h-full flex flex-col justify-center px-8 sm:px-12 bg-white z-0 mt-20 md:mt-0" style={{ opacity: (!isSignIn && window.innerWidth < 768) ? 0 : 1, pointerEvents: isSignIn ? 'auto' : 'none' }}>
-          <div className="w-full pt-10 pb-8 text-center md:pt-0">
-            <h2 className="text-3xl font-bold mb-6 text-gray-800">Login to Account</h2>
+        <div className="absolute top-0 right-0 w-full md:w-1/2 h-full flex flex-col justify-center px-8 sm:px-12 py-6 bg-white z-0 mt-16 md:mt-0" style={{ opacity: (!isSignIn && window.innerWidth < 768) ? 0 : 1, pointerEvents: isSignIn ? 'auto' : 'none' }}>
+          <div className="w-full pt-8 pb-6 text-center md:pt-0">
+            <h2 className="text-3xl font-bold mb-4 text-gray-800">Login to Account</h2>
 
             {isLocked && (
               <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 text-left">
@@ -468,7 +473,8 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
               </div>
             )}
 
-            <form onSubmit={handleLoginSubmit} className="space-y-5 text-left">
+            {/* Tightened form gaps and padding */}
+            <form onSubmit={handleLoginSubmit} className="space-y-4 text-left">
               <div>
                 <FormFieldHeader label="Email Address" required error={loginFieldErrors.email} />
                 <input
@@ -476,7 +482,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
                   type="email"
                   className={getValidationInputClassName({
                     hasError: !!loginFieldErrors.email,
-                    baseClassName: "w-full rounded-lg border px-4 py-4 focus:bg-white focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:bg-gray-100",
+                    baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:bg-gray-100",
                   })}
                   placeholder="Email Address"
                   value={loginEmail}
@@ -497,7 +503,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
                   type="password"
                   className={getValidationInputClassName({
                     hasError: !!loginFieldErrors.password,
-                    baseClassName: "w-full rounded-lg border px-4 py-4 focus:bg-white focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:bg-gray-100",
+                    baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:bg-gray-100",
                   })}
                   placeholder="Password"
                   value={loginPassword}
@@ -519,7 +525,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
 
               <button
                 disabled={loginFormDisabled}
-                className="w-full mt-4 rounded-lg bg-[#4f6fa5] py-4 text-lg text-white font-semibold transition-all hover:bg-[#3f5b89] hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full mt-2 rounded-lg bg-[#4f6fa5] py-3 text-white font-semibold transition-all hover:bg-[#3f5b89] hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loginLoading && <Loader2 className="h-5 w-5 animate-spin" />}
                 {isCoolingDown ? `Wait ${formatCountdown(countdown)}` : "Login"}
@@ -538,7 +544,6 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
           animate={{ x: isSignIn ? "0%" : "100%" }}
           transition={{ duration: 0.6, ease: "easeInOut" }}
         >
-          {/* Picture shown when Login active (Overlay covers Register on the LEFT) */}
           <motion.div 
             className="absolute inset-0 w-full h-full"
             animate={{ opacity: isSignIn ? 1 : 0 }}
@@ -552,12 +557,12 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
                 className="absolute inset-0 w-full h-full object-cover brightness-110 contrast-110"
               />
             </CmsEditableRegion>
-            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-12 text-center backdrop-blur-[3px] pointer-events-none">
+            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-10 text-center backdrop-blur-[3px] pointer-events-none">
               <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("auth", "auth_login_title")} className="inline-block w-fit pointer-events-auto mb-4">
                 <h2 className="text-4xl font-bold font-sans tracking-tight">{getContentValue("auth_login_title", "New Here?")}</h2>
               </CmsEditableRegion>
-              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("auth", "auth_login_subtitle")} className="inline-block w-fit pointer-events-auto mb-8">
-                <p className="text-blue-50 leading-relaxed max-w-sm text-lg">
+              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("auth", "auth_login_subtitle")} className="inline-block w-fit pointer-events-auto mb-6">
+                <p className="text-blue-50 leading-relaxed max-w-sm text-base">
                   {getContentValue("auth_login_subtitle", "Enter your personal details and start your journey with us.")}
                 </p>
               </CmsEditableRegion>
@@ -571,7 +576,6 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
             </div>
           </motion.div>
 
-          {/* Picture shown when Register active (Overlay covers Login on the RIGHT) */}
           <motion.div 
             className="absolute inset-0 w-full h-full"
             animate={{ opacity: isSignIn ? 0 : 1 }}
@@ -585,12 +589,12 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
                 className="absolute inset-0 w-full h-full object-cover brightness-110 contrast-110"
               />
             </CmsEditableRegion>
-            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-12 text-center backdrop-blur-[3px] pointer-events-none">
+            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-10 text-center backdrop-blur-[3px] pointer-events-none">
               <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("auth", "auth_register_title")} className="inline-block w-fit pointer-events-auto mb-4">
                 <h2 className="text-4xl font-bold font-sans tracking-tight">{getContentValue("auth_register_title", "Welcome Back!")}</h2>
               </CmsEditableRegion>
-              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("auth", "auth_register_subtitle")} className="inline-block w-fit pointer-events-auto mb-8">
-                <p className="text-blue-50 leading-relaxed max-w-sm text-lg">
+              <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("auth", "auth_register_subtitle")} className="inline-block w-fit pointer-events-auto mb-6">
+                <p className="text-blue-50 leading-relaxed max-w-sm text-base">
                   {getContentValue("auth_register_subtitle", "To keep connected with us please login with your registered personal info.")}
                 </p>
               </CmsEditableRegion>

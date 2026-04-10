@@ -32,7 +32,7 @@ const VALIDATION = {
   },
   description: {
     regex: /^[a-zA-Z0-9 .,!?'\-&()\n]+$/,
-    maxLength: 200,
+    maxLength: 5000,
     message: "Contains invalid characters",
   },
   price: {
@@ -611,7 +611,7 @@ function AdminProductPage({ user }) {
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5] mb-3 inline-block">
-                  {activeSection === "custom" ? "Custom Element" : "Premade Collection"}
+                  {activeSection === "custom" ? "Custom Products" : "Premade Products"}
                 </span>
                 <h2 className="text-2xl font-playfair font-bold text-gray-900">
                   {canEdit ? (isEditing ? "Edit Item Details" : "Create New Item") : "View Item Details"}
@@ -778,7 +778,7 @@ function AdminProductPage({ user }) {
 
               {activeSection === "premades" && (
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Collection Category <span className="text-rose-500">*</span></label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Flower Category<span className="text-rose-500">*</span></label>
                   <select
                     className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold focus:border-[#4f6fa5] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#eaf2ff] transition-all"
                     value={category}

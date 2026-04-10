@@ -20,6 +20,7 @@ import {
   validateReferenceCode,
 } from "../../utils/authValidation";
 import { normalizeApiValidationErrors } from "../../utils/formValidation";
+import { getAssetUrl } from "../../utils/assetUrl";
 
 function CheckoutPage() {
   const navigate = useNavigate();
@@ -258,7 +259,7 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
       await api.post("/order-items", { items: orderItems });
 
       // ── Show success modal then navigate (same pattern as VerifyOtpPage) ──
-      clearCart();
+      clearCart(selectedScheduleId);
       resetFileInput();
       setModalMessage(`Order placed! Your Order ID is ${orderId}`);
       setShowModal(true);
@@ -500,7 +501,7 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
                   <div className="relative group cursor-pointer" onClick={() => setShowQRModal(true)}>
                     <div className="h-40 w-40 overflow-hidden rounded-2xl border-2 border-gray-100 bg-white p-3 shadow-sm hover:shadow transition-shadow group-hover:border-[#4f6fa5]/30">
                       <img
-                        src="http://localhost:8000/storage/qr_payment.jpg"
+                        src={getAssetUrl("/storage/qr_payment.jpg")}
                         alt="GCash QR"
                         className="h-full w-full object-contain"
                       />
@@ -829,7 +830,7 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
                 Close ✕
               </button>
               <img
-                 src="http://localhost:8000/storage/qr_payment.jpg"
+                 src={getAssetUrl("/storage/qr_payment.jpg")}
                  alt="GCash QR Zoom"
                  className="w-full h-auto rounded-3xl shadow-2xl object-contain bg-white p-4"
               />

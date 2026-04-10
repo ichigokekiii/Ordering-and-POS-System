@@ -10,6 +10,7 @@ import {
   GREETING_CARD_MAX_LENGTH,
   validateGreetingCardMessage,
 } from "../../utils/authValidation";
+import { getAssetUrl } from "../../utils/assetUrl";
 
 const GREETING_CARD_PRICE = 5;
 
@@ -52,7 +53,7 @@ function OrderModal({ product, onClose, onConfirm }) {
           <div className="absolute top-0 left-0 h-1/2 w-full bg-gradient-to-b from-[#4f6fa5]/10 to-transparent"></div>
           
           <img
-            src={`http://localhost:8000${product.image}`}
+            src={getAssetUrl(product.image)}
             alt={product.name}
             className="relative z-10 h-full w-full object-contain drop-shadow-xl"
           />
@@ -331,7 +332,7 @@ function OrderPremadePage() {
                   >
                     <div className="relative flex h-64 items-center justify-center border-b border-gray-100 bg-gray-50/40 p-8">
                       <img
-                        src={`http://localhost:8000${product.image}`}
+                        src={getAssetUrl(product.image)}
                         alt={product.name}
                         className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
                       />

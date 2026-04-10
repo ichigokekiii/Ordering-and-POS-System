@@ -11,6 +11,7 @@ import {
   getCmsAssetUrl,
   getContentValue as getCmsContentValue,
 } from "../../cms/cmsRegistry";
+import { getAssetUrl } from "../../utils/assetUrl";
 
 function ProductPage({ cmsPreview }) {
   const { premades, loading } = useProducts();
@@ -180,7 +181,7 @@ function ProductPage({ cmsPreview }) {
                       {/* Image Container */}
                       <div className="flex-grow w-full overflow-hidden flex items-center justify-center p-8">
                          <img 
-                           src={product.image ? `http://localhost:8000${product.image}` : "https://via.placeholder.com/300"} 
+                           src={product.image ? getAssetUrl(product.image) : "https://via.placeholder.com/300"} 
                            alt={product.name}
                            className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
                          />
@@ -275,7 +276,7 @@ function ProductPage({ cmsPreview }) {
                 {/* Subtle top gradient for a "studio lighting" effect */}
                 <div className="absolute top-0 left-0 w-full h-1/3 bg-gradient-to-b from-[#4f6fa5]/10 to-transparent"></div>
                 <img
-                  src={selectedProduct.image ? `http://localhost:8000${selectedProduct.image}` : "https://via.placeholder.com/500"}
+                  src={selectedProduct.image ? getAssetUrl(selectedProduct.image) : "https://via.placeholder.com/500"}
                   alt={selectedProduct.name}
                   className="w-full h-full object-contain p-8 md:p-12 drop-shadow-2xl relative z-10 hover:scale-105 transition-transform duration-700 ease-out"
                 />

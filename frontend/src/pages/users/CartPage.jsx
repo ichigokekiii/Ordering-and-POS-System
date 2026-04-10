@@ -6,6 +6,7 @@ import {
   formatCustomSelection,
   getCustomOrderSummary,
 } from "../../utils/customOrderSummary";
+import { getAssetUrl } from "../../utils/assetUrl";
 
 function CartPage() {
   const { cartItems, removeFromCart, updateQuantity, clearCart, totalItems, totalPrice, selectedScheduleId } = useCart();
@@ -77,7 +78,7 @@ function CartPage() {
                   {/* Image */}
                   <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-50">
                     <img
-                      src={`http://localhost:8000${item.image}`}
+                      src={getAssetUrl(item.image)}
                       alt={item.name}
                       className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />

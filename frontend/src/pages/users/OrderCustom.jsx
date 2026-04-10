@@ -7,6 +7,7 @@ import { useSchedules } from "../../contexts/ScheduleContext";
 import FormFieldHeader from "../../components/form/FormFieldHeader";
 import { getValidationInputClassName } from "../../components/form/fieldStyles";
 import { validateGreetingCardMessage } from "../../utils/authValidation";
+import { getAssetUrl } from "../../utils/assetUrl";
 
 const MAX_GREETING_CHARS = 150;
 const GREETING_CARD_PRICE = 5;
@@ -58,7 +59,7 @@ function SelectionCard({
     >
       <div className="relative flex h-52 items-center justify-center border-b border-gray-100 bg-gray-50/60 p-6">
         <img
-          src={`http://localhost:8000${product.image}`}
+          src={getAssetUrl(product.image)}
           alt={product.name}
           className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
         />
@@ -136,7 +137,7 @@ function BouquetCard({ product, isSelected, onSelect }) {
     >
       <div className="relative flex h-56 items-center justify-center border-b border-gray-100 bg-gray-50/40 p-6">
         <img
-          src={`http://localhost:8000${product.image}`}
+          src={getAssetUrl(product.image)}
           alt={product.name}
           className="h-full w-full object-contain"
         />

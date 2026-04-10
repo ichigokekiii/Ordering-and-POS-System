@@ -24,6 +24,7 @@ import {
   MapPin,
   CreditCard
 } from "lucide-react";
+import { getAssetUrl } from "../../utils/assetUrl";
 
 // --- REUSABLE PILLS ---
 const OrderStatusPill = ({ status }) => {
@@ -444,7 +445,7 @@ function AdminOrdersPage({ user }) {
 
   const getImageUrl = (imagePath) => {
     if (!imagePath) return "https://via.placeholder.com/150?text=No+Image";
-    return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8000'}${imagePath}`;
+    return getAssetUrl(imagePath);
   };
 
   return (
@@ -1300,7 +1301,7 @@ function AdminOrdersPage({ user }) {
           <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Proof of Payment</h3>
           <div className="rounded-2xl border border-gray-100 overflow-hidden bg-gray-50 shadow-sm">
             <img
-              src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8000'}${viewingPayment.reference_image_path}`}
+              src={getAssetUrl(viewingPayment.reference_image_path)}
               alt="Payment reference"
               className="w-full object-contain max-h-72"
               onError={(e) => {

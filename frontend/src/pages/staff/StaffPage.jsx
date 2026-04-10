@@ -570,7 +570,6 @@ function StaffPage({ children, customCategories }) {
             bgColors={bgColors}
             bgColorsDark={bgColorsDark}
             dm={dm}
-            setIsDarkMode={setIsDarkMode}
             isSidebarOpen={isSidebarOpen}
             setIsSidebarOpen={setIsSidebarOpen}
           />

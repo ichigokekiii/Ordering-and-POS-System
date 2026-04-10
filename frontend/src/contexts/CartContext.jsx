@@ -3,25 +3,97 @@ import { createContext, useContext, useEffect, useState } from "react";
 import api from "../services/api";
 
 const CartContext = createContext();
+const SELECTED_SCHEDULE_STORAGE_KEY = "selectedScheduleId";
+const SCHEDULE_CARTS_STORAGE_KEY = "scheduleCartItems";
+
+const readStoredScheduleId = () => {
+  const storedValue = localStorage.getItem(SELECTED_SCHEDULE_STORAGE_KEY);
+
+  if (!storedValue) {
+    return null;
+  }
+
+  const parsedValue = Number(storedValue);
+  return Number.isFinite(parsedValue) ? parsedValue : null;
+};
+
+const readStoredScheduleCarts = () => {
+  try {
+    const storedValue = localStorage.getItem(SCHEDULE_CARTS_STORAGE_KEY);
+
+    if (!storedValue) {
+      return {};
+    }
+
+    const parsedValue = JSON.parse(storedValue);
+    return parsedValue && typeof parsedValue === "object" ? parsedValue : {};
+  } catch {
+    return {};
+  }
+};
 
 export function CartProvider({ children }) {
-  const [cartItems, setCartItems] = useState([]);
-  const [selectedScheduleId, setSelectedScheduleId] = useState(() => {
-    const storedValue = localStorage.getItem("selectedScheduleId");
-    return storedValue ? Number(storedValue) : null;
-  });
+  const [cartItemsBySchedule, setCartItemsBySchedule] = useState(() =>
+    readStoredScheduleCarts()
+  );
+  const [selectedScheduleId, setSelectedScheduleId] = useState(() =>
+    readStoredScheduleId()
+  );
+
+  const activeScheduleKey =
+    selectedScheduleId !== null ? String(selectedScheduleId) : null;
+  const cartItems = activeScheduleKey
+    ? cartItemsBySchedule[activeScheduleKey] || []
+    : [];
 
   useEffect(() => {
-    if (selectedScheduleId) {
-      localStorage.setItem("selectedScheduleId", String(selectedScheduleId));
+    if (selectedScheduleId !== null) {
+      localStorage.setItem(
+        SELECTED_SCHEDULE_STORAGE_KEY,
+        String(selectedScheduleId)
+      );
       return;
     }
 
-    localStorage.removeItem("selectedScheduleId");
+    localStorage.removeItem(SELECTED_SCHEDULE_STORAGE_KEY);
   }, [selectedScheduleId]);
 
+  useEffect(() => {
+    localStorage.setItem(
+      SCHEDULE_CARTS_STORAGE_KEY,
+      JSON.stringify(cartItemsBySchedule)
+    );
+  }, [cartItemsBySchedule]);
+
+  const updateActiveCartItems = (updater) => {
+    if (!activeScheduleKey) {
+      return;
+    }
+
+    setCartItemsBySchedule((prev) => {
+      const currentItems = prev[activeScheduleKey] || [];
+      const nextItems =
+        typeof updater === "function" ? updater(currentItems) : updater;
+
+      if (!nextItems || nextItems.length === 0) {
+        const nextState = { ...prev };
+        delete nextState[activeScheduleKey];
+        return nextState;
+      }
+
+      return {
+        ...prev,
+        [activeScheduleKey]: nextItems,
+      };
+    });
+  };
+
   const addToCart = (product, quantity) => {
-    setCartItems((prev) => {
+    if (!activeScheduleKey) {
+      return;
+    }
+
+    updateActiveCartItems((prev) => {
       // Two premade items can be merged only when:
       // 1. They have the same product id
       // 2. Both have NO greeting card (null/undefined)
@@ -53,24 +125,66 @@ export function CartProvider({ children }) {
   };
 
   const removeFromCart = (cartId) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== cartId));
+    if (!activeScheduleKey) {
+      return;
+    }
+
+    updateActiveCartItems((prev) => prev.filter((item) => item.id !== cartId));
   };
 
   const updateQuantity = (cartId, quantity) => {
+    if (!activeScheduleKey) {
+      return;
+    }
+
     if (quantity <= 0) {
       removeFromCart(cartId);
       return;
     }
-    setCartItems((prev) =>
+    updateActiveCartItems((prev) =>
       prev.map((item) =>
         item.id === cartId ? { ...item, quantity } : item
       )
     );
   };
 
-  const clearCart = () => setCartItems([]);
-  const selectSchedule = (scheduleId) => setSelectedScheduleId(Number(scheduleId));
+  const clearCart = (scheduleId = selectedScheduleId) => {
+    if (scheduleId === null || scheduleId === undefined) {
+      return;
+    }
+
+    const scheduleKey = String(scheduleId);
+
+    setCartItemsBySchedule((prev) => {
+      if (!prev[scheduleKey]) {
+        return prev;
+      }
+
+      const nextState = { ...prev };
+      delete nextState[scheduleKey];
+      return nextState;
+    });
+  };
+
+  const selectSchedule = (scheduleId) => {
+    const parsedScheduleId = Number(scheduleId);
+    setSelectedScheduleId(
+      Number.isFinite(parsedScheduleId) ? parsedScheduleId : null
+    );
+  };
   const clearSelectedSchedule = () => setSelectedScheduleId(null);
+  const getCartItemCountForSchedule = (scheduleId) => {
+    if (scheduleId === null || scheduleId === undefined) {
+      return 0;
+    }
+
+    return (cartItemsBySchedule[String(scheduleId)] || []).reduce(
+      (sum, item) => sum + item.quantity,
+      0
+    );
+  };
+  const hasCartForSchedule = (scheduleId) =>
+    getCartItemCountForSchedule(scheduleId) > 0;
 
   const checkout = async (userId, scheduleId) => {
     if (!cartItems.length) {
@@ -94,7 +208,7 @@ export function CartProvider({ children }) {
     };
 
     const res = await api.post("/orders", payload);
-    clearCart();
+    clearCart(resolvedScheduleId);
     return res.data;
   };
 
@@ -118,6 +232,8 @@ export function CartProvider({ children }) {
         checkout,
         totalItems,
         totalPrice,
+        getCartItemCountForSchedule,
+        hasCartForSchedule,
       }}
     >
       {children}

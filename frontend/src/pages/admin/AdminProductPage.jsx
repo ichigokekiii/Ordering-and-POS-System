@@ -22,6 +22,7 @@ import {
   prepareAdminImageForUpload,
   validateAdminImageFile,
 } from "../../utils/adminImageUpload";
+import { getAssetUrl } from "../../utils/assetUrl";
 
 // Validation rules
 const VALIDATION = {
@@ -90,7 +91,7 @@ const ProductCard = ({ product, onOpen, onDelete, canEdit, isArchived }) => (
     <div className={`h-48 border-b border-gray-100 relative overflow-hidden ${isArchived ? "bg-gray-200 grayscale" : "bg-gray-50"}`}>
       {product.image ? (
         <img
-          src={`${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:8000'}${product.image}`}
+          src={getAssetUrl(product.image)}
           alt={product.name}
           className={`w-full h-full object-cover ${!isArchived && "transition-transform duration-700 group-hover:scale-105"}`}
         />

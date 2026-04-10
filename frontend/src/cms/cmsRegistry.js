@@ -1,3 +1,5 @@
+import { getAssetUrl } from "../utils/assetUrl";
+
 export const CMS_FIELDS = [
   // --- HOME PAGE ---
   { page: "home", identifier: "home_hero_label", label: "Hero Top Label", type: "text", input: "text", previewEnabled: true },
@@ -145,9 +147,7 @@ export const getContentItem = (contents, page, identifier) => (contents || []).f
 
 export const getCmsAssetUrl = (value) => {
   if (!value) return "";
-  if (value.startsWith("http://") || value.startsWith("https://")) return value;
-  const apiBase = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:8000";
-  return `${apiBase}${value}`;
+  return getAssetUrl(value);
 };
 
 export const getContentValue = (contents, page, identifier, fallback = "") => {

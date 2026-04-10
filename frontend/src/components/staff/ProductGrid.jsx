@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from "react";
-import { Moon, Sun } from "lucide-react";
 
 function ProductGrid({
   categories,
@@ -14,7 +13,6 @@ function ProductGrid({
   bgColors,
   bgColorsDark,
   dm,
-  setIsDarkMode,
   isSidebarOpen,
   setIsSidebarOpen,
 }) {
@@ -170,18 +168,6 @@ function ProductGrid({
           )}
         </div>
 
-        {/* Dark Mode Toggle */}
-        <button
-          onClick={() => setIsDarkMode((prev) => !prev)}
-          className={`absolute bottom-6 left-6 p-3 rounded-full shadow-lg border transition-all z-30 ${
-            dm
-              ? "bg-gray-700 border-gray-600 text-white hover:bg-gray-600 hover:shadow-xl"
-              : "bg-white border-gray-200 text-gray-600 hover:text-gray-900 hover:shadow-xl"
-          }`}
-          title="Toggle Dark Mode"
-        >
-          {dm ? <Sun size={24} /> : <Moon size={24} />}
-        </button>
       </div>
     </div>
   );

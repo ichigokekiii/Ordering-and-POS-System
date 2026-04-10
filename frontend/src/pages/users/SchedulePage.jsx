@@ -19,6 +19,7 @@ import {
   getCmsAssetUrl,
   getContentValue as getCmsContentValue,
 } from "../../cms/cmsRegistry";
+import { getAssetUrl } from "../../utils/assetUrl";
 
 
 function SchedulePage({ cmsPreview }) {
@@ -36,18 +37,17 @@ function SchedulePage({ cmsPreview }) {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { cartItems, selectedScheduleId, selectSchedule, clearCart } = useCart();
+  const { selectSchedule } = useCart();
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [isBooking, setIsBooking] = useState(false);
   const [bookingEmail, setBookingEmail] = useState("");
   const [bookingFieldErrors, setBookingFieldErrors] = useState({ email: "" });
-  const [scheduleSwitchConfirm, setScheduleSwitchConfirm] = useState(null);
   const { currentUser } = useNavbar();
 
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState("Order Available");
-  const categories = ["Happening Now", "Upcoming Events", "Coming Soon", "Order Available"];
+  const categories = ["Order Available", "Happening Now", "Upcoming Events", "Coming Soon"];
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -194,15 +194,6 @@ const getOrderLabel = (schedule) => {
     return;
   }
 
-  if (
-    cartItems.length > 0 &&
-    selectedScheduleId &&
-    selectedScheduleId !== selectedSchedule.id
-  ) {
-    setScheduleSwitchConfirm(selectedSchedule);
-    return;
-  }
-
   selectSchedule(selectedSchedule.id);
   navigate("/order", { state: { schedule: selectedSchedule } });
   handleCloseModal();
@@ -235,16 +226,6 @@ const getOrderLabel = (schedule) => {
       setBookingStatus("error");
       setBookingMessage(normalizedError.message || "Something went wrong. Please try again.");
     }
-  };
-
-  const confirmScheduleSwitch = () => {
-    if (!scheduleSwitchConfirm) return;
-
-    clearCart();
-    selectSchedule(scheduleSwitchConfirm.id);
-    setScheduleSwitchConfirm(null);
-    navigate("/order", { state: { schedule: scheduleSwitchConfirm } });
-    handleCloseModal();
   };
 
   return (
@@ -355,7 +336,7 @@ const getOrderLabel = (schedule) => {
                    <div className="relative h-56 w-full overflow-hidden bg-gray-100">
                      {schedule.image ? (
                        <img
-                         src={`${import.meta.env.VITE_API_URL?.replace("/api","") || "http://localhost:8000"}${schedule.image}`}
+                         src={getAssetUrl(schedule.image)}
                          alt={schedule.schedule_name}
                          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
                        />
@@ -469,7 +450,7 @@ const getOrderLabel = (schedule) => {
               {/* IMAGE SIDE */}
               <div className="md:w-1/2 bg-gray-100 overflow-hidden relative min-h-[250px] md:min-h-full">
                 <img
-                  src={`${import.meta.env.VITE_API_URL?.replace("/api","") || "http://localhost:8000"}${selectedSchedule.image}`}
+                  src={getAssetUrl(selectedSchedule.image)}
                   alt={selectedSchedule.schedule_name}
                   className="absolute inset-0 h-full w-full object-cover"
                 />
@@ -592,34 +573,6 @@ const getOrderLabel = (schedule) => {
         }
       `}</style>
 
-      {scheduleSwitchConfirm && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[220] p-4">
-          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-white/20 text-center animate-in zoom-in-95 duration-200">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-500">
-              <Share size={28} />
-            </div>
-            <h3 className="text-2xl font-playfair font-bold text-gray-900 mb-2">Switch Event?</h3>
-            <p className="text-sm text-gray-500 mb-8 px-2">
-              Your cart is tied to a different event. Switching to <span className="font-semibold text-gray-700">{scheduleSwitchConfirm.schedule_name}</span> will clear your current cart.
-            </p>
-            <div className="flex justify-center gap-3">
-              <button
-                onClick={() => setScheduleSwitchConfirm(null)}
-                className="rounded-xl px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors"
-              >
-                Keep Current Event
-              </button>
-              <button
-                onClick={confirmScheduleSwitch}
-                className="rounded-xl bg-gray-900 px-5 py-2 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
-              >
-                Switch Event
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      
       {/* Toast Notification */}
       {bookingStatus && (
         <div className={`fixed top-6 right-6 z-[100] transition-opacity duration-500 ${showNotification ? "opacity-100" : "opacity-0"}`}>

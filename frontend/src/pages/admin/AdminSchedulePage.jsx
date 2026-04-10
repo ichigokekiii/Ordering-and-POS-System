@@ -10,6 +10,7 @@ import {
   prepareAdminImageForUpload,
   validateAdminImageFile,
 } from "../../utils/adminImageUpload";
+import { getAssetUrl } from "../../utils/assetUrl";
 
 function AdminSchedulePage({ user }) {
   const {
@@ -228,7 +229,7 @@ function AdminSchedulePage({ user }) {
 
   const getImageUrl = (imagePath) => {
     if (!imagePath) return "https://via.placeholder.com/600x400?text=No+Image";
-    return `${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:8000'}${imagePath}`;
+    return getAssetUrl(imagePath);
   };
 
   return (

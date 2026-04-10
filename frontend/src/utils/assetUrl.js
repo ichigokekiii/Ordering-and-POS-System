@@ -1,4 +1,4 @@
-const apiOrigin =
+export const getApiOrigin = () =>
   import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ||
   `${window.location.protocol}//${window.location.hostname}:8000`;
 
@@ -13,5 +13,5 @@ export function getAssetUrl(value) {
     return value;
   }
 
-  return `${apiOrigin}${value.startsWith("/") ? value : `/${value}`}`;
+  return `${getApiOrigin()}${value.startsWith("/") ? value : `/${value}`}`;
 }

@@ -1,8 +1,10 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
+import { ShoppingCart } from "lucide-react";
 import { useNavbar } from "../contexts/NavbarContext";
 import { useContents } from "../contexts/ContentContext";
 import { useTheme } from "../contexts/ThemeContext";
+import { useCart } from "../contexts/CartContext";
 import CmsEditableRegion from "./admin/CmsEditableRegion";
 import { getAssetUrl } from "../utils/assetUrl";
 import {
@@ -13,11 +15,22 @@ import {
 
 function Navbar({ cmsPreview }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser, logoutUser } = useNavbar();
   const { isDarkMode, toggleTheme } = useTheme();
+  const { selectedScheduleId, totalItems } = useCart();
 
   const contentContext = useContents();
   const contents = contentContext?.contents || [];
+  const orderBuilderRoutes = [
+    "/order",
+    "/ordercustom",
+    "/order/custom/additional",
+    "/orderpremade",
+  ];
+  const shouldShowOrderCart =
+    selectedScheduleId !== null &&
+    orderBuilderRoutes.includes(location.pathname);
 
   const getContentValue = (identifier, fallback = "") =>
     getCmsContentValue(contents, "navbar", identifier, fallback);
@@ -31,6 +44,7 @@ function Navbar({ cmsPreview }) {
   const menuRef = useRef(null);
   const profilePictureUrl = getAssetUrl(currentUser?.profile_picture);
   const profileInitial = currentUser?.first_name?.[0]?.toUpperCase() || "U";
+  const cartCountLabel = totalItems > 9 ? "9+" : String(totalItems);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -75,7 +89,7 @@ function Navbar({ cmsPreview }) {
         backgroundPosition: "center",
       }}
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
+      <div className="mx-auto grid max-w-7xl grid-cols-[auto_1fr_auto] items-center gap-6 px-8 py-4">
         
         {/* Brand Section - Elevated Z-index and forced pointer events for CMS */}
         <CmsEditableRegion
@@ -101,14 +115,14 @@ function Navbar({ cmsPreview }) {
         </CmsEditableRegion>
 
         {/* Links Section - Absolute positioning moved to a safe parent div */}
-        <div className="absolute left-1/2 hidden -translate-x-1/2 md:block z-40 pointer-events-none">
+        <div className="hidden min-w-0 justify-center md:flex z-40">
           <CmsEditableRegion
             cmsPreview={cmsPreview}
             field={getCmsField("navbar", "navbar_text_color")}
             className="block"
           >
             <ul
-              className="flex items-center gap-8 text-sm px-2 py-1 pointer-events-auto"
+              className="flex items-center gap-8 px-2 py-1 text-sm pointer-events-auto"
               style={{
                 color: isDarkMode
                   ? "#e2e8f0"
@@ -145,6 +159,22 @@ function Navbar({ cmsPreview }) {
         {/* Profile Section */}
         {currentUser ? (
           <div ref={menuRef} className="relative flex items-center gap-4 z-[200] pointer-events-auto">
+            {shouldShowOrderCart && (
+              <button
+                type="button"
+                onClick={() => navigate("/cart")}
+                className="relative text-gray-400 transition-colors hover:text-[#4f6fa5]"
+                aria-label="View cart"
+              >
+                <ShoppingCart className="h-5 w-5" />
+                {totalItems > 0 && (
+                  <span className="absolute -right-2.5 -top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                    {cartCountLabel}
+                  </span>
+                )}
+              </button>
+            )}
+
             <span className="text-sm text-gray-600">
               Hi, {currentUser.first_name}
             </span>
@@ -208,7 +238,23 @@ function Navbar({ cmsPreview }) {
             )}
           </div>
         ) : (
-          <div className="relative z-[200] pointer-events-auto">
+          <div className="relative z-[200] flex items-center gap-3 pointer-events-auto">
+            {shouldShowOrderCart && (
+              <button
+                type="button"
+                onClick={() => navigate("/cart")}
+                className="relative text-gray-400 transition-colors hover:text-[#4f6fa5]"
+                aria-label="View cart"
+              >
+                <ShoppingCart className="h-5 w-5" />
+                {totalItems > 0 && (
+                  <span className="absolute -right-2.5 -top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                    {cartCountLabel}
+                  </span>
+                )}
+              </button>
+            )}
+
             <Link
               to="/login"
               onClick={preventPreviewNavigation}

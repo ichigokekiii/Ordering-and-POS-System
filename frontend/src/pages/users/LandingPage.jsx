@@ -11,6 +11,7 @@ import {
   getCmsAssetUrl,
   getContentValue as getCmsContentValue,
 } from "../../cms/cmsRegistry";
+import { getAssetUrl } from "../../utils/assetUrl";
 
 function LandingPage({ cmsPreview }) {
   const contentContext = useContents();
@@ -293,7 +294,7 @@ function LandingPage({ cmsPreview }) {
             <div key={`${item.id}-${item.name || item.product_name}`} className="group cursor-pointer w-full sm:w-[48%] md:w-[30%] lg:w-[22%] max-w-[320px]">
               <div className="bg-white p-4 rounded-[2rem] hover:shadow-xl transition-all duration-500 border border-gray-100" onClick={() => navigate("/products")}>
                 <div className="rounded-[1.5rem] relative bg-gray-100 overflow-hidden">
-                  <img src={item.image ? `http://localhost:8000${item.image}` : "https://via.placeholder.com/300"} alt={item.name || item.product_name} className="h-[240px] w-full object-cover transition duration-700 group-hover:scale-110" />
+                  <img src={item.image ? getAssetUrl(item.image) : "https://via.placeholder.com/300"} alt={item.name || item.product_name} className="h-[240px] w-full object-cover transition duration-700 group-hover:scale-110" />
                   <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold text-gray-900 border border-white tracking-widest uppercase">Best Seller</div>
                 </div>
                 <div className="mt-5 px-1 text-left">
@@ -327,7 +328,7 @@ function LandingPage({ cmsPreview }) {
             {visibleSchedules.slice(0, 3).map((schedule) => (
               <motion.div key={schedule.id} whileHover={{ y: -6 }} className="group relative rounded-[2.5rem] overflow-hidden hover:shadow-2xl transition-all duration-500 border border-gray-100">
                 <div className="relative w-full h-[420px] rounded-[2rem] overflow-hidden">
-                  <img src={schedule.image ? `http://localhost:8000${schedule.image}` : "https://via.placeholder.com/600x300"} alt={schedule.schedule_name} className="w-full h-full object-cover transition-transform duration-1000 ease-out group-hover:scale-105" />
+                  <img src={schedule.image ? getAssetUrl(schedule.image) : "https://via.placeholder.com/600x300"} alt={schedule.schedule_name} className="w-full h-full object-cover transition-transform duration-1000 ease-out group-hover:scale-105" />
                   <div className="absolute inset-0 bg-black/20"></div>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-90 group-hover:opacity-100 transition duration-500"></div>
                   <div className="absolute bottom-6 left-6 right-6 text-white">

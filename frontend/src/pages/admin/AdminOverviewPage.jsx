@@ -23,6 +23,7 @@ import {
   ClipboardList,
   CheckCircle2
 } from "lucide-react";
+import { getAssetUrl } from "../../utils/assetUrl";
 
 // Reusable Status Pill
 const OrderStatusPill = ({ status }) => {
@@ -273,7 +274,7 @@ function AdminOverviewPage({ user }) {
               {stats.outOfStockItems.map((prod) => (
                 <div key={prod.id} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
                   <div className="w-10 h-10 rounded-lg bg-gray-200 overflow-hidden shrink-0 grayscale opacity-80">
-                    {prod.image ? <img src={`${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:8000'}${prod.image}`} className="w-full h-full object-cover" alt="" /> : null}
+                    {prod.image ? <img src={getAssetUrl(prod.image)} className="w-full h-full object-cover" alt="" /> : null}
                   </div>
                   <div>
                     <p className="text-sm font-bold text-gray-900 tracking-tight line-clamp-1">{prod.name}</p>

@@ -38,8 +38,10 @@ const normalizeLogId = (value) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const getLatestLogId = (logs) => normalizeLogId(logs?.[0]?.log_id);
-
+const getLatestLogId = (logs) => {
+  if (!logs || !Array.isArray(logs) || logs.length === 0) { return 0; }
+  return Math.max(...logs.map((log) => normalizeLogId(log?.log_id)));
+};
 const readNotificationState = (storageKey) => {
   try {
     const raw = window.localStorage.getItem(storageKey);
@@ -252,6 +254,7 @@ function AdminNavbar({ user, onLogout }) {
     () =>
       recentLogs
         .filter((log) => normalizeLogId(log?.log_id) > notificationState.clearedLogId)
+        .slice(0, 15) // Hard limit to 15 notifications
         .map((log) => ({
           id: normalizeLogId(log?.log_id),
           title: log?.event || "Recent activity",
@@ -377,10 +380,11 @@ function AdminNavbar({ user, onLogout }) {
                 )}
               </div>
 
-              {notifications.length === 0 ? (
+            {notifications.length === 0 ? (
                 <p className="py-4 text-center text-sm text-gray-500">No new notifications.</p>
               ) : (
-                <div className="space-y-2">
+                /* Added max-height, overflow, padding, and custom scrollbar class here */
+                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                   {notifications.map((notification) => (
                     <div
                       key={notification.id}

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Facebook, Instagram, Twitter } from "lucide-react";
 import { useContents } from "../contexts/ContentContext";
 import { useTheme } from "../contexts/ThemeContext";
+import { useNavbar } from "../contexts/NavbarContext";
 import CmsEditableRegion from "./admin/CmsEditableRegion";
 import {
   getCmsField,
@@ -13,6 +14,9 @@ function Footer({ cmsPreview }) {
   const contentContext = useContents();
   const contents = contentContext?.contents || [];
   const { isDarkMode } = useTheme();
+  
+  // Bring in the current user to handle dynamic routing
+  const { currentUser } = useNavbar();
 
   const getContentValue = (identifier, fallback = "") =>
     getCmsContentValue(contents, "footer", identifier, fallback);
@@ -40,14 +44,14 @@ function Footer({ cmsPreview }) {
     >
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 md:grid-cols-4">
         {/* Brand Section */}
-        <div className="space-y-4">
+        <div className="space-y-5">
           <CmsEditableRegion
             cmsPreview={cmsPreview}
             field={getCmsField("footer", "footer_brand")}
             className="inline-block"
           >
             <h2
-              className="text-xl font-bold"
+              className="text-2xl font-semibold tracking-wide"
               style={{
                 color: isDarkMode
                   ? "#93c5fd"
@@ -58,60 +62,74 @@ function Footer({ cmsPreview }) {
             </h2>
           </CmsEditableRegion>
 
-          <div className="flex gap-4 text-gray-500">
-            <a
-              href="#"
-              onClick={preventPreviewNavigation}
-              className="hover:text-gray-700"
+          {/* CMS Editable Social Links */}
+          <div className="flex gap-5 text-gray-500">
+            <CmsEditableRegion
+              cmsPreview={cmsPreview}
+              field={getCmsField("footer", "footer_social_facebook")}
+              className="inline-block"
             >
-              <Facebook size={20} />
-            </a>
-            <a
-              href="#"
-              onClick={preventPreviewNavigation}
-              className="hover:text-gray-700"
+              <a
+                href={getContentValue("footer_social_facebook", "#")}
+                onClick={preventPreviewNavigation}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-gray-900 transition-colors"
+              >
+                <Facebook size={22} strokeWidth={1.75} />
+              </a>
+            </CmsEditableRegion>
+            
+            <CmsEditableRegion
+              cmsPreview={cmsPreview}
+              field={getCmsField("footer", "footer_social_instagram")}
+              className="inline-block"
             >
-              <Instagram size={20} />
-            </a>
-            <a
-              href="#"
-              onClick={preventPreviewNavigation}
-              className="hover:text-gray-700"
+              <a
+                href={getContentValue("footer_social_instagram", "#")}
+                onClick={preventPreviewNavigation}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-gray-900 transition-colors"
+              >
+                <Instagram size={22} strokeWidth={1.75} />
+              </a>
+            </CmsEditableRegion>
+            
+            <CmsEditableRegion
+              cmsPreview={cmsPreview}
+              field={getCmsField("footer", "footer_social_twitter")}
+              className="inline-block"
             >
-              <Twitter size={20} />
-            </a>
+              <a
+                href={getContentValue("footer_social_twitter", "#")}
+                onClick={preventPreviewNavigation}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-gray-900 transition-colors"
+              >
+                <Twitter size={22} strokeWidth={1.75} />
+              </a>
+            </CmsEditableRegion>
           </div>
 
-          <div className="space-y-1 text-sm">
+          <div className="space-y-1 text-base">
             <CmsEditableRegion
               cmsPreview={cmsPreview}
               field={getCmsField("footer", "footer_email")}
               className="inline-block"
             >
-              <p
+              <a
+                href={`mailto:${getContentValue("footer_email", "hello@petalexpress.com")}`}
+                className="hover:text-gray-900 transition-colors block"
                 style={{
                   color: isDarkMode
                     ? "#94a3b8"
                     : getContentValue("footer_subtext_color", "#4b5563"),
                 }}
               >
-                {getContentValue("footer_email", "hello@petalexpress.com")}
-              </p>
-            </CmsEditableRegion>
-            <CmsEditableRegion
-              cmsPreview={cmsPreview}
-              field={getCmsField("footer", "footer_phone")}
-              className="inline-block"
-            >
-              <p
-                style={{
-                  color: isDarkMode
-                    ? "#94a3b8"
-                    : getContentValue("footer_subtext_color", "#4b5563"),
-                }}
-              >
-                {getContentValue("footer_phone", "+63 912 345 6789")}
-              </p>
+                {getContentValue("footer_email", "petalexpressotp@gmail.com")}
+              </a>
             </CmsEditableRegion>
           </div>
         </div>
@@ -133,27 +151,27 @@ function Footer({ cmsPreview }) {
               <Link
                 to="/about"
                 onClick={preventPreviewNavigation}
-                className="hover:text-gray-900"
+                className="text-gray-600 no-underline hover:text-gray-900 transition-colors"
               >
                 About Us
               </Link>
             </li>
             <li>
               <Link
-                to="#"
+                to="/products"
                 onClick={preventPreviewNavigation}
-                className="text-gray-600 no-underline hover:text-gray-900"
+                className="text-gray-600 no-underline hover:text-gray-900 transition-colors"
               >
-                Careers
+                Showcase
               </Link>
             </li>
             <li>
               <Link
-                to="#"
+                to="/schedule"
                 onClick={preventPreviewNavigation}
-                className="text-gray-600 no-underline hover:text-gray-900"
+                className="text-gray-600 no-underline hover:text-gray-900 transition-colors"
               >
-                Press
+                Pop-up Events
               </Link>
             </li>
           </ul>
@@ -173,36 +191,37 @@ function Footer({ cmsPreview }) {
           </h3>
           <ul className="space-y-2 text-sm text-gray-600">
             <li>
-              <Link
-                to="#"
+              <a
+                href={`mailto:${getContentValue("footer_email", "hello@petalexpress.com")}`}
                 onClick={preventPreviewNavigation}
-                className="text-gray-600 no-underline hover:text-gray-900"
+                className="text-gray-600 no-underline hover:text-gray-900 transition-colors"
               >
                 Contact Us
-              </Link>
+              </a>
             </li>
             <li>
               <Link
-                to="#"
+                to="/about"
                 onClick={preventPreviewNavigation}
-                className="text-gray-600 no-underline hover:text-gray-900"
+                className="text-gray-600 no-underline hover:text-gray-900 transition-colors"
               >
                 FAQs
               </Link>
             </li>
             <li>
+              {/* Dynamic Routing based on login status */}
               <Link
-                to="#"
+                to={currentUser ? "/profile" : "/login"}
                 onClick={preventPreviewNavigation}
-                className="text-gray-600 no-underline hover:text-gray-900"
+                className="text-gray-600 no-underline hover:text-gray-900 transition-colors"
               >
-                Shipping Info
+                My Account
               </Link>
             </li>
           </ul>
         </div>
 
-        {/* Subscribe Section */}
+        {/* Feedback Section */}
         <div>
           <CmsEditableRegion
             cmsPreview={cmsPreview}
@@ -217,7 +236,7 @@ function Footer({ cmsPreview }) {
                   : getContentValue("footer_text_color", "#1f2937"),
               }}
             >
-              {getContentValue("footer_title", "Stay Updated")}
+              {getContentValue("footer_title", "Share us your thoughts!")}
             </h3>
           </CmsEditableRegion>
           <CmsEditableRegion
@@ -235,36 +254,32 @@ function Footer({ cmsPreview }) {
             >
               {getContentValue(
                 "footer_subtitle",
-                "Subscribe for exclusive offers",
+                "We'd love to hear about your experience with Petal Express."
               )}
             </p>
           </CmsEditableRegion>
 
-          <div className="flex w-full max-w-sm items-center gap-3">
-            <input
-              type="email"
-              placeholder="Email address"
-              className="flex-1 rounded-full bg-gray-200 px-4 py-2 text-sm outline-none placeholder:text-gray-500"
-            />
-            <button
-              type="button"
+          <div className="flex w-full max-w-sm items-center mt-2">
+            <Link
+              to="/feedback"
               onClick={preventPreviewNavigation}
-              className="rounded-full border border-gray-300 bg-white px-5 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              className="rounded-full bg-gray-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-[#3f5b89] transition-all shadow-sm inline-block"
             >
-              Subscribe
-            </button>
+              Give Feedback
+            </Link>
           </div>
         </div>
       </div>
+      
       <CmsEditableRegion
         cmsPreview={cmsPreview}
         field={getCmsField("footer", "footer_copyright")}
-        className="mt-10 inline-block"
+        className="mt-10 inline-block w-full"
       >
         <div className="text-center text-sm text-gray-500">
           {getContentValue(
             "footer_copyright",
-            "© 2026 Petal Express. All rights reserved.",
+            "© 2026 Petal Express. All rights reserved."
           )}
         </div>
       </CmsEditableRegion>

@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import api from "../../services/api";
+
 import FormFieldHeader from "../../components/form/FormFieldHeader";
 import { getValidationInputClassName } from "../../components/form/fieldStyles";
 import {
-  PASSWORD_MIN_LENGTH,
   validatePassword,
   validatePasswordConfirmation,
 } from "../../utils/authValidation";
@@ -34,6 +34,20 @@ function ResetPasswordPage({ cmsPreview }) {
   const contentContext = useContents();
   const contents = contentContext?.contents || [];
   const getContentValue = (identifier, fallback = "") => getCmsContentValue(contents, "auth", identifier, fallback);
+
+  // --- PASSWORD STRENGTH VALIDATION ---
+  const passwordStrength = {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    number: /[0-9]/.test(password),
+    match: confirmPassword.length > 0 && password === confirmPassword,
+  };
+
+  const isFormValid = 
+    passwordStrength.length && 
+    passwordStrength.uppercase && 
+    passwordStrength.number && 
+    passwordStrength.match;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -142,20 +156,14 @@ function ResetPasswordPage({ cmsPreview }) {
             </p>
           ) : null}
 
-          <form onSubmit={handleSubmit} className="space-y-5 text-left">
+          <form onSubmit={handleSubmit} className="space-y-4 text-left">
             <div>
-              <FormFieldHeader
-                label="New Password"
-                required
-                error={fieldErrors.password}
-                hint={`Minimum ${PASSWORD_MIN_LENGTH} characters`}
-              />
+              <FormFieldHeader label="New Password" required error={fieldErrors.password} />
               <input
                 type="password"
                 className={getValidationInputClassName({
                   hasError: !!fieldErrors.password,
-                  baseClassName:
-                    "w-full rounded-lg border px-4 py-4 focus:bg-white focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:bg-gray-100",
+                  baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:bg-gray-100",
                 })}
                 placeholder="New Password"
                 value={password}
@@ -167,14 +175,14 @@ function ResetPasswordPage({ cmsPreview }) {
                 required
               />
             </div>
+            
             <div>
               <FormFieldHeader label="Confirm New Password" required error={fieldErrors.confirmPassword} />
               <input
                 type="password"
                 className={getValidationInputClassName({
                   hasError: !!fieldErrors.confirmPassword,
-                  baseClassName:
-                    "w-full rounded-lg border px-4 py-4 focus:bg-white focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:bg-gray-100",
+                  baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:bg-gray-100",
                 })}
                 placeholder="Confirm New Password"
                 value={confirmPassword}
@@ -187,10 +195,32 @@ function ResetPasswordPage({ cmsPreview }) {
               />
             </div>
 
+            {/* --- PASSWORD STRENGTH HINTS --- */}
+            {password.length > 0 && (
+              <ul className="text-xs space-y-1.5 px-1 py-2">
+                <li className={`flex items-center gap-1.5 ${passwordStrength.length ? "text-emerald-600" : "text-gray-400"}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${passwordStrength.length ? "bg-emerald-500" : "bg-gray-300"}`} />
+                  At least 8 characters
+                </li>
+                <li className={`flex items-center gap-1.5 ${passwordStrength.uppercase ? "text-emerald-600" : "text-gray-400"}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${passwordStrength.uppercase ? "bg-emerald-500" : "bg-gray-300"}`} />
+                  One uppercase letter
+                </li>
+                <li className={`flex items-center gap-1.5 ${passwordStrength.number ? "text-emerald-600" : "text-gray-400"}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${passwordStrength.number ? "bg-emerald-500" : "bg-gray-300"}`} />
+                  One number
+                </li>
+                <li className={`flex items-center gap-1.5 ${passwordStrength.match ? "text-emerald-600" : "text-gray-400"}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${passwordStrength.match ? "bg-emerald-500" : "bg-gray-300"}`} />
+                  Passwords match
+                </li>
+              </ul>
+            )}
+
             <button
               type="submit"
-              disabled={loading || !password || !confirmPassword}
-              className="w-full mt-4 rounded-lg bg-[#4f6fa5] py-4 text-lg text-white font-semibold transition-all hover:bg-[#3f5b89] hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              disabled={loading || !isFormValid}
+              className="w-full mt-2 rounded-lg bg-[#4f6fa5] py-3.5 text-lg text-white font-semibold transition-all hover:bg-[#3f5b89] hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
               Update Password

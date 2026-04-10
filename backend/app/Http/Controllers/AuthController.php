@@ -29,46 +29,57 @@ class AuthController extends Controller
         }
     }
 
-    public function login(Request $request)
-    {
-        $this->normalizeAuthInput($request);
+public function login(Request $request)
+{
+    $this->normalizeAuthInput($request);
 
-        $request->validate([
-            'email' => 'required|email',
-            'password' => ['required', 'string', 'not_regex:/^\s*$/'],
-        ], [
-            'email.required' => 'Email is required.',
-            'email.email' => 'Please enter a valid email address.',
-            'password.required' => 'Password is required.',
-            'password.not_regex' => 'Password is required.',
-        ]);
+    $request->validate([
+        'email' => 'required|email',
+        'password' => ['required', 'string', 'not_regex:/^\s*$/'],
+    ], [
+        'email.required' => 'Email is required.',
+        'email.email' => 'Please enter a valid email address.',
+        'password.required' => 'Password is required.',
+        'password.not_regex' => 'Password is required.',
+    ]);
 
-        $user = User::where('email', $request->email)->first();
+    $user = User::where('email', $request->email)->first();
 
-        if (!$user) {
-            $this->writeLog('login_failed', 'users', null, 'Failed login attempt for unknown email', [
+    if (!$user) {
+        // FIXED: Wrap logging in try-catch to prevent system errors from showing
+        try {
+            Log::create([
+                'user_id' => null,
                 'user_name' => $request->email,
+                'user_role' => null,
+                'event' => 'Failed login attempt',
+                'module' => 'Users',
+                'source' => $this->detectSource($request),
             ]);
-
-            return response()->json([
-                'message' => 'Invalid credentials.'
-            ], 401);
+        } catch (\Exception $e) {
+            // Silently fail if logging doesn't work
+            \Illuminate\Support\Facades\Log::error('Failed to write login log: ' . $e->getMessage());
         }
 
-        // ── PERMANENT LOCK CHECK ──────────────────────────────────────────────
-        if ($user->is_locked) {
-            $this->writeUserLog('login_blocked', $user, 'Login blocked because the account is locked');
+        return response()->json([
+            'message' => 'Invalid email or password.'
+        ], 401);
+    }
 
-            $isFraudLock = in_array(strtolower((string) $user->role), ['user', 'customer'], true)
-                && (int) ($user->priority ?? 0) >= 3;
+    // ── PERMANENT LOCK CHECK ──────────────────────────────────────────────
+    if ($user->is_locked) {
+        $this->writeUserLog('login_blocked', $user, 'Login blocked because the account is locked');
 
-            return response()->json([
-                'message' => $isFraudLock
-                    ? 'Your account has been locked and flagged for fraudulent buying behavior. Please contact IT support to restore access.'
-                    : 'Your account has been locked due to too many failed login attempts. Please contact an administrator to unlock it.',
-                'locked' => true,
-            ], 423);
-        }
+        $isFraudLock = in_array(strtolower((string) $user->role), ['user', 'customer'], true)
+            && (int) ($user->priority ?? 0) >= 3;
+
+        return response()->json([
+            'message' => $isFraudLock
+                ? 'Your account has been locked and flagged for fraudulent buying behavior. Please contact IT support to restore access.'
+                : 'Your account has been locked due to too many failed login attempts. Please contact an administrator to unlock it.',
+            'locked' => true,
+        ], 423);
+    }
 
         // ── TEMPORARY COOLDOWN CHECK ──────────────────────────────────────────
         // A cooldown is active after the 3rd fail (2 min) and 6th fail (5 min)
@@ -180,13 +191,14 @@ class AuthController extends Controller
         ]);
     }
 
-public function verifyOtp(Request $request)
+    public function verifyOtp(Request $request)
     {
         $this->normalizeAuthInput($request);
 
         $request->validate([
             'email' => 'required|email',
             'otp' => 'required|digits:6',
+            'purpose' => 'sometimes|nullable|string', // <-- ADDED: allow purpose
         ], [
             'email.required' => 'Email is required.',
             'email.email' => 'Please enter a valid email address.',
@@ -206,7 +218,15 @@ public function verifyOtp(Request $request)
             ->first();
 
         if (!$otp) {
-            return $this->fieldErrorResponse('otp', 'Invalid or expired OTP');
+            // Using a standard JSON response in case fieldErrorResponse isn't available
+            return response()->json(['message' => 'Invalid or expired OTP'], 400);
+        }
+
+        // ── THE FIX: If resetting password, stop here and do not delete OTP or auto-login ──
+        if ($request->purpose === 'reset-password') {
+            return response()->json([
+                'message' => 'OTP is valid. Proceed to reset password.'
+            ]);
         }
 
         $user->is_verified = true;
@@ -308,57 +328,72 @@ public function verifyOtp(Request $request)
         ]);
     }
 
-    public function resetPassword(Request $request)
-    {
-        $this->normalizeAuthInput($request);
+   public function resetPassword(Request $request)
+{
+    $this->normalizeAuthInput($request);
 
-        $request->validate([
-            'email' => 'required|email',
-            'otp' => 'required|digits:6',
-            'password' => ['required', 'string', 'min:6', 'confirmed', 'not_regex:/^\s*$/'],
-        ], [
-            'email.required' => 'Email is required.',
-            'email.email' => 'Please enter a valid email address.',
-            'otp.required' => 'OTP is required.',
-            'otp.digits' => 'OTP must be exactly 6 digits.',
-            'password.required' => 'Password is required.',
-            'password.min' => 'Password must be at least 6 characters.',
-            'password.confirmed' => 'Password confirmation does not match.',
-            'password.not_regex' => 'Password is required.',
-        ]);
+    $request->validate([
+        'email' => 'required|email',
+        'otp' => 'required|digits:6',
+        'password' => ['required', 'string', 'min:8', 'confirmed', 'not_regex:/^\s*$/'],
+    ], [
+        'email.required' => 'Email is required.',
+        'email.email' => 'Please enter a valid email address.',
+        'otp.required' => 'OTP is required.',
+        'otp.digits' => 'OTP must be exactly 6 digits.',
+        'password.required' => 'Password is required.',
+        'password.min' => 'Password must be at least 8 characters.',  // Changed from 6 to 8 to match your frontend
+        'password.confirmed' => 'Password confirmation does not match.',
+        'password.not_regex' => 'Password is required.',
+    ]);
 
-        $user = User::where('email', $request->email)->first();
+    $user = User::where('email', $request->email)->first();
 
-        if (!$user) {
-            return response()->json([
-                'message' => 'User not found'
-            ], 404);
-        }
-
-        $otp = Otp::where('user_id', $user->id)
-            ->where('code', $request->otp)
-            ->where('expires_at', '>', now())
-            ->first();
-
-        if (!$otp) {
-            return $this->fieldErrorResponse('otp', 'Invalid or expired OTP');
-        }
-
-        $user->password = Hash::make($request->password);
-        $user->save();
-        
-        // Invalidate all existing sessions/tokens
-        $user->tokens()->delete();
-        
-        // Consume the OTP so it cannot be reused
-        $otp->delete();
-
-        $this->writeUserLog('password_reset_completed', $user, 'Password reset completed');
-
+    if (!$user) {
         return response()->json([
-            'message' => 'Password reset successful'
-        ]);
+            'message' => 'User not found'
+        ], 404);
     }
+
+    // Check if OTP exists and is still valid
+    $otp = Otp::where('user_id', $user->id)
+        ->where('code', $request->otp)
+        ->where('expires_at', '>', now())
+        ->first();
+
+    if (!$otp) {
+        // More detailed error for debugging
+        $expiredOtp = Otp::where('user_id', $user->id)
+            ->where('code', $request->otp)
+            ->first();
+            
+        if ($expiredOtp) {
+            return response()->json([
+                'message' => 'OTP has expired. Please request a new one.'
+            ], 400);
+        }
+        
+        return response()->json([
+            'message' => 'Invalid OTP. Please verify your OTP code.'
+        ], 400);
+    }
+
+    // Update password
+    $user->password = Hash::make($request->password);
+    $user->save();
+    
+    // Invalidate all existing sessions/tokens
+    $user->tokens()->delete();
+    
+    // Consume the OTP so it cannot be reused
+    $otp->delete();
+
+    $this->writeUserLog('password_reset_completed', $user, 'Password reset completed');
+
+    return response()->json([
+        'message' => 'Password reset successful'
+    ]);
+}
 
     private function sendOtp($user)
     {

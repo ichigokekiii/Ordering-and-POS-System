@@ -35,6 +35,12 @@ export default function ProfilePage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoInputRef = useRef(null);
 
+  // --- MISSING VALIDATION STATES ADDED HERE ---
+  const [profileFieldErrors, setProfileFieldErrors] = useState({ first_name: "", last_name: "", phone_number: "", profile_picture: "" });
+  const [addressFieldErrors, setAddressFieldErrors] = useState({ house_number: "", street: "", barangay: "", city: "", zip_code: "" });
+  const [emailFieldErrors, setEmailFieldErrors] = useState({ email: "", otp: "" });
+  const [passwordFieldErrors, setPasswordFieldErrors] = useState({ current_password: "", new_password: "", confirmPassword: "", otp: "" });
+
   const [statusModal, setStatusModal] = useState({ isOpen: false, type: "success", message: "" });
   const [cancelConfirm, setCancelConfirm] = useState({ isOpen: false, orderId: null });
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
@@ -157,7 +163,6 @@ export default function ProfilePage() {
       e.target.value = "";
       return;
     }
-    if (!file) return;
 
     const formData = new FormData();
     formData.append("profile_picture", file);
@@ -369,35 +374,38 @@ export default function ProfilePage() {
     }
   };
 
-  const sendPasswordOtp = async () => {
-    if (!currentPassword) {
-      return showAlert("error", "Please enter your current password.");
-    }
-    if (newPassword.length < 8) {
-      return showAlert("error", "New password must be at least 8 characters.");
-    }
-    if (!/[A-Z]/.test(newPassword)) {
-      return showAlert("error", "New password must contain at least one uppercase letter.");
-    }
-    if (!/[0-9]/.test(newPassword)) {
-      return showAlert("error", "New password must contain at least one number.");
-    }
-    if (newPassword !== confirmPassword) {
-      return showAlert("error", "Passwords do not match.");
-    }
-
-
-    try {
-      await api.post("/profile/password-otp");
-      setPasswordOtpSent(true);
-      showAlert("success", "OTP sent to your email address.");
-    } catch (err) {
-      const normalizedError = normalizeApiValidationErrors(err);
-      setPasswordFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
-      showAlert("error", normalizedError.formError || "Failed to send OTP.");
-    }
+const sendPasswordOtp = async () => {
+  // Standardized inline validation instead of generic modals
+  const nextFieldErrors = {
+    current_password: currentPassword ? "" : "Please enter your current password.",
+    new_password: validatePassword(newPassword, { label: "New password" }),
+    confirmPassword: validatePasswordConfirmation(newPassword, confirmPassword),
+    otp: "",
   };
 
+  if (!nextFieldErrors.new_password && currentPassword && newPassword && currentPassword === newPassword) {
+    nextFieldErrors.new_password = "New password must be different from current password.";
+  }
+
+  setPasswordFieldErrors(nextFieldErrors);
+
+  if (Object.values(nextFieldErrors).some(Boolean)) {
+    return;
+  }
+
+  try {
+    // SEND CURRENT PASSWORD FOR VALIDATION
+    await api.post("/profile/password-otp", {
+      current_password: currentPassword
+    });
+    setPasswordOtpSent(true);
+    showAlert("success", "OTP sent to your email address.");
+  } catch (err) {
+    const normalizedError = normalizeApiValidationErrors(err);
+    setPasswordFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+    showAlert("error", normalizedError.formError || "Failed to send OTP.");
+  }
+};
   const verifyPasswordOtp = async () => {
     const nextFieldErrors = {
       current_password: validatePassword(currentPassword, { label: "Current password" }),
@@ -453,11 +461,11 @@ export default function ProfilePage() {
 
   const getStatusStyle = (status) => {
     const s = status?.toLowerCase();
-    if (s === "pending")                        return "bg-amber-100 text-amber-700 border-amber-200";
-    if (s === "processing")                     return "bg-blue-100 text-blue-700 border-blue-200";
-    if (s === "shipped")                        return "bg-purple-100 text-purple-700 border-purple-200";
+    if (s === "pending")        return "bg-amber-100 text-amber-700 border-amber-200";
+    if (s === "processing")     return "bg-blue-100 text-blue-700 border-blue-200";
+    if (s === "shipped")        return "bg-purple-100 text-purple-700 border-purple-200";
     if (s === "delivered" || s === "completed") return "bg-emerald-100 text-emerald-700 border-emerald-200";
-    if (s === "cancelled")                      return "bg-rose-100 text-rose-700 border-rose-200";
+    if (s === "cancelled")      return "bg-rose-100 text-rose-700 border-rose-200";
     return "bg-gray-100 text-gray-600 border-gray-200";
   };
 

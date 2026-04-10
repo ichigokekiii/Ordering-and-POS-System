@@ -241,27 +241,46 @@ class ProfileController extends Controller
     /**
      * Request OTP for password change
      */
-    public function requestPasswordChangeOtp(Request $request)
-    {
-        /** @var User $user */
-        $user = Auth::user();
+/**
+ * Request OTP for password change
+ */
+public function requestPasswordChangeOtp(Request $request)
+{
+    /** @var User $user */
+    $user = Auth::user();
 
-        $otpCode = rand(100000, 999999);
+    // ADD VALIDATION FOR CURRENT PASSWORD
+    $validator = Validator::make($request->all(), [
+        'current_password' => 'required|string',
+    ], [
+        'current_password.required' => 'Current password is required.',
+    ]);
 
-        Otp::updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'code' => $otpCode,
-                'expires_at' => Carbon::now()->addMinutes(5),
-            ]
-        );
-
-        Mail::to($user->email)->send(new SendOtpMail($otpCode));
-
-        return response()->json([
-            'message' => 'OTP sent to your email address'
-        ]);
+    if ($validator->fails()) {
+        return $this->validationErrorResponse($validator->errors());
     }
+
+    // VERIFY CURRENT PASSWORD BEFORE SENDING OTP
+    if (!Hash::check($request->current_password, $user->password)) {
+        return $this->fieldErrorResponse('current_password', 'Current password is incorrect');
+    }
+
+    $otpCode = rand(100000, 999999);
+
+    Otp::updateOrCreate(
+        ['user_id' => $user->id],
+        [
+            'code' => $otpCode,
+            'expires_at' => Carbon::now()->addMinutes(5),
+        ]
+    );
+
+    Mail::to($user->email)->send(new SendOtpMail($otpCode));
+
+    return response()->json([
+        'message' => 'OTP sent to your email address'
+    ]);
+}
 
     /**
      * Verify OTP and change password

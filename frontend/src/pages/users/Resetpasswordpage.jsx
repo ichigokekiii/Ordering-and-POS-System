@@ -3,6 +3,14 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import api from "../../services/api";
 
+import FormFieldHeader from "../../components/form/FormFieldHeader";
+import { getValidationInputClassName } from "../../components/form/fieldStyles";
+import {
+  validatePassword,
+  validatePasswordConfirmation,
+} from "../../utils/authValidation";
+import { clearFieldError, normalizeApiValidationErrors } from "../../utils/formValidation";
+
 // CMS IMPORTS
 import { useContents } from "../../contexts/ContentContext";
 import CmsEditableRegion from "../../components/admin/CmsEditableRegion";
@@ -16,7 +24,8 @@ function ResetPasswordPage({ cmsPreview }) {
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({ password: "", confirmPassword: "" });
+  const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -43,15 +52,21 @@ function ResetPasswordPage({ cmsPreview }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (cmsPreview?.enabled) return;
-    setError("");
+    setFormError("");
 
     if (!email || !otp) {
-      setError("Your reset session expired. Please request a new OTP.");
+      setFormError("Your reset session expired. Please request a new OTP.");
       return;
     }
 
-    if (!isFormValid) {
-      setError("Please meet all password requirements.");
+    const nextFieldErrors = {
+      password: validatePassword(password),
+      confirmPassword: validatePasswordConfirmation(password, confirmPassword),
+    };
+
+    setFieldErrors(nextFieldErrors);
+
+    if (Object.values(nextFieldErrors).some(Boolean)) {
       return;
     }
 
@@ -76,7 +91,11 @@ function ResetPasswordPage({ cmsPreview }) {
         });
       }, 1500);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to reset password.");
+      const normalizedError = normalizeApiValidationErrors(err, {
+        password_confirmation: "confirmPassword",
+      });
+      setFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
+      setFormError(normalizedError.formError || "Failed to reset password.");
     } finally {
       setLoading(false);
     }
@@ -131,31 +150,50 @@ function ResetPasswordPage({ cmsPreview }) {
             <strong className="text-gray-700">{email}</strong>
           </p>
 
-          {error ? (
+          {formError ? (
             <p className="mb-6 text-sm text-red-500 bg-red-50 py-3 px-4 rounded-lg border border-red-100">
-              {error}
+              {formError}
             </p>
           ) : null}
 
           <form onSubmit={handleSubmit} className="space-y-4 text-left">
-            <input
-              type="password"
-              className="w-full rounded-lg border border-gray-300 px-4 py-4 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f6fa5] focus:border-transparent transition-all disabled:opacity-60 disabled:bg-gray-100"
-              placeholder="New Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-              required
-            />
-            <input
-              type="password"
-              className="w-full rounded-lg border border-gray-300 px-4 py-4 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f6fa5] focus:border-transparent transition-all disabled:opacity-60 disabled:bg-gray-100"
-              placeholder="Confirm New Password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              disabled={loading}
-              required
-            />
+            <div>
+              <FormFieldHeader label="New Password" required error={fieldErrors.password} />
+              <input
+                type="password"
+                className={getValidationInputClassName({
+                  hasError: !!fieldErrors.password,
+                  baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:bg-gray-100",
+                })}
+                placeholder="New Password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  clearFieldError(setFieldErrors, "password");
+                }}
+                disabled={loading}
+                required
+              />
+            </div>
+            
+            <div>
+              <FormFieldHeader label="Confirm New Password" required error={fieldErrors.confirmPassword} />
+              <input
+                type="password"
+                className={getValidationInputClassName({
+                  hasError: !!fieldErrors.confirmPassword,
+                  baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:bg-gray-100",
+                })}
+                placeholder="Confirm New Password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  clearFieldError(setFieldErrors, "confirmPassword");
+                }}
+                disabled={loading}
+                required
+              />
+            </div>
 
             {/* --- PASSWORD STRENGTH HINTS --- */}
             {password.length > 0 && (
@@ -182,7 +220,7 @@ function ResetPasswordPage({ cmsPreview }) {
             <button
               type="submit"
               disabled={loading || !isFormValid}
-              className="w-full mt-2 rounded-lg bg-[#4f6fa5] py-4 text-lg text-white font-semibold transition-all hover:bg-[#3f5b89] hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full mt-2 rounded-lg bg-[#4f6fa5] py-3.5 text-lg text-white font-semibold transition-all hover:bg-[#3f5b89] hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
               Update Password

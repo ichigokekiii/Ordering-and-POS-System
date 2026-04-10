@@ -162,7 +162,17 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
       const loggedInUser = res.data.user || res.data;
 
       localStorage.setItem("pendingUser", JSON.stringify(loggedInUser));
-      navigate("/verify-otp", { state: { email: normalizedEmail, from: 'login' } });
+      
+      // Get returnTo from location.state if it exists
+      const returnTo = location.state?.returnTo;
+      
+      navigate("/verify-otp", { 
+        state: { 
+          email: normalizedEmail, 
+          from: 'login',
+          ...(returnTo && { returnTo }) // Only include if returnTo exists
+        } 
+      });
     } catch (err) {
       const data = err.response?.data;
       const status = err.response?.status;

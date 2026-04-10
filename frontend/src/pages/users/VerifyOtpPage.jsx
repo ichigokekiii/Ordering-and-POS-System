@@ -37,9 +37,10 @@ function VerifyOtpPage({ cmsPreview }) {
 
   const email = location.state?.email || localStorage.getItem("otp_email") || (cmsPreview?.enabled ? "user@example.com" : null);
   const from = location.state?.from || "login";
-  
-  // 🚨 CRITICAL FIX: Ensure the purpose ALWAYS evaluates to "reset-password" if coming from the forgot password flow!
   const purpose = location.state?.purpose || (from === "forgot-password" ? "reset-password" : null);
+  
+  // Get returnTo from location.state if it exists
+  const returnTo = location.state?.returnTo;
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -150,7 +151,9 @@ function VerifyOtpPage({ cmsPreview }) {
       setShowModal(true);
       
       setTimeout(() => {
-        navigate(getPostLoginPath(userData));
+        // Use returnTo if it exists, otherwise use default path
+        const redirectPath = returnTo || getPostLoginPath(userData);
+        navigate(redirectPath);
       }, 1500);
 
     } catch (err) {

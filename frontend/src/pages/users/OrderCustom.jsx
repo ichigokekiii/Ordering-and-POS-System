@@ -87,7 +87,7 @@ function SelectionCard({
               {helperText}
             </p>
             <p className="mt-1 text-sm font-semibold text-gray-900">
-              {isSelected ? `${quantity} in your build` : "Tap card to add 1"}
+              {isSelected ? `${quantity} ${product.name} added` : "Tap card to add 1"}
             </p>
           </div>
 
@@ -479,11 +479,8 @@ function OrderCustom() {
               <ArrowLeft className="h-4 w-4" />
               Back to order options
             </button>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#4f6fa5]">
-              Make it yours
-            </p>
             <h1 className="text-4xl font-playfair font-bold text-gray-900 md:text-5xl">
-              Custom Bouquet Builder
+              Custom Products
             </h1>
             {selectedSchedule && (
               <p className="mt-3 text-sm text-gray-500">
@@ -496,14 +493,10 @@ function OrderCustom() {
           </div>
           <div className="max-w-xl space-y-3">
             <p className="text-sm leading-relaxed text-gray-500">
-              This now follows the POS flow: pick a wrapper, tap the flower cards
-              to add one at a time, and we will move you to the next builder step
-              as soon as the required count is filled.
-            </p>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">
-              {searchTerm
-                ? `Filtering by "${searchTerm}"`
-                : "Showing all available options"}
+              Build your perfect arrangement in a few simple steps: select a bouquet wrapper, 
+              then tap the cards to fill your included main and filler flowers. Once your base 
+              is complete, customize it further with premium add-ons and a personalized 
+              greeting card before adding it to your cart!
             </p>
           </div>
         </div>
@@ -539,7 +532,7 @@ function OrderCustom() {
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-widest text-[#4f6fa5]">
-                Current focus
+                Selected Product
               </p>
               <p className="mt-1 text-lg font-playfair font-bold text-gray-900">
                 {currentStepKey === "bouquet" && "Choose your bouquet wrapper"}
@@ -554,7 +547,7 @@ function OrderCustom() {
             <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               <div className="rounded-2xl bg-[#fcfaf9] px-4 py-3">
                 <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">
-                  Wrapper
+                  Bouquet
                 </p>
                 <p className="mt-1 font-semibold text-gray-900">
                   {selectedBouquet ? "Ready" : "Pending"}
@@ -592,7 +585,7 @@ function OrderCustom() {
           <section ref={bouquetSectionRef}>
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-3xl font-playfair font-bold text-gray-900">
-                Bouquet Wrapper
+                Promo Bouquet
               </h2>
               {selectedBouquet && (
                 <span className="rounded-full bg-[#4f6fa5]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-[#4f6fa5]">
@@ -712,27 +705,6 @@ function OrderCustom() {
             ref={addOnSectionRef}
             className={!baseBuildReady ? "pointer-events-none opacity-45" : ""}
           >
-            <div className="mb-8 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#4f6fa5]">
-                    Current Base Build
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    {selectedBouquet
-                      ? [
-                          selectedBouquet.name,
-                          ...selectedMains.map((item) => `${item.name} x${item.quantity}`),
-                          ...selectedFillers.map((item) => `${item.name} x${item.quantity}`),
-                        ].join(" + ")
-                      : "Select a bouquet to begin."}
-                  </p>
-                </div>
-                <p className="text-base font-semibold text-gray-900">
-                  Base price: ₱{basePrice.toLocaleString()}
-                </p>
-              </div>
-            </div>
 
             <div className="mb-6 flex items-center justify-between">
               <div>

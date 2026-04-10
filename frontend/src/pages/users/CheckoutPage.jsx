@@ -292,10 +292,11 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
         <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between pb-6 border-b border-gray-200">
           <div>
             <button
-              onClick={() => navigate("/cart")}
-              className="mb-4 flex items-center justify-center h-10 w-10 text-xl rounded-full bg-white border border-gray-200 text-gray-500 hover:text-gray-900 shadow-sm transition-colors"
+              type="button"
+              onClick={() => navigate("/order")}
+              className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-[#4f6fa5]"
             >
-              ←
+              ← Back to Order Options
             </button>
             <p className="text-[#4f6fa5] font-semibold tracking-widest uppercase text-xs mb-1">Make it yours</p>
             <h1 className="text-4xl md:text-5xl font-playfair font-bold text-gray-900">Checkout</h1>

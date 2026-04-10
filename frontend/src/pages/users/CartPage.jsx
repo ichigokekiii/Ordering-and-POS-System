@@ -39,13 +39,12 @@ function CartPage() {
         <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-200">
           <div>
             <button
+              type="button"
               onClick={() => navigate("/order")}
-              className="mb-4 flex items-center justify-center h-10 w-10 text-xl rounded-full bg-white border border-gray-200 text-gray-500 hover:text-gray-900 shadow-sm transition-colors"
-              title="Go Back"
+              className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-[#4f6fa5]"
             >
-              ←
+              ← Back to Order Options
             </button>
-            <p className="text-[#4f6fa5] font-semibold tracking-widest uppercase text-xs mb-1">Make it yours</p>
             <h2 className="text-4xl md:text-5xl font-playfair font-bold text-gray-900">Your Cart</h2>
             {selectedSchedule && (
               <p className="mt-3 text-sm text-gray-500">
@@ -101,7 +100,7 @@ function CartPage() {
                       
                       {item.type === "custom" && (
                          <span className="inline-block mt-1 mb-2 rounded bg-[#4f6fa5]/10 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-[#4f6fa5]">
-                           Custom Structure
+                           Custom
                          </span>
                       )}
 
@@ -163,7 +162,12 @@ function CartPage() {
                           </div>
                         </div>
                       ) : (
-                        <p className="text-xs font-medium uppercase tracking-widest text-gray-400 truncate mt-1">{item.description}</p>
+                        /* TRUNCATED DESCRIPTION WITH LINE CLAMP */
+                        <p className="mt-1 text-[10px] font-semibold uppercase leading-relaxed tracking-widest text-gray-400 line-clamp-2">
+                          {item.description && item.description.length > 120 
+                            ? `${item.description.substring(0, 120).trim()}...` 
+                            : (item.description || "Premium floral arrangement")}
+                        </p>
                       )}
                     </div>
                     

@@ -105,9 +105,6 @@ function OrderPage() {
     <div className="w-full">
       <div className="mx-auto flex min-h-[80vh] max-w-[1200px] flex-col items-center justify-center px-6 py-12">
         <div className="mb-12 text-center">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#4f6fa5]">
-            Begin Your Journey
-          </p>
           {selectedSchedule && (
             <p className="mb-5 text-sm text-gray-500">
               Ordering for <span className="font-semibold text-gray-900">{selectedSchedule.schedule_name}</span>
@@ -120,18 +117,6 @@ function OrderPage() {
               to order?
             </span>
           </h1>
-        </div>
-
-        <div className="mb-10 flex w-full max-w-2xl items-start gap-3 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-          <Search className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4f6fa5]" />
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-              Smart Search
-            </p>
-            <p className="mt-1 text-sm leading-relaxed text-gray-600">
-              {searchMessage}
-            </p>
-          </div>
         </div>
 
         <div className="flex w-full max-w-4xl flex-col justify-center gap-6 md:flex-row md:gap-8">

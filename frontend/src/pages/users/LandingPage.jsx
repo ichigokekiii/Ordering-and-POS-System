@@ -2,7 +2,7 @@
 /* eslint-disable no-unused-vars */
 import { useEffect, useState } from "react";
 import api from "../../services/api";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; // Added useNavigate
 import { useContents } from "../../contexts/ContentContext";
 import { motion, AnimatePresence } from "framer-motion";
 import CmsEditableRegion from "../../components/admin/CmsEditableRegion";
@@ -15,6 +15,7 @@ import {
 function LandingPage({ cmsPreview }) {
   const contentContext = useContents();
   const contents = contentContext?.contents || [];
+  const navigate = useNavigate(); // Initialize navigate
 
   const [landing, setLanding] = useState(null);
   const [products, setProducts] = useState([]);
@@ -29,6 +30,12 @@ function LandingPage({ cmsPreview }) {
   const preventPreviewNavigation = (event) => {
     if (!cmsPreview?.enabled) return;
     event.preventDefault();
+  };
+
+  // Helper to handle bento box clicks
+  const handleBentoClick = () => {
+    if (cmsPreview?.enabled) return; // Prevent redirecting while editing CMS
+    navigate("/products");
   };
 
   useEffect(() => {
@@ -50,7 +57,7 @@ function LandingPage({ cmsPreview }) {
       subtitle: "Bright, vibrant, and bursting with joy. Perfect for lighting up any room.",
     },
     {
-      image: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?q=80&w=1200",
+      image: "https://images.unsplash.com/photo-1490750967868-88cb4aca2033?q=80&w=1200",
       title: "Roses",
       subtitle: "Timeless elegance and classic beauty for every romantic occasion.",
     },
@@ -90,7 +97,7 @@ function LandingPage({ cmsPreview }) {
     {
       imageField: "home_category_image_3",
       titleField: "home_category_title_3",
-      imageFallback: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?q=80&w=800",
+      imageFallback: "https://images.unsplash.com/photo-1490750967868-88cb4aca2033?q=80&w=800",
       titleFallback: "Classic\nRoses",
       layoutClass: "group relative col-span-1 md:col-span-1 md:row-span-1 rounded-[2rem] overflow-hidden shadow-sm hover:shadow-xl transition-all cursor-pointer",
       imageClass: "w-full h-[250px] md:h-full object-cover transition-transform duration-1000 ease-out group-hover:scale-105",
@@ -138,8 +145,7 @@ function LandingPage({ cmsPreview }) {
         {/* Top Text Block */}
         <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-8 lg:gap-10 items-start mb-12">
           
-          {/* FIXED: Added z-[80] to guarantee hits pass through the motion div */}
-<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }} className="max-w-4xl relative z-[80]">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }} className="max-w-4xl relative z-[80]">
             
             <div className="mb-4">
                <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("home", "home_hero_label")} className="relative z-[60] inline-block w-fit pointer-events-auto">
@@ -285,7 +291,7 @@ function LandingPage({ cmsPreview }) {
         <div className="flex flex-wrap justify-center gap-8 py-12">
           {[...visibleProducts, ...visiblePremades].slice(0, 8).map((item) => (
             <div key={`${item.id}-${item.name || item.product_name}`} className="group cursor-pointer w-full sm:w-[48%] md:w-[30%] lg:w-[22%] max-w-[320px]">
-              <div className="bg-white p-4 rounded-[2rem] hover:shadow-xl transition-all duration-500 border border-gray-100">
+              <div className="bg-white p-4 rounded-[2rem] hover:shadow-xl transition-all duration-500 border border-gray-100" onClick={() => navigate("/products")}>
                 <div className="rounded-[1.5rem] relative bg-gray-100 overflow-hidden">
                   <img src={item.image ? `http://localhost:8000${item.image}` : "https://via.placeholder.com/300"} alt={item.name || item.product_name} className="h-[240px] w-full object-cover transition duration-700 group-hover:scale-110" />
                   <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold text-gray-900 border border-white tracking-widest uppercase">Best Seller</div>
@@ -338,7 +344,7 @@ function LandingPage({ cmsPreview }) {
         </div>
       </section>
 
-      {/* 4. RECOMMENDED FOR YOU */}
+      {/* 4. RECOMMENDED FOR YOU - FIXED: Added onClick to bento boxes */}
       <section className="mx-auto max-w-[1400px] px-4 sm:px-8 mt-32 mb-20">
         <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("home", "home_categories_title")} className="inline-block w-fit max-w-full">
           <h2 className="text-4xl md:text-5xl font-playfair font-bold text-gray-900 mb-12">
@@ -348,9 +354,13 @@ function LandingPage({ cmsPreview }) {
 
         <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 md:gap-6 h-auto md:h-[700px]">
           {categoryCards.map((card) => (
-            <div key={card.imageField} className={card.layoutClass}>
+            <div 
+              key={card.imageField} 
+              className={card.layoutClass}
+              onClick={handleBentoClick} // Redirection added here
+            >
               <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("home", card.imageField)} className="absolute inset-0 z-10 rounded-[inherit]">
-                <img src={getCmsAssetUrl(getContentValue(card.imageField, card.imageFallback))} className={card.imageClass} />
+                <img src={getCmsAssetUrl(getContentValue(card.imageField, card.imageFallback))} className={card.imageClass} alt={card.titleFallback} />
               </CmsEditableRegion>
               <div className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-500"></div>
               

@@ -7,6 +7,7 @@ use App\Models\PosTransactions;
 use App\Models\PremadeProduct;
 use App\Models\User;
 use App\Support\ProductService;
+use App\Support\ValidationRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -72,32 +73,38 @@ class PosTransactionsController extends Controller
             'items.*.product_id' => 'nullable|integer',
             'items.*.name' => 'nullable|string|max:255',
             'items.*.product_name' => 'nullable|string|max:255',
-            'items.*.price' => 'required|numeric|min:0',
+            'items.*.price' => ['required', 'numeric', 'min:0'],
             'items.*.qty' => 'nullable|integer|min:1',
             'items.*.quantity' => 'nullable|integer|min:1',
-            'total_amount' => 'required|numeric|min:0',
+            'total_amount' => ['required', 'numeric', 'min:0'],
             'payment_method' => 'required|string|in:CASH,QR',
-            'cash_received' => 'required|numeric|min:0',
+            'cash_received' => ['required', 'numeric', 'min:0'],
         ]);
 
         try {
             DB::transaction(function () use ($request) {
                 $posTransaction = PosTransactions::create([
-                    'total_amount' => $request->input('total_amount'),
-                    'payment_method' => $request->input('payment_method'),
-                    'cash_received' => $request->input('cash_received'),
+                    'total_amount' => (float) $request->input('total_amount'),
+                    'total_amount_value' => ValidationRules::normalizeMoneyString($request->input('total_amount')),
+                    'payment_method' => ValidationRules::normalizeSingleLine((string) $request->input('payment_method'), 20),
+                    'cash_received' => (float) $request->input('cash_received'),
+                    'cash_received_value' => ValidationRules::normalizeMoneyString($request->input('cash_received')),
                 ]);
 
                 foreach ($request->input('items', []) as $item) {
                     $productId = isset($item['product_id']) ? (int) $item['product_id'] : null;
                     $productName = $item['name'] ?? $item['product_name'] ?? 'Item';
+                    $quantity = $item['qty'] ?? $item['quantity'] ?? 0;
+                    $price = $item['price'] ?? 0;
 
                     $posTransaction->items()->create([
                         'product_id' => $productId,
                         'source_product_id' => ProductService::resolveCatalogId($productId, $productName),
-                        'product_name' => $productName,
-                        'price' => $item['price'] ?? 0,
-                        'quantity' => $item['qty'] ?? $item['quantity'] ?? 0,
+                        'product_name' => ValidationRules::normalizeSingleLine((string) $productName, 255),
+                        'price' => (float) $price,
+                        'price_value' => ValidationRules::normalizeMoneyString($price),
+                        'quantity' => (int) $quantity,
+                        'quantity_value' => ValidationRules::normalizeIntegerString($quantity),
                     ]);
                 }
             });

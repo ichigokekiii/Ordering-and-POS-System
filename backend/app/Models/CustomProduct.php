@@ -16,10 +16,13 @@ class CustomProduct extends Model
         'category',
         'type',
         'price',
+        'price_value',
         'isAvailable',
         'isArchived',
         'required_main_count',
+        'required_main_count_value',
         'required_filler_count',
+        'required_filler_count_value',
     ];
 
     protected $casts = [

@@ -13,6 +13,13 @@ export const OrderProvider = ({ children }) => {
   const [orders, setOrders] = useState([]);
 
   const fetchOrders = async () => {
+    const token = window.sessionStorage.getItem("token");
+
+    if (!token) {
+      setOrders([]);
+      return;
+    }
+
     try {
       const res = await api.get("/orders");
       const data = res.data;

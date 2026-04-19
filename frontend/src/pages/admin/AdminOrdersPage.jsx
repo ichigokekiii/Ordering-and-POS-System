@@ -1,11 +1,15 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState, useRef, useMemo } from "react";
 import api from "../../services/api";
+import OrderStatusLegend from "../../components/orders/OrderStatusLegend";
 import {
   formatOrderStatus,
-  getOrderStatusPillClasses,
+  getFallbackOrderStatuses,
+  getOrderStatusPillStyle,
   normalizeOrderStatus,
 } from "../../utils/orderStatus";
+import { fetchLookups } from "../../utils/lookups";
+import { normalizeTrackingNumber, validateTrackingNumber } from "../../utils/authValidation";
 import { sanitizeSearchTerm } from "../../utils/formValidation";
 import { 
   Search, 
@@ -27,10 +31,13 @@ import {
 import { getAssetUrl } from "../../utils/assetUrl";
 
 // --- REUSABLE PILLS ---
-const OrderStatusPill = ({ status }) => {
+const OrderStatusPill = ({ status, statuses = [] }) => {
   return (
-    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getOrderStatusPillClasses(status)}`}>
-      {formatOrderStatus(status)}
+    <span
+      className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border"
+      style={getOrderStatusPillStyle(status, statuses)}
+    >
+      {formatOrderStatus(status, statuses)}
     </span>
   );
 };
@@ -75,16 +82,20 @@ const ORDER_VIEW_OPTIONS = [
 
 // --- MAIN COMPONENT ---
 function AdminOrdersPage({ user }) {
+  const fallbackOrderStatuses = useMemo(() => getFallbackOrderStatuses(), []);
   const [orders, setOrders] = useState([]);
   const [posTransactions, setPosTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState("preorder");
+  const [orderStatuses, setOrderStatuses] = useState(fallbackOrderStatuses);
 
   const [viewingOrder, setViewingOrder] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
   const [viewingPayment, setViewingPayment] = useState(null);
   const [viewingPosTransaction, setViewingPosTransaction] = useState(null);
   const [status, setStatus] = useState("");
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [trackingError, setTrackingError] = useState("");
 
   const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', message: '' });
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, itemId: null, recordType: "preorder" });
@@ -152,7 +163,15 @@ function AdminOrdersPage({ user }) {
 
     const loadPageData = async () => {
       setLoading(true);
-      await Promise.allSettled([fetchOrders(), fetchPosTransactions()]);
+      const [lookupResult] = await Promise.allSettled([
+        fetchLookups(),
+        fetchOrders(),
+        fetchPosTransactions(),
+      ]);
+
+      if (lookupResult.status === "fulfilled") {
+        setOrderStatuses(lookupResult.value.order_statuses || fallbackOrderStatuses);
+      }
 
       if (isMounted) {
         setLoading(false);
@@ -172,7 +191,7 @@ function AdminOrdersPage({ user }) {
       isMounted = false;
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, []);
+  }, [fallbackOrderStatuses]);
 
   // Extract unique events for the filter dropdown
   const uniqueEvents = useMemo(() => {
@@ -416,8 +435,20 @@ function AdminOrdersPage({ user }) {
 
   const handleUpdateStatus = async () => {
     if (!editingOrder) return;
+    const trackingValidationError = validateTrackingNumber(trackingNumber, {
+      required: status === "shipped",
+    });
+
+    if (trackingValidationError) {
+      setTrackingError(trackingValidationError);
+      return;
+    }
+
     try {
-      const res = await api.put(`/orders/${editingOrder.order_id || editingOrder.id}`, { order_status: status });
+      const res = await api.put(`/orders/${editingOrder.order_id || editingOrder.id}`, {
+        order_status: status,
+        tracking_number: status === "shipped" ? trackingNumber : "",
+      });
       const updatedOrder = {
         ...res.data,
         order_items: res.data.order_items || res.data.orderItems || [],
@@ -431,16 +462,21 @@ function AdminOrdersPage({ user }) {
       );
       setEditingOrder(null);
       setStatus("");
+      setTrackingNumber("");
+      setTrackingError("");
       showModalAlert("success", "Order status updated!");
     } catch (err) {
       console.error("Update failed:", err.response?.data || err.message);
-      showModalAlert("error", "Failed to update order status.");
+      setTrackingError(err.response?.data?.errors?.tracking_number?.[0] || "");
+      showModalAlert("error", err.response?.data?.message || "Failed to update order status.");
     }
   };
 
   const openEditModal = (order) => {
     setEditingOrder(order);
     setStatus(normalizeOrderStatus(order.order_status));
+    setTrackingNumber(order.tracking_number || "");
+    setTrackingError("");
   };
 
   const getImageUrl = (imagePath) => {
@@ -489,6 +525,12 @@ function AdminOrdersPage({ user }) {
           )}
         </div>
       </div>
+
+      {activeView === "preorder" && (
+        <div className="mb-6">
+          <OrderStatusLegend statuses={orderStatuses} />
+        </div>
+      )}
 
       {/* SEARCH & FILTERS BAR */}
       <div className="mb-6 flex flex-col md:flex-row gap-4">
@@ -564,13 +606,13 @@ function AdminOrdersPage({ user }) {
 
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-t border-gray-50 pt-4">Filter by Status</p>
                     <div className="space-y-1 mb-4">
-                      {["all", "pending", "processing", "shipped", "delivered", "cancelled"].map((s) => (
+                      {["all", ...orderStatuses.map((item) => item.code)].map((s) => (
                         <button
                           key={s}
                           onClick={() => setFilterStatus(s)}
                           className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-colors ${filterStatus === s ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50"}`}
                         >
-                          {s === "all" ? "All Statuses" : formatOrderStatus(s)}
+                          {s === "all" ? "All Statuses" : formatOrderStatus(s, orderStatuses)}
                         </button>
                       ))}
                     </div>
@@ -755,7 +797,19 @@ function AdminOrdersPage({ user }) {
                           </div>
                         </td>
                         <td className="px-5 py-5">
-                          <p className={`text-sm font-semibold capitalize whitespace-nowrap ${isArchivedOrder ? "text-gray-500" : "text-gray-700"}`}>{order.delivery_method}</p>
+                          <div className="max-w-[180px]">
+                            <p className={`text-sm font-semibold capitalize whitespace-nowrap ${isArchivedOrder ? "text-gray-500" : "text-gray-700"}`}>{order.delivery_method}</p>
+                            {(order.delivery_zone?.label || order.deliveryZone?.label || order.delivery_zone_other) ? (
+                              <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 truncate">
+                                {order.delivery_zone?.label || order.deliveryZone?.label || order.delivery_zone_other}
+                              </p>
+                            ) : null}
+                            {order.tracking_number ? (
+                              <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#6d28d9] truncate">
+                                Tracking: {order.tracking_number}
+                              </p>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="px-5 py-5">
                           <p className="text-sm font-semibold text-gray-600 whitespace-nowrap">
@@ -763,7 +817,7 @@ function AdminOrdersPage({ user }) {
                           </p>
                         </td>
                         <td className="px-5 py-5">
-                          <OrderStatusPill status={order.order_status} />
+                          <OrderStatusPill status={order.order_status} statuses={orderStatuses} />
                         </td>
                         <td className="px-5 py-5 text-right">
                           <p className="text-sm font-bold text-[#4f6fa5] whitespace-nowrap">₱{order.total_amount}</p>
@@ -945,7 +999,13 @@ function AdminOrdersPage({ user }) {
                     <div className="flex justify-between"><span className="text-gray-500">Date Placed</span><span className="font-semibold text-gray-900">{new Date(activeOrder.created_at).toLocaleDateString()}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500">Delivery</span><span className="font-semibold text-gray-900 capitalize">{activeOrder.delivery_method}</span></div>
                     <div className="flex justify-between gap-4"><span className="text-gray-500">Event</span><span className="font-semibold text-gray-900 text-right">{activeOrder.schedule?.schedule_name || "Legacy / Unlinked"}</span></div>
-                    <div className="flex justify-between items-center"><span className="text-gray-500">Current Status</span><OrderStatusPill status={activeOrder.order_status} /></div>
+                    <div className="flex justify-between items-center"><span className="text-gray-500">Current Status</span><OrderStatusPill status={activeOrder.order_status} statuses={orderStatuses} /></div>
+                    {activeOrder.tracking_number ? (
+                      <div className="flex justify-between gap-4">
+                        <span className="text-gray-500">Tracking Number</span>
+                        <span className="font-semibold text-gray-900 text-right">{activeOrder.tracking_number}</span>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
@@ -973,6 +1033,21 @@ function AdminOrdersPage({ user }) {
                 <div className="mb-6 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
                   <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2 block">Delivery Address</h3>
                   <p className="text-sm font-medium text-gray-700">{activeOrder.address}</p>
+                  {(activeOrder.delivery_zone?.label || activeOrder.deliveryZone?.label || activeOrder.delivery_zone_other) ? (
+                    <div className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-500">
+                      <p>
+                        Delivery Zone:{" "}
+                        <span className="font-semibold text-gray-700">
+                          {activeOrder.delivery_zone?.label || activeOrder.deliveryZone?.label || "Other"}
+                        </span>
+                      </p>
+                      {activeOrder.delivery_zone_other ? (
+                        <p className="mt-1">
+                          Area Detail: <span className="font-semibold text-gray-700">{activeOrder.delivery_zone_other}</span>
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               )}
 
@@ -1035,16 +1110,49 @@ function AdminOrdersPage({ user }) {
                   <div className="relative">
                     <select
                       value={status}
-                      onChange={(e) => setStatus(e.target.value)}
+                      onChange={(e) => {
+                        setStatus(e.target.value);
+                        if (e.target.value !== "shipped") {
+                          setTrackingError("");
+                        }
+                      }}
                       className="w-full appearance-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 hover:border-gray-900 hover:text-gray-900 transition-all cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-[#eaf2ff]"
                     >
-                      <option value="pending">Pending</option>
-                      <option value="processing">Processing</option>
-                      <option value="shipped">Shipped</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="cancelled">Cancelled</option>
+                      {orderStatuses.map((orderStatus) => (
+                        <option key={orderStatus.code} value={orderStatus.code}>
+                          {orderStatus.label}
+                        </option>
+                      ))}
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">
+                      Tracking Number {status === "shipped" ? "*" : "(Optional)"}
+                    </label>
+                    <input
+                      type="text"
+                      value={trackingNumber}
+                      onChange={(event) => {
+                        setTrackingNumber(normalizeTrackingNumber(event.target.value));
+                        setTrackingError("");
+                      }}
+                      placeholder={status === "shipped" ? "Required once order is shipped" : "Tracking number will be used when shipped"}
+                      maxLength={40}
+                      className={`w-full rounded-xl border px-4 py-3 text-sm font-medium text-gray-700 transition-all focus:outline-none focus:ring-2 ${
+                        trackingError
+                          ? "border-rose-400 bg-rose-50 focus:border-rose-400 focus:ring-rose-200"
+                          : "border-gray-200 bg-white hover:border-gray-900 focus:border-[#4f6fa5] focus:ring-[#eaf2ff]"
+                      }`}
+                    />
+                    {trackingError ? (
+                      <p className="mt-2 text-xs font-medium text-rose-500">{trackingError}</p>
+                    ) : (
+                      <p className="mt-2 text-xs text-gray-400">
+                        Tracking details are shown to both staff and customers after shipment.
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

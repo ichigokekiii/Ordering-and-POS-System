@@ -5,6 +5,7 @@ import api from "../../services/api";
 import { useSchedules } from "../../contexts/ScheduleContext";
 import TermsAndConditionsModal from "../../components/TermsAndConditionsModal";
 import TermsConsentField from "../../components/TermsConsentField";
+import DataPrivacyNotice from "../../components/privacy/DataPrivacyNotice";
 import FormFieldHeader from "../../components/form/FormFieldHeader";
 import {
   formatCustomSelection,
@@ -12,15 +13,21 @@ import {
 } from "../../utils/customOrderSummary";
 import { resolveTermsScopeFromRole } from "../../utils/termsAndConditions";
 import {
+  CHECKOUT_ADDRESS_MAX_LENGTH,
   PAYMENT_METHOD_MAX_LENGTH,
   REFERENCE_CODE_MAX_LENGTH,
+  normalizeMoneyInput,
   normalizeReferenceCode,
+  validateAmountMatch,
   validateCheckoutAddress,
+  validateDeliveryZone,
+  validateDeliveryZoneOther,
   validatePaymentMethod,
   validateReferenceCode,
 } from "../../utils/authValidation";
 import { normalizeApiValidationErrors } from "../../utils/formValidation";
 import { getAssetUrl } from "../../utils/assetUrl";
+import { FALLBACK_DELIVERY_OPTIONS, FALLBACK_DELIVERY_ZONES, fetchLookups } from "../../utils/lookups";
 
 function CheckoutPage() {
   const navigate = useNavigate();
@@ -39,7 +46,10 @@ function CheckoutPage() {
   const [showQRModal, setShowQRModal] = useState(false);
   const [termsAcknowledged, setTermsAcknowledged] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [userRole, setUserRole] = useState("");
+  const [deliveryOptions, setDeliveryOptions] = useState(FALLBACK_DELIVERY_OPTIONS);
+  const [deliveryZones, setDeliveryZones] = useState(FALLBACK_DELIVERY_ZONES);
 
   // ── Success modal (same pattern as VerifyOtpPage) ──
   const [modalMessage, setModalMessage] = useState("");
@@ -53,6 +63,11 @@ function CheckoutPage() {
 
   // Manual inputs
   const [address, setAddress] = useState("");
+  const [deliveryZone, setDeliveryZone] = useState("");
+  const [deliveryZoneOther, setDeliveryZoneOther] = useState("");
+  const [amountPaid, setAmountPaid] = useState(
+    Number(totalPrice || 0).toFixed(2)
+  );
 
   // Saved addresses from profile
   const [savedAddresses, setSavedAddresses] = useState([]);
@@ -68,9 +83,13 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
   // Validation errors
   const [errors, setErrors] = useState({
     address: "",
+    deliveryZone: "",
+    deliveryZoneOther: "",
     paymentMethod: "",
+    amountPaid: "",
     referenceCode: "",
     image: "",
+    privacy: "",
     terms: "",
   });
   const [formError, setFormError] = useState("");
@@ -83,6 +102,10 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
     setTermsAccepted(false);
     setErrors((prev) => ({ ...prev, terms: "" }));
   }, [termsScope]);
+
+  useEffect(() => {
+    setAmountPaid(Number(totalPrice || 0).toFixed(2));
+  }, [totalPrice]);
 
   useEffect(() => {
     let isMounted = true;
@@ -107,6 +130,11 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
     };
 
     fetchProfile();
+    fetchLookups().then((lookups) => {
+      if (!isMounted) return;
+      setDeliveryOptions(lookups.delivery_options || FALLBACK_DELIVERY_OPTIONS);
+      setDeliveryZones(lookups.delivery_zones || FALLBACK_DELIVERY_ZONES);
+    });
 
     return () => {
       isMounted = false;
@@ -131,11 +159,15 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
 
     if (deliveryMode === "delivery") {
       newErrors.address = validateCheckoutAddress(resolvedAddress);
+      newErrors.deliveryZone = validateDeliveryZone(deliveryZone);
+      newErrors.deliveryZoneOther = validateDeliveryZoneOther(deliveryZone, deliveryZoneOther);
     }
 
     newErrors.paymentMethod = validatePaymentMethod(paymentMethod);
+    newErrors.amountPaid = validateAmountMatch(amountPaid, GRAND_TOTAL, "Amount");
     newErrors.referenceCode = validateReferenceCode(referenceCode);
     newErrors.image = paymentProof ? "" : "Payment screenshot is required.";
+    newErrors.privacy = privacyAccepted ? "" : "Please acknowledge the Data Privacy Notice before confirming your order.";
 
     if (!termsAcknowledged || !termsAccepted) {
       newErrors.terms = "Please review and accept the required Terms & Conditions before confirming your order.";
@@ -241,11 +273,15 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
       formData.append("schedule_id",      selectedScheduleId);
       formData.append("address",          deliveryMode === "pickup" ? "Pickup" : resolvedAddress);
       formData.append("delivery_method",  deliveryMode);
+      formData.append("delivery_zone",    deliveryMode === "delivery" ? deliveryZone : "");
+      formData.append("delivery_zone_other", deliveryMode === "delivery" ? deliveryZoneOther.trim() : "");
       formData.append("payment_method",   paymentMethod);
+      formData.append("amount_paid",      amountPaid);
       formData.append("reference_number", referenceCode);
       formData.append("reference_image",  freshFile);
       formData.append("total_amount",     GRAND_TOTAL);
       formData.append("special_message",  "");
+      formData.append("privacy_accepted", privacyAccepted ? "true" : "false");
       formData.append("terms_accepted",   "true");
       formData.append("terms_scope",      termsScope);
 
@@ -272,7 +308,11 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
       console.error("Order failed", error);
       console.error("Validation errors:", error.response?.data);
       const normalizedError = normalizeApiValidationErrors(error, {
+        amount_paid: "amountPaid",
+        delivery_zone: "deliveryZone",
+        delivery_zone_other: "deliveryZoneOther",
         payment_method: "paymentMethod",
+        privacy_accepted: "privacy",
         reference_number: "referenceCode",
         reference_image: "image",
       });
@@ -343,34 +383,109 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
 
             <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
               <h2 className="mb-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-4">1. Delivery Method</h2>
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  onClick={() => setDeliveryMode("pickup")}
-                  className={`flex-1 rounded-2xl border py-4 text-xs font-bold uppercase tracking-widest transition-all ${
-                    deliveryMode === "pickup"
-                      ? "border-[#4f6fa5] bg-[#4f6fa5]/5 text-[#4f6fa5] shadow-inner"
-                      : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 shadow-sm hover:shadow"
-                  }`}
-                >
-                  Pickup
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeliveryMode("delivery")}
-                  className={`flex-1 rounded-2xl border py-4 text-xs font-bold uppercase tracking-widest transition-all ${
-                    deliveryMode === "delivery"
-                      ? "border-[#4f6fa5] bg-[#4f6fa5]/5 text-[#4f6fa5] shadow-inner"
-                      : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 shadow-sm hover:shadow"
-                  }`}
-                >
-                  Delivery
-                </button>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {deliveryOptions.map((option) => (
+                  <button
+                    key={option.code}
+                    type="button"
+                    onClick={() => {
+                      setDeliveryMode(option.code);
+                      if (option.code !== "delivery") {
+                        setDeliveryZone("");
+                        setDeliveryZoneOther("");
+                      }
+                      setErrors((prev) => ({
+                        ...prev,
+                        address: "",
+                        deliveryZone: "",
+                        deliveryZoneOther: "",
+                      }));
+                    }}
+                    className={`rounded-2xl border py-4 text-xs font-bold uppercase tracking-widest transition-all ${
+                      deliveryMode === option.code
+                        ? "border-[#4f6fa5] bg-[#4f6fa5]/5 text-[#4f6fa5] shadow-inner"
+                        : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 shadow-sm hover:shadow"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
               </div>
               {deliveryMode === "delivery" && (
-                <p className="mt-3 text-xs text-gray-400">
-                  Delivery is handled by a third-party courier. Fees are settled separately.
-                </p>
+                <div className="mt-4 space-y-4">
+                  <p className="text-xs text-gray-400">
+                    Delivery is handled by a third-party courier. Fees are settled separately.
+                  </p>
+
+                  <div>
+                    <FormFieldHeader label="Delivery Zone" required error={errors.deliveryZone} />
+                    <div className="relative">
+                      <select
+                        value={deliveryZone}
+                        onChange={(event) => {
+                          setDeliveryZone(event.target.value);
+                          setDeliveryZoneOther("");
+                          setErrors((prev) => ({
+                            ...prev,
+                            deliveryZone: "",
+                            deliveryZoneOther: "",
+                          }));
+                        }}
+                        className={`w-full appearance-none rounded-xl border px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-1 ${
+                          errors.deliveryZone
+                            ? "border-red-400 focus:border-red-400 focus:ring-red-400"
+                            : "border-gray-200 bg-white focus:border-[#4f6fa5] focus:ring-[#4f6fa5]"
+                        } ${!deliveryZone ? "text-gray-400" : "text-gray-700"}`}
+                      >
+                        <option value="" disabled>
+                          Select a delivery zone
+                        </option>
+                        {deliveryZones.map((zone) => (
+                          <option key={zone.code} value={zone.code}>
+                            {zone.label}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                    {deliveryZone ? (
+                      <p className="mt-1.5 text-[10px] uppercase tracking-widest text-gray-400">
+                        {deliveryZones.find((zone) => zone.code === deliveryZone)?.description || "Controlled delivery area option selected."}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  {deliveryZone === "other" && (
+                    <div>
+                      <FormFieldHeader
+                        label="Delivery Area Details"
+                        required
+                        error={errors.deliveryZoneOther}
+                        count={deliveryZoneOther.length}
+                        max={120}
+                      />
+                      <input
+                        type="text"
+                        value={deliveryZoneOther}
+                        onChange={(event) => {
+                          setDeliveryZoneOther(event.target.value.slice(0, 120));
+                          setErrors((prev) => ({ ...prev, deliveryZoneOther: "" }));
+                        }}
+                        placeholder="Enter the exact city, barangay, or landmark"
+                        maxLength={120}
+                        className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-1 ${
+                          errors.deliveryZoneOther
+                            ? "border-red-400 focus:border-red-400 focus:ring-red-400"
+                            : "border-gray-200 bg-white focus:border-[#4f6fa5] focus:ring-[#4f6fa5]"
+                        }`}
+                      />
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
@@ -452,17 +567,17 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
                     {useManualAddress && (
                       <div>
                         <div className="flex justify-end mb-1">
-                          <span className="text-xs text-gray-400">{address.length}/200</span>
+                          <span className="text-xs text-gray-400">{address.length}/{CHECKOUT_ADDRESS_MAX_LENGTH}</span>
                         </div>
                         <textarea
                           rows="2"
                           value={address}
                           onChange={(e) => {
-                            if (e.target.value.length <= 200) setAddress(e.target.value);
+                            if (e.target.value.length <= CHECKOUT_ADDRESS_MAX_LENGTH) setAddress(e.target.value);
                             setErrors(prev => ({ ...prev, address: "" }));
                           }}
                           placeholder="Enter your complete delivery address"
-                          maxLength={200}
+                          maxLength={CHECKOUT_ADDRESS_MAX_LENGTH}
                           className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-1 ${
                             errors.address
                               ? "border-red-400 focus:border-red-400 focus:ring-red-400"
@@ -624,6 +739,34 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
 
                 <div>
                   <FormFieldHeader
+                    label="Amount"
+                    required
+                    error={errors.amountPaid}
+                    count={amountPaid.length}
+                    max={20}
+                  />
+                  <input
+                    value={amountPaid}
+                    onChange={(event) => {
+                      setAmountPaid(normalizeMoneyInput(event.target.value));
+                      setErrors((prev) => ({ ...prev, amountPaid: "" }));
+                    }}
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    maxLength={20}
+                    className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-1 ${
+                      errors.amountPaid
+                        ? "border-red-400 focus:border-red-400 focus:ring-red-400"
+                        : "border-gray-200 bg-white focus:border-[#4f6fa5] focus:ring-[#4f6fa5]"
+                    }`}
+                  />
+                  <p className="mt-1.5 text-[10px] uppercase tracking-widest text-gray-400">
+                    Enter the exact paid amount. It must match the checkout total.
+                  </p>
+                </div>
+
+                <div>
+                  <FormFieldHeader
                     label="Reference Code"
                     required
                     error={errors.referenceCode}
@@ -774,6 +917,17 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
               </div>
 
               <div className="mb-6">
+                <DataPrivacyNotice
+                  checked={privacyAccepted}
+                  onToggle={(checked) => {
+                    setPrivacyAccepted(checked);
+                    setErrors((prev) => ({ ...prev, privacy: "" }));
+                  }}
+                  error={errors.privacy}
+                />
+              </div>
+
+              <div className="mb-6">
                 <TermsConsentField
                   scope={termsScope}
                   checked={termsAccepted}
@@ -789,18 +943,26 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
 
               <button
                 type="submit"
-                disabled={!paymentProof || isSubmitting || !termsAccepted}
+                disabled={!paymentProof || isSubmitting || !termsAccepted || !privacyAccepted}
                 className={`w-full rounded-2xl py-4 text-xs font-bold tracking-widest uppercase text-white shadow-md transition-all active:scale-95
-                  ${paymentProof && !isSubmitting && termsAccepted
+                  ${paymentProof && !isSubmitting && termsAccepted && privacyAccepted
                     ? "bg-gray-900 hover:bg-[#4f6fa5] hover:shadow-lg"
                     : "cursor-not-allowed bg-gray-200 text-gray-400 shadow-none border border-gray-200"
                   }`}
               >
-                {isSubmitting ? "Processing..." : paymentProof ? (termsAccepted ? "Confirm Order" : "Accept terms to continue") : "Upload proof to continue"}
+                {isSubmitting
+                  ? "Processing..."
+                  : !paymentProof
+                    ? "Upload proof to continue"
+                    : !privacyAccepted
+                      ? "Acknowledge privacy notice to continue"
+                      : termsAccepted
+                        ? "Confirm Order"
+                        : "Accept terms to continue"}
               </button>
 
               <p className="mt-5 text-center text-[10px] uppercase tracking-widest font-bold text-gray-400">
-                Review the applicable terms before placing your order.
+                Review the privacy notice and applicable terms before placing your order.
               </p>
             </div>
           </div>

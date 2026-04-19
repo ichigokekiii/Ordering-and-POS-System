@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Support\LookupCatalog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -16,15 +17,19 @@ class OrderStatusUpdated extends Mailable
     public string $newStatus;
     public float  $totalAmount;
     public string $deliveryMethod;
+    public ?string $trackingNumber;
     public string $userName;
     public string $userEmail;
     public array  $items;
+    public array  $statusMeta;
+    public array  $statusLegend;
 
     public function __construct(
         string $orderId,
         string $newStatus,
         float  $totalAmount,
         string $deliveryMethod,
+        ?string $trackingNumber,
         string $userName,
         string $userEmail,
         array  $items,
@@ -33,9 +38,12 @@ class OrderStatusUpdated extends Mailable
         $this->newStatus      = $newStatus;
         $this->totalAmount    = $totalAmount;
         $this->deliveryMethod = $deliveryMethod;
+        $this->trackingNumber = $trackingNumber;
         $this->userName       = $userName;
         $this->userEmail      = $userEmail;
         $this->items          = $items;
+        $this->statusMeta     = LookupCatalog::orderStatusMeta($newStatus);
+        $this->statusLegend   = LookupCatalog::orderStatusLegend();
     }
 
     public function envelope(): Envelope

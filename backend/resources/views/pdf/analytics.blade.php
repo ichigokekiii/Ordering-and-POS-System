@@ -7,6 +7,7 @@
     $visualBlocks = $visualBlocks ?? [];
     $detailTables = $detailTables ?? [];
     $focusCard = $focusCard ?? null;
+    $orderStatusLegend = $orderStatusLegend ?? [];
     $palette = ['#4f6fa5', '#e76f51', '#10b981', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899', '#14b8a6'];
 
     $formatValue = function ($value, $type = 'number') use ($peso) {
@@ -99,7 +100,7 @@
     <title>{{ $sectionName }}</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: 'DejaVu Sans', sans-serif; color: #1e293b; font-size: 11px; line-height: 1.5; background: #ffffff;">
-    <div style="padding: 28px 34px 34px;">
+    <div style="padding: 28px 34px 56px;">
         <div style="border: 1px solid #e2e8f0; border-top: 6px solid {{ $theme['accent'] }}; border-radius: 22px; overflow: hidden; margin-bottom: 24px;">
             <div style="background: {{ $theme['soft'] }}; padding: 22px 24px 18px;">
                 <table style="width: 100%; border-collapse: collapse;">
@@ -406,9 +407,45 @@
             @endforeach
         @endif
 
+        @if($sectionKey === 'orders' && !empty($orderStatusLegend))
+            <div style="margin: 24px 0 12px; font-size: 18px; font-weight: 700; color: #0f172a;">Order Status Legend</div>
+            <table style="width: 100%; border-collapse: separate; border-spacing: 10px 10px; margin-left: -10px;">
+                @foreach(array_chunk($orderStatusLegend, 3) as $legendRow)
+                    <tr>
+                        @foreach($legendRow as $legend)
+                            <td style="width: 33.33%; vertical-align: top;">
+                                <div style="height: 100%; border: 1px solid #e2e8f0; border-radius: 16px; background: #ffffff; padding: 14px;">
+                                    <span style="display: inline-block; padding: 5px 10px; border-radius: 999px; border: 1px solid {{ $legend['colors']['border'] }}; background: {{ $legend['colors']['background'] }}; color: {{ $legend['colors']['text'] }}; font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;">
+                                        {{ $legend['label'] }}
+                                    </span>
+                                    <div style="margin-top: 8px; font-size: 10px; color: #64748b; line-height: 1.6;">
+                                        {{ $legend['description'] }}
+                                    </div>
+                                </div>
+                            </td>
+                        @endforeach
+                        @for($i = count($legendRow); $i < 3; $i++)
+                            <td style="width: 33.33%;"></td>
+                        @endfor
+                    </tr>
+                @endforeach
+            </table>
+        @endif
+
         <div style="margin-top: 26px; text-align: center; font-size: 9px; color: #94a3b8;">
             Petal Express Analytics Studio • Confidential Internal Document
         </div>
     </div>
+    <script type="text/php">
+        if (isset($pdf)) {
+            $font = $fontMetrics->getFont("Helvetica", "normal");
+            $size = 8;
+            $y = $pdf->get_height() - 22;
+            $text = "Page {PAGE_NUM} of {PAGE_COUNT}";
+            $width = $fontMetrics->getTextWidth($text, $font, $size);
+            $x = $pdf->get_width() - $width - 28;
+            $pdf->page_text($x, $y, $text, $font, $size, array(0.45, 0.5, 0.58));
+        }
+    </script>
 </body>
 </html>

@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
+use App\Support\LookupCatalog;
 
 class OrderCancellationController extends Controller
 {
@@ -80,7 +81,9 @@ class OrderCancellationController extends Controller
             ], 422);
         }
 
-        $order->order_status = 'Cancelled';
+        $order->order_status = 'cancelled';
+        $order->order_status_id = LookupCatalog::orderStatusIdFor('cancelled');
+        $order->tracking_number = null;
         $order->save();
 
         Mail::to($user->email)->send(new OrderCancelledMail($order, $user, $schedule));
@@ -98,6 +101,7 @@ class OrderCancellationController extends Controller
         if ((int) $user->priority >= 3) {
             $user->is_locked = true;
             $user->status = 'Inactive';
+            $user->user_status_id = LookupCatalog::userStatusIdFor('inactive');
             $accountDisabled = true;
         }
 

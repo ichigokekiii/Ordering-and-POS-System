@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Mail\AnalyticsReportMail;
+use App\Support\LookupCatalog;
 
 class AnalyticsController extends Controller
 {
@@ -73,8 +74,9 @@ class AnalyticsController extends Controller
             $fullData = $this->getRawAnalyticsData();
             $pdfPayload = $this->buildPdfPayload($section, $context, $fullData, $exportType, $contextKind, $subtitle, $sectionLabel);
 
-            // Generate PDF
-            $pdf = Pdf::loadView('pdf.analytics', $pdfPayload);
+            // Enable Dompdf PHP scripting so the Blade footer can stamp page numbers.
+            $pdf = Pdf::loadView('pdf.analytics', $pdfPayload)
+                ->setOption('isPhpEnabled', true);
             $pdfContent = $pdf->output();
 
             // Send Email
@@ -120,6 +122,7 @@ class AnalyticsController extends Controller
             'sectionLabel' => $sectionLabel ?: $definition['label'],
             'reportDescription' => $definition['description'],
             'theme' => $definition['theme'],
+            'orderStatusLegend' => $section === 'orders' ? LookupCatalog::orderStatusLegend() : [],
             'summaryCards' => $this->sliceRows($definition['cards'] ?? [], 8),
             'focusCard' => null,
             'supportingCards' => [],
@@ -203,6 +206,7 @@ class AnalyticsController extends Controller
             'sectionLabel' => $sectionLabel ?: $definition['label'],
             'reportDescription' => $reportDescription,
             'theme' => $definition['theme'],
+            'orderStatusLegend' => $section === 'orders' ? LookupCatalog::orderStatusLegend() : [],
             'summaryCards' => [],
             'focusCard' => $focusCard,
             'supportingCards' => $supportingCards,
@@ -323,13 +327,14 @@ class AnalyticsController extends Controller
                 'panels' => [
                     [
                         'title' => 'Order Status Trend',
-                        'subtitle' => 'Monthly view of pending, confirmed, completed, and cancelled orders.',
+                        'subtitle' => 'Monthly view of pending, processing, shipped, delivered, and cancelled orders.',
                         'kind' => 'chart',
                         'type' => 'line',
                         'series' => [
                             ['key' => 'pending', 'label' => 'Pending', 'color' => '#eab308'],
-                            ['key' => 'confirmed', 'label' => 'Confirmed', 'color' => '#4f6fa5'],
-                            ['key' => 'completed', 'label' => 'Completed', 'color' => '#10b981'],
+                            ['key' => 'processing', 'label' => 'Processing', 'color' => '#4f6fa5'],
+                            ['key' => 'shipped', 'label' => 'Shipped', 'color' => '#8b5cf6'],
+                            ['key' => 'delivered', 'label' => 'Delivered', 'color' => '#10b981'],
                             ['key' => 'cancelled', 'label' => 'Cancelled', 'color' => '#f43f5e'],
                         ],
                         'format' => 'number',
@@ -797,11 +802,35 @@ class AnalyticsController extends Controller
      */
     protected function getRawAnalyticsData(): array
     {
-        $orders = Order::with(['user', 'payment', 'orderItems'])->get();
+        $orders = Order::with(['user', 'payment', 'orderItems'])->get()->map(function (Order $order) {
+            $order->order_status = LookupCatalog::normalizeOrderStatusCode($order->order_status);
+            $order->total_amount = (float) ($order->total_amount_value ?: $order->total_amount ?: 0);
+
+            if ($order->payment) {
+                $order->payment->payment_status = LookupCatalog::normalizePaymentStatusCode($order->payment->payment_status);
+            }
+
+            foreach ($order->orderItems ?? [] as $item) {
+                $item->quantity = (int) ($item->quantity_value ?: $item->quantity ?: 0);
+                $item->price_at_purchase = (float) ($item->price_at_purchase_value ?: $item->price_at_purchase ?: 0);
+            }
+
+            return $order;
+        });
         $users = User::query()->get();
         $logs = Log::query()->latest('created_at')->limit(200)->get();
         $products = Products::query()->get()->keyBy('id');
-        $posTransactions = PosTransactions::with('items')->get();
+        $posTransactions = PosTransactions::with('items')->get()->map(function (PosTransactions $transaction) {
+            $transaction->total_amount = (float) ($transaction->total_amount_value ?: $transaction->total_amount ?: 0);
+            $transaction->cash_received = (float) ($transaction->cash_received_value ?: $transaction->cash_received ?: 0);
+
+            foreach ($transaction->items ?? [] as $item) {
+                $item->price = (float) ($item->price_value ?: $item->price ?: 0);
+                $item->quantity = (int) ($item->quantity_value ?: $item->quantity ?: 0);
+            }
+
+            return $transaction;
+        });
         $scheduleBookings = ScheduleBooking::with('schedule')->get();
         $schedules = Schedule::query()->get();
 
@@ -953,8 +982,9 @@ class AnalyticsController extends Controller
             return [
                 'label' => $month->format('M'),
                 'pending' => $monthOrders->where('order_status', 'pending')->count(),
-                'confirmed' => $monthOrders->where('order_status', 'confirmed')->count(),
-                'completed' => $monthOrders->where('order_status', 'completed')->count(),
+                'processing' => $monthOrders->where('order_status', 'processing')->count(),
+                'shipped' => $monthOrders->where('order_status', 'shipped')->count(),
+                'delivered' => $monthOrders->where('order_status', 'delivered')->count(),
                 'cancelled' => $monthOrders->where('order_status', 'cancelled')->count(),
             ];
         })->values();
@@ -990,7 +1020,7 @@ class AnalyticsController extends Controller
                 ['name' => 'Premade', 'value' => $premadeOrders],
             ],
             'kpis' => [
-                ['label' => 'Completion Rate', 'value' => $orders->count() ? round(($orders->where('order_status', 'completed')->count() / $orders->count()) * 100, 1) : 0, 'format' => 'percent'],
+                ['label' => 'Completion Rate', 'value' => $orders->count() ? round(($orders->where('order_status', 'delivered')->count() / $orders->count()) * 100, 1) : 0, 'format' => 'percent'],
                 ['label' => 'Cancellation Rate', 'value' => $orders->count() ? round(($orders->where('order_status', 'cancelled')->count() / $orders->count()) * 100, 1) : 0, 'format' => 'percent'],
                 ['label' => 'Avg Items / Order', 'value' => round($orders->avg(fn ($order) => collect($order->orderItems)->sum('quantity')) ?? 0, 1), 'format' => 'number'],
                 ['label' => 'Orders with Messages', 'value' => $orders->filter(fn ($order) => !empty($order->special_message))->count(), 'format' => 'number'],

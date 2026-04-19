@@ -16,6 +16,7 @@ class Products extends Model
         'category',
         'type',
         'price',
+        'price_value',
         'image',
         'isAvailable',
         'isArchived',

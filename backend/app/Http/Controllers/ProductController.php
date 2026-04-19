@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Support\AdminImageUpload;
 use App\Support\ProductService;
+use App\Support\ValidationRules;
 
 class ProductController extends Controller
 {
@@ -71,10 +72,13 @@ class ProductController extends Controller
                 'category'              => $request->category,
                 'type'                  => $request->type,
                 'price'                 => $request->price,
+                'price_value'           => ValidationRules::normalizeMoneyString($request->price),
                 'isAvailable'           => $request->boolean('isAvailable'),
                 'isArchived'            => $request->boolean('isArchived'),
                 'required_main_count'   => $isBouquet ? (int) $request->input('required_main_count', 1) : null,
+                'required_main_count_value' => $isBouquet ? ValidationRules::normalizeIntegerString($request->input('required_main_count', 1), true) : null,
                 'required_filler_count' => $isBouquet ? (int) $request->input('required_filler_count', 2) : null,
+                'required_filler_count_value' => $isBouquet ? ValidationRules::normalizeIntegerString($request->input('required_filler_count', 2), true) : null,
             ]);
 
             ProductService::syncCustomProduct($product);
@@ -116,6 +120,10 @@ class ProductController extends Controller
             $data['isAvailable'] = $request->boolean('isAvailable'); 
         }
 
+        if ($request->has('price')) {
+            $data['price_value'] = ValidationRules::normalizeMoneyString($request->input('price'));
+        }
+
         if ($request->has('isArchived')) {
             $data['isArchived'] = $request->boolean('isArchived');
         }
@@ -126,9 +134,13 @@ class ProductController extends Controller
                 'required_main_count'   => 'required|integer|min:0',
                 'required_filler_count' => 'required|integer|min:0',
             ]);
+            $data['required_main_count_value'] = ValidationRules::normalizeIntegerString($request->input('required_main_count'), true);
+            $data['required_filler_count_value'] = ValidationRules::normalizeIntegerString($request->input('required_filler_count'), true);
         } else {
             $data['required_main_count'] = null;
             $data['required_filler_count'] = null;
+            $data['required_main_count_value'] = null;
+            $data['required_filler_count_value'] = null;
         }
 
         if ($request->hasFile('image')) {

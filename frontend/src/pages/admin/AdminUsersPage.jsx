@@ -25,12 +25,16 @@ import TermsConsentField from "../../components/TermsConsentField";
 import { resolveTermsScopeFromRole } from "../../utils/termsAndConditions";
 import FormFieldHeader from "../../components/form/FormFieldHeader";
 import { getValidationInputClassName } from "../../components/form/fieldStyles";
+import {
+  PASSWORD_MIN_LENGTH,
+  validatePassword,
+  validatePasswordConfirmation,
+} from "../../utils/authValidation";
 import { normalizeApiValidationErrors, sanitizeSearchTerm } from "../../utils/formValidation";
 
 const NAME_MAX_LENGTH = 50;
 const EMAIL_MAX_LENGTH = 255;
 const PHONE_MAX_LENGTH = 11;
-const PASSWORD_MIN_LENGTH = 6;
 const NAME_PATTERN = /^[A-Za-z]+(?:[A-Za-z\s'-]*[A-Za-z])?$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -380,13 +384,11 @@ function AdminUsersPage({ user }) {
         confirmPassword: "",
       };
 
-    if (!normalizedNewUser.password || normalizedNewUser.password.length < PASSWORD_MIN_LENGTH) {
-      createValidationError.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters`;
-    }
-
-    if (normalizedNewUser.password !== normalizedNewUser.confirmPassword) {
-      createValidationError.confirmPassword = "Passwords do not match";
-    }
+    createValidationError.password = validatePassword(normalizedNewUser.password);
+    createValidationError.confirmPassword = validatePasswordConfirmation(
+      normalizedNewUser.password,
+      normalizedNewUser.confirmPassword
+    );
 
     setCreateFieldErrors(createValidationError);
 
@@ -438,11 +440,14 @@ function AdminUsersPage({ user }) {
       password_otp: "",
     };
 
-    if (normalizedEditForm.password && normalizedEditForm.password.length < PASSWORD_MIN_LENGTH) {
-      nextEditErrors.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters`;
-    }
-    if (normalizedEditForm.password && normalizedEditForm.password !== normalizedEditForm.confirmPassword) {
-      nextEditErrors.confirmPassword = "Passwords do not match";
+    if (normalizedEditForm.password) {
+      nextEditErrors.password = validatePassword(normalizedEditForm.password, {
+        label: "Password",
+      });
+      nextEditErrors.confirmPassword = validatePasswordConfirmation(
+        normalizedEditForm.password,
+        normalizedEditForm.confirmPassword
+      );
     }
 
     setEditFieldErrors(nextEditErrors);
@@ -495,13 +500,15 @@ function AdminUsersPage({ user }) {
   };
 
   const sendPasswordOtp = async () => {
-    if (editForm.password.length < PASSWORD_MIN_LENGTH) {
-      showModalAlert("error", `Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
+    const passwordError = validatePassword(editForm.password, { label: "Password" });
+    if (passwordError) {
+      showModalAlert("error", passwordError);
       return;
     }
 
-    if (editForm.password !== editForm.confirmPassword) {
-      showModalAlert("error", "Passwords do not match");
+    const confirmPasswordError = validatePasswordConfirmation(editForm.password, editForm.confirmPassword);
+    if (confirmPasswordError) {
+      showModalAlert("error", confirmPasswordError);
       return;
     }
 

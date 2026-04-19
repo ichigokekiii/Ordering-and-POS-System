@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Support\AdminImageUpload;
 use App\Support\ProductService;
+use App\Support\ValidationRules;
 
 class PremadeController extends Controller
 {
@@ -62,6 +63,7 @@ class PremadeController extends Controller
                 'category'    => $request->category,
                 'type'        => $request->type,
                 'price'       => $request->price,
+                'price_value' => ValidationRules::normalizeMoneyString($request->price),
                 'isAvailable' => $request->boolean('isAvailable'),
                 'isArchived'  => $request->boolean('isArchived'),
             ]);
@@ -90,6 +92,10 @@ class PremadeController extends Controller
         $premade = PremadeProduct::findOrFail($id);
 
         $data = $request->only(['name', 'description', 'category', 'type', 'price']);
+
+        if ($request->has('price')) {
+            $data['price_value'] = ValidationRules::normalizeMoneyString($request->input('price'));
+        }
 
         if ($request->has('isAvailable')) {
             $data['isAvailable'] = $request->boolean('isAvailable');

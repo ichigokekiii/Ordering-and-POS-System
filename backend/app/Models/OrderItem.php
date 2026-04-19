@@ -17,7 +17,9 @@ class OrderItem extends Model
         'custom_id',
         'premade_id',
         'quantity',
+        'quantity_value',
         'price_at_purchase',
+        'price_at_purchase_value',
         'special_message',
     ];
 

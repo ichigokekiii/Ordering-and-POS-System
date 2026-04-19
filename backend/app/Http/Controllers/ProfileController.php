@@ -11,10 +11,20 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use App\Models\User;
+use App\Support\ValidationRules;
 use Illuminate\Support\Facades\Validator;
 
 class ProfileController extends Controller
 {
+    private function rehashPasswordIfNeeded(User $user, string $plainPassword): void
+    {
+        if (Hash::check($plainPassword, $user->password) && Hash::needsRehash($user->password)) {
+            $user->forceFill([
+                'password' => Hash::make($plainPassword),
+            ])->save();
+        }
+    }
+
     private function formatUser(User $user): array
     {
         return [
@@ -81,12 +91,16 @@ class ProfileController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
+        $request->merge([
+            'email' => ValidationRules::normalizeSingleLine((string) $request->input('email'), 255),
+        ]);
+
         if ($request->email === $user->email) {
             return $this->fieldErrorResponse('email', 'New email must be different from current email');
         }
 
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email|unique:users,email',
+            'email' => 'required|email|max:255|unique:users,email',
         ]);
 
         if ($validator->fails()) {
@@ -118,21 +132,62 @@ class ProfileController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
+        $normalizedAddresses = collect($request->input('addresses', []))
+            ->map(function ($address) {
+                return [
+                    'house_number' => ValidationRules::normalizeSingleLine($address['house_number'] ?? null, 20),
+                    'street' => ValidationRules::normalizeSingleLine($address['street'] ?? null, 255),
+                    'barangay' => ValidationRules::normalizeSingleLine($address['barangay'] ?? null, 255),
+                    'city' => ValidationRules::normalizeSingleLine($address['city'] ?? null, 255),
+                    'zip_code' => ValidationRules::normalizeSingleLine($address['zip_code'] ?? null, 10),
+                ];
+            })
+            ->all();
+
+        $normalizedInput = [];
+
+        if ($request->has('first_name')) {
+            $normalizedInput['first_name'] = ValidationRules::normalizeSingleLine((string) $request->input('first_name'), 50);
+        }
+
+        if ($request->has('last_name')) {
+            $normalizedInput['last_name'] = ValidationRules::normalizeSingleLine((string) $request->input('last_name'), 50);
+        }
+
+        if ($request->has('phone_number')) {
+            $normalizedInput['phone_number'] = ValidationRules::normalizePhone((string) $request->input('phone_number'));
+        }
+
+        if ($request->has('addresses')) {
+            $normalizedInput['addresses'] = $normalizedAddresses;
+        }
+
+        if (!empty($normalizedInput)) {
+            $request->merge($normalizedInput);
+        }
+
         if ($request->has('email')) {
             return $this->fieldErrorResponse('email', 'Use email change flow with OTP to update email');
         }
 
         $validator = Validator::make($request->all(), [
-            'first_name' => 'sometimes|string|max:255',
-            'last_name' => 'sometimes|string|max:255',
-            'phone_number' => 'nullable|string|max:20',
+            'first_name' => ['sometimes', 'string', 'min:2', 'max:50', 'regex:' . ValidationRules::NAME_REGEX],
+            'last_name' => ['sometimes', 'string', 'min:2', 'max:50', 'regex:' . ValidationRules::NAME_REGEX],
+            'phone_number' => ['nullable', 'string', 'regex:' . ValidationRules::PHONE_REGEX],
 
             'addresses' => 'sometimes|array|max:3',
-            'addresses.*.house_number' => ['required','string','max:20','regex:/^\d+$/'],
-            'addresses.*.street' => ['required','string','max:255','regex:/^[a-zA-Z0-9\s\-,\.#+]+$/'],
-            'addresses.*.barangay' => ['required','string','max:255','regex:/^[a-zA-Z0-9\s\-,\.#+]+$/'],
-            'addresses.*.city' => ['required','string','max:255','regex:/^[a-zA-Z\s\-\']+$/'],
+            'addresses.*.house_number' => ['required','string','max:20','regex:' . ValidationRules::NON_NEGATIVE_INTEGER_REGEX],
+            'addresses.*.street' => ['required','string','max:255','regex:' . ValidationRules::ADDRESS_TEXT_REGEX],
+            'addresses.*.barangay' => ['required','string','max:255','regex:' . ValidationRules::ADDRESS_TEXT_REGEX],
+            'addresses.*.city' => ['required','string','max:255','regex:' . ValidationRules::CITY_REGEX],
             'addresses.*.zip_code' => 'required|digits:4',
+        ], [
+            'first_name.regex' => 'First name can only contain letters, spaces, apostrophes, and hyphens.',
+            'last_name.regex' => 'Last name can only contain letters, spaces, apostrophes, and hyphens.',
+            'phone_number.regex' => 'Phone number must be exactly 11 digits.',
+            'addresses.*.street.regex' => 'Street contains invalid characters.',
+            'addresses.*.barangay.regex' => 'Barangay contains invalid characters.',
+            'addresses.*.city.regex' => 'City can only contain letters, spaces, apostrophes, and hyphens.',
         ]);
 
         if ($validator->fails()) {
@@ -208,8 +263,12 @@ class ProfileController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
+        $request->merge([
+            'email' => ValidationRules::normalizeSingleLine((string) $request->input('email'), 255),
+        ]);
+
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email|unique:users,email',
+            'email' => 'required|email|max:255|unique:users,email',
             'otp' => 'required|digits:6',
         ]);
 
@@ -265,6 +324,8 @@ public function requestPasswordChangeOtp(Request $request)
         return $this->fieldErrorResponse('current_password', 'Current password is incorrect');
     }
 
+    $this->rehashPasswordIfNeeded($user, (string) $request->current_password);
+
     $otpCode = rand(100000, 999999);
 
     Otp::updateOrCreate(
@@ -293,7 +354,9 @@ public function requestPasswordChangeOtp(Request $request)
         $validator = Validator::make($request->all(), [
             'current_password' => 'required|string',
             'otp' => 'required|digits:6',
-            'new_password' => 'required|string|min:6|confirmed',
+            'new_password' => ValidationRules::passwordRules(true),
+        ], [
+            'new_password.regex' => 'New password must include at least one uppercase letter and one number.',
         ]);
 
         if ($validator->fails()) {
@@ -303,6 +366,8 @@ public function requestPasswordChangeOtp(Request $request)
         if (!Hash::check($request->current_password, $user->password)) {
             return $this->fieldErrorResponse('current_password', 'Current password is incorrect');
         }
+
+        $this->rehashPasswordIfNeeded($user, (string) $request->current_password);
 
         if (Hash::check($request->new_password, $user->password)) {
             return $this->fieldErrorResponse('new_password', 'New password must be different from current password');

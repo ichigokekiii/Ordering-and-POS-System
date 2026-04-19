@@ -1,44 +1,126 @@
-const STATUS_LABELS = {
-  pending: "Pending",
-  processing: "Processing",
-  shipped: "Shipped",
-  delivered: "Delivered",
-  completed: "Completed",
-  cancelled: "Cancelled",
-  confirmed: "Confirmed",
+const FALLBACK_ORDER_STATUSES = [
+  {
+    code: "pending",
+    label: "Pending",
+    description: "Waiting for order review and confirmation.",
+    colors: {
+      background: "#fef3c7",
+      border: "#fcd34d",
+      text: "#92400e",
+    },
+  },
+  {
+    code: "processing",
+    label: "Processing",
+    description: "Order is confirmed and being prepared.",
+    colors: {
+      background: "#dbeafe",
+      border: "#93c5fd",
+      text: "#1d4ed8",
+    },
+  },
+  {
+    code: "shipped",
+    label: "Shipped",
+    description: "Order is in transit to the customer.",
+    colors: {
+      background: "#ede9fe",
+      border: "#c4b5fd",
+      text: "#6d28d9",
+    },
+  },
+  {
+    code: "delivered",
+    label: "Delivered",
+    description: "Order has been completed and received.",
+    colors: {
+      background: "#d1fae5",
+      border: "#86efac",
+      text: "#047857",
+    },
+  },
+  {
+    code: "cancelled",
+    label: "Cancelled",
+    description: "Order was cancelled before fulfillment.",
+    colors: {
+      background: "#fee2e2",
+      border: "#fca5a5",
+      text: "#b91c1c",
+    },
+  },
+];
+
+const ORDER_STATUS_ALIASES = {
+  confirmed: "processing",
+  completed: "delivered",
+  canceled: "cancelled",
 };
 
-export const normalizeOrderStatus = (status) => String(status || "").trim().toLowerCase();
+export const getFallbackOrderStatuses = () => FALLBACK_ORDER_STATUSES;
 
-export const formatOrderStatus = (status) => {
+export const normalizeOrderStatus = (status) => {
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+  return ORDER_STATUS_ALIASES[normalizedStatus] || normalizedStatus;
+};
+
+export const resolveOrderStatuses = (statuses = []) => (
+  Array.isArray(statuses) && statuses.length > 0 ? statuses : FALLBACK_ORDER_STATUSES
+);
+
+export const getOrderStatusMeta = (status, statuses = []) => {
   const normalizedStatus = normalizeOrderStatus(status);
+  const source = resolveOrderStatuses(statuses);
+  const matched = source.find((item) => item.code === normalizedStatus);
 
-  if (STATUS_LABELS[normalizedStatus]) {
-    return STATUS_LABELS[normalizedStatus];
+  if (matched) {
+    return matched;
   }
 
   if (!normalizedStatus) {
-    return "Unknown";
+    return {
+      code: "unknown",
+      label: "Unknown",
+      description: "Status is unavailable.",
+      colors: {
+        background: "#f3f4f6",
+        border: "#d1d5db",
+        text: "#4b5563",
+      },
+    };
   }
 
-  return normalizedStatus
-    .split(/[\s_-]+/)
-    .filter(Boolean)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
+  return {
+    code: normalizedStatus,
+    label: normalizedStatus
+      .split(/[\s_-]+/)
+      .filter(Boolean)
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(" "),
+    description: "",
+    colors: {
+      background: "#f3f4f6",
+      border: "#d1d5db",
+      text: "#4b5563",
+    },
+  };
 };
 
-export const getOrderStatusPillClasses = (status) => {
-  const normalizedStatus = normalizeOrderStatus(status);
+export const formatOrderStatus = (status, statuses = []) => (
+  getOrderStatusMeta(status, statuses).label
+);
 
-  if (normalizedStatus === "pending") return "bg-amber-100 text-amber-700 border-amber-200";
-  if (normalizedStatus === "processing" || normalizedStatus === "confirmed") return "bg-blue-100 text-blue-700 border-blue-200";
-  if (normalizedStatus === "shipped") return "bg-purple-100 text-purple-700 border-purple-200";
-  if (normalizedStatus === "delivered" || normalizedStatus === "completed") return "bg-emerald-100 text-emerald-700 border-emerald-200";
-  if (normalizedStatus === "cancelled") return "bg-rose-100 text-rose-700 border-rose-200";
+export const getOrderStatusPillStyle = (status, statuses = []) => {
+  const meta = getOrderStatusMeta(status, statuses);
 
-  return "bg-gray-100 text-gray-600 border-gray-200";
+  return {
+    backgroundColor: meta.colors.background,
+    borderColor: meta.colors.border,
+    color: meta.colors.text,
+  };
 };
+
+export const getOrderStatusLegend = (statuses = []) => resolveOrderStatuses(statuses);
 
 export const isActionRequiredOrderStatus = (status) => {
   const normalizedStatus = normalizeOrderStatus(status);

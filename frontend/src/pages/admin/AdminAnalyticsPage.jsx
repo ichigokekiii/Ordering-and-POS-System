@@ -40,6 +40,12 @@ import {
   Legend,
 } from "recharts";
 import api from "../../services/api";
+import {
+  formatOrderStatus,
+  getFallbackOrderStatuses,
+  getOrderStatusPillStyle,
+  normalizeOrderStatus,
+} from "../../utils/orderStatus";
 
 const SECTION_OPTIONS = [
   { id: "overview", label: "Overview", icon: Sparkles },
@@ -195,12 +201,32 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 const StatusPill = ({ status }) => {
-  const s = status?.toLowerCase() || "";
-  let color = "bg-gray-100 text-gray-600";
-  if (["confirmed", "completed", "success"].includes(s)) color = "bg-emerald-100 text-emerald-700";
-  if (["pending", "processing"].includes(s)) color = "bg-amber-100 text-amber-700";
-  if (["cancelled", "failed", "error"].includes(s)) color = "bg-rose-100 text-rose-700";
-  return <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${color}`}>{status}</span>;
+  const normalizedStatus = normalizeOrderStatus(status);
+
+  if (normalizedStatus === "processing" && String(status || "").trim().toLowerCase() === "confirmed") {
+    return (
+      <span className="px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 border-emerald-200">
+        Confirmed
+      </span>
+    );
+  }
+
+  if (["failed", "error"].includes(normalizedStatus)) {
+    return (
+      <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700">
+        {String(status || "Failed")}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider"
+      style={getOrderStatusPillStyle(status, getFallbackOrderStatuses())}
+    >
+      {formatOrderStatus(status, getFallbackOrderStatuses())}
+    </span>
+  );
 };
 
 const SimpleTable = ({ columns, rows, emptyMessage = "No data available yet." }) => {
@@ -465,7 +491,7 @@ function AdminAnalyticsPage() {
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2">
-            <AnalyticsPanel title="Order Status Trend" subtitle="Monthly view of pending, confirmed, completed, and cancelled orders." onEmail={handleEmailReport}>
+            <AnalyticsPanel title="Order Status Trend" subtitle="Monthly view of pending, processing, shipped, delivered, and cancelled orders." onEmail={handleEmailReport}>
               {statusTrend.length ? (
                 <div className="h-[320px] w-full mt-4">
                   <ResponsiveContainer width="100%" height="100%">
@@ -476,8 +502,9 @@ function AdminAnalyticsPage() {
                       <Tooltip content={<CustomTooltip />} />
                       <Legend />
                       <Bar dataKey="pending" stackId="orders" fill="#eab308" radius={[8, 8, 0, 0]} />
-                      <Bar dataKey="confirmed" stackId="orders" fill="#4f6fa5" radius={[8, 8, 0, 0]} />
-                      <Bar dataKey="completed" stackId="orders" fill="#10b981" radius={[8, 8, 0, 0]} />
+                      <Bar dataKey="processing" stackId="orders" fill="#4f6fa5" radius={[8, 8, 0, 0]} />
+                      <Bar dataKey="shipped" stackId="orders" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
+                      <Bar dataKey="delivered" stackId="orders" fill="#10b981" radius={[8, 8, 0, 0]} />
                       <Bar dataKey="cancelled" stackId="orders" fill="#f43f5e" radius={[8, 8, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>

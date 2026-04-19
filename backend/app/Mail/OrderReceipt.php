@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Support\LookupCatalog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -16,9 +17,12 @@ class OrderReceipt extends Mailable
     public string $paymentId;
     public float  $totalAmount;
     public string $deliveryMethod;
+    public ?string $trackingNumber;
     public string $userName;
     public string $userEmail;
     public array  $items;
+    public array  $statusMeta;
+    public array  $statusLegend;
 
     /**
      * $items is the array of order_item rows just inserted:
@@ -29,6 +33,7 @@ class OrderReceipt extends Mailable
         string $paymentId,
         float  $totalAmount,
         string $deliveryMethod,
+        ?string $trackingNumber,
         string $userName,
         string $userEmail,
         array  $items,
@@ -37,9 +42,12 @@ class OrderReceipt extends Mailable
         $this->paymentId      = $paymentId;
         $this->totalAmount    = $totalAmount;
         $this->deliveryMethod = $deliveryMethod;
+        $this->trackingNumber = $trackingNumber;
         $this->userName       = $userName;
         $this->userEmail      = $userEmail;
         $this->items          = $items;
+        $this->statusMeta     = LookupCatalog::orderStatusMeta('pending');
+        $this->statusLegend   = LookupCatalog::orderStatusLegend();
     }
 
     public function envelope(): Envelope

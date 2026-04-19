@@ -8,6 +8,7 @@ use App\Mail\OrderReceipt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use App\Support\ValidationRules;
 
 class OrderItemController extends Controller
 {
@@ -26,7 +27,7 @@ class OrderItemController extends Controller
             'items.*.custom_id'         => 'nullable|integer',
             'items.*.premade_id'        => 'nullable|integer',
             'items.*.quantity'          => 'required|integer|min:1',
-            'items.*.price_at_purchase' => 'required|numeric|min:0',
+            'items.*.price_at_purchase' => ['required', 'numeric', 'min:0'],
             'items.*.special_message'   => 'nullable|string|max:150',
         ]);
 
@@ -66,12 +67,14 @@ class OrderItemController extends Controller
         $rows = collect($request->items)->map(fn ($item) => [
             'order_id'          => $item['order_id'],
             'product_id'        => $item['product_id'],
-            'product_name'      => $item['product_name'],
+            'product_name'      => ValidationRules::normalizeSingleLine((string) $item['product_name'], 255),
             'custom_id'         => $item['custom_id']  ?? null,
             'premade_id'        => $item['premade_id'] ?? null,
             'quantity'          => $item['quantity'],
-            'price_at_purchase' => $item['price_at_purchase'],
-            'special_message'   => $item['special_message'] ?? null,
+            'quantity_value'    => ValidationRules::normalizeIntegerString($item['quantity']),
+            'price_at_purchase' => (float) $item['price_at_purchase'],
+            'price_at_purchase_value' => ValidationRules::normalizeMoneyString($item['price_at_purchase']),
+            'special_message'   => ValidationRules::normalizeMultiLine($item['special_message'] ?? null, 150),
         ])->toArray();
 
         $order->orderItems()->createMany($rows);
@@ -84,6 +87,7 @@ class OrderItemController extends Controller
                     paymentId:      $order->payment_id ?? '—',
                     totalAmount:    (float) $order->total_amount,
                     deliveryMethod: $order->delivery_method,
+                    trackingNumber: $order->tracking_number,
                     userName:       trim(($order->user->first_name ?? '') . ' ' . ($order->user->last_name ?? '')),
                     userEmail:      $order->user->email,
                     items:          $rows,

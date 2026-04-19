@@ -1,176 +1,118 @@
-{{-- resources/views/emails/cancel-order-customer.blade.php --}}
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Order Cancelled</title>
-  <style>
-    body {
-      margin: 0; padding: 0;
-      background-color: #f9fafb;
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      color: #374151;
-    }
-    .wrapper {
-      max-width: 560px;
-      margin: 40px auto;
-      background: #ffffff;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-    }
-    .header {
-      background-color: #0f1b2d;
-      padding: 32px 32px 24px;
-      text-align: center;
-    }
-    .header h1 { margin: 0; font-size: 22px; color: #ffffff; font-weight: 700; letter-spacing: -0.3px; }
-    .header p  { margin: 6px 0 0; font-size: 13px; color: rgba(255,255,255,0.7); }
-    .badge {
-      display: inline-block;
-      background: #fee2e2; color: #dc2626;
-      border: 1px solid #fca5a5;
-      font-size: 11px; font-weight: 700;
-      padding: 3px 12px; border-radius: 999px;
-      letter-spacing: 1px; text-transform: uppercase;
-      margin-top: 14px;
-    }
-    .body { padding: 28px 32px; }
-    .greeting { font-size: 15px; margin-bottom: 20px; color: #374151; }
-    .meta-grid { display: flex; gap: 12px; margin-bottom: 24px; }
-    .meta-box {
-      flex: 1; background: #f9fafb;
-      border-radius: 10px; padding: 12px 14px;
-    }
-    .meta-box .label {
-      font-size: 10px; text-transform: uppercase;
-      letter-spacing: 0.6px; color: #9ca3af; margin-bottom: 3px;
-    }
-    .meta-box .value { font-size: 13px; font-weight: 600; color: #111827; }
-    .section-title {
-      font-size: 12px; text-transform: uppercase;
-      letter-spacing: 0.6px; color: #9ca3af; margin-bottom: 10px;
-    }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-    thead th {
-      font-size: 11px; text-transform: uppercase;
-      letter-spacing: 0.5px; color: #9ca3af;
-      padding: 0 0 8px; text-align: left;
-      border-bottom: 1px solid #f3f4f6;
-    }
-    thead th.right { text-align: right; }
-    tbody tr td {
-      padding: 10px 0; font-size: 13px;
-      border-bottom: 1px solid #f3f4f6; vertical-align: top;
-    }
-    .item-name  { font-weight: 500; color: #111827; }
-    .item-meta  { font-size: 11px; color: #9ca3af; margin-top: 2px; }
-    td.qty      { color: #6b7280; width: 40px; }
-    td.price    { text-align: right; font-weight: 500; color: #111827; white-space: nowrap; }
-    .totals     { margin-top: 4px; padding-top: 12px; }
-    .totals .row {
-      display: flex; justify-content: space-between;
-      font-size: 13px; color: #6b7280; margin-bottom: 6px;
-    }
-    .totals .total-row {
-      display: flex; justify-content: space-between;
-      font-size: 16px; font-weight: 700; color: #111827;
-      border-top: 2px solid #f3f4f6;
-      padding-top: 12px; margin-top: 6px;
-    }
-    .totals .total-row span:last-child { color: #dc2626; }
-    .notice {
-      background: #fffbeb; border-left: 4px solid #f59e0b;
-      border-radius: 8px; padding: 14px 18px;
-      font-size: 13px; color: #92400e;
-      margin: 20px 0; line-height: 1.6;
-    }
-    .footer {
-      background: #f9fafb; padding: 20px 32px;
-      text-align: center; font-size: 12px; color: #9ca3af;
-      border-top: 1px solid #f3f4f6;
-    }
-    .footer a { color: #0f1b2d; text-decoration: none; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Cancelled</title>
 </head>
-<body>
-  <div class="wrapper">
+@php
+    $heroBackground = $statusMeta['colors']['background'] ?? '#f8fafc';
+    $heroTextColor = $statusMeta['colors']['text'] ?? '#334155';
+    $heroBadgeBackground = $statusMeta['colors']['border'] ?? '#cbd5e1';
+    $heroSubtextColor = $heroTextColor;
+@endphp
+<body style="margin:0; padding:24px 12px; background:#f7f7fb; font-family:Arial, Helvetica, sans-serif; color:#1f2937;">
+    <div style="max-width:640px; margin:0 auto;">
+        <div style="overflow:hidden; border:1px solid #e5e7eb; border-radius:24px; background:#ffffff; box-shadow:0 12px 32px rgba(15, 23, 42, 0.08);">
+            <div style="padding:28px 28px 22px; background:{{ $heroBackground }}; color:{{ $heroTextColor }};">
+                <div style="display:inline-block; padding:6px 12px; border-radius:999px; background:{{ $heroBadgeBackground }}; color:{{ $heroTextColor }}; font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase;">
+                    Order Update
+                </div>
+                <h1 style="margin:16px 0 8px; font-size:28px; line-height:1.2;">Order Cancelled</h1>
+                <p style="margin:0; font-size:14px; line-height:1.7; color:{{ $heroSubtextColor }};">
+                    Hi {{ $user->first_name }}, your cancellation request for Order {{ $order->order_id }} has been processed.
+                </p>
+            </div>
 
-    <div class="header">
-      <h1>Order Cancelled</h1>
-      <p>We've processed your cancellation request.</p>
-      <span class="badge">Cancelled</span>
+            <div style="padding:28px;">
+                <div style="border:1px solid {{ $statusMeta['colors']['border'] }}; border-radius:20px; background:{{ $statusMeta['colors']['background'] }}; padding:18px 20px; margin-bottom:20px;">
+                    <p style="margin:0 0 6px; font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:{{ $statusMeta['colors']['text'] }};">
+                        Current Status
+                    </p>
+                    <p style="margin:0; font-size:24px; font-weight:700; color:{{ $statusMeta['colors']['text'] }};">
+                        {{ $statusMeta['label'] }}
+                    </p>
+                    <p style="margin:8px 0 0; font-size:13px; line-height:1.7; color:{{ $statusMeta['colors']['text'] }};">
+                        {{ $statusMeta['description'] }}
+                    </p>
+                </div>
+
+                <table style="width:100%; border-collapse:separate; border-spacing:0 12px; margin-bottom:16px;">
+                    <tr>
+                        <td style="width:50%; vertical-align:top;">
+                            <div style="height:100%; border:1px solid #e5e7eb; border-radius:18px; background:#f8fafc; padding:16px;">
+                                <p style="margin:0 0 6px; font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:#94a3b8;">Order ID</p>
+                                <p style="margin:0; font-size:16px; font-weight:700; color:#111827;">{{ $order->order_id }}</p>
+                            </div>
+                        </td>
+                        <td style="width:50%; vertical-align:top;">
+                            <div style="height:100%; border:1px solid #e5e7eb; border-radius:18px; background:#f8fafc; padding:16px;">
+                                <p style="margin:0 0 6px; font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:#94a3b8;">Event Date</p>
+                                <p style="margin:0; font-size:16px; font-weight:700; color:#111827;">{{ \Carbon\Carbon::parse($schedule->event_date)->format('M j, Y') }}</p>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="width:50%; vertical-align:top;">
+                            <div style="height:100%; border:1px solid #e5e7eb; border-radius:18px; background:#f8fafc; padding:16px;">
+                                <p style="margin:0 0 6px; font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:#94a3b8;">Delivery Option</p>
+                                <p style="margin:0; font-size:16px; font-weight:700; color:#111827;">{{ ucfirst($order->delivery_method) }}</p>
+                            </div>
+                        </td>
+                        <td style="width:50%; vertical-align:top;">
+                            <div style="height:100%; border:1px solid #e5e7eb; border-radius:18px; background:#f8fafc; padding:16px;">
+                                <p style="margin:0 0 6px; font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:#94a3b8;">Refund Reference</p>
+                                <p style="margin:0; font-size:16px; font-weight:700; color:#111827;">Follow support instructions if applicable</p>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+
+                <div style="border:1px solid #e5e7eb; border-radius:20px; background:#ffffff; padding:18px 20px; margin-bottom:20px;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <tr>
+                            <td style="padding:8px 0; font-size:14px; color:#6b7280;">Order Date</td>
+                            <td style="padding:8px 0; text-align:right; font-size:14px; font-weight:700; color:#111827;">{{ \Carbon\Carbon::parse($order->order_date)->format('M j, Y') }}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:8px 0; font-size:14px; color:#6b7280;">Event</td>
+                            <td style="padding:8px 0; text-align:right; font-size:14px; font-weight:700; color:#111827;">{{ $schedule->schedule_name }}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:8px 0; font-size:14px; color:#6b7280;">Refund Amount</td>
+                            <td style="padding:8px 0; text-align:right; font-size:18px; font-weight:700; color:#0f1b2d;">&#8369;{{ number_format((float) $order->total_amount, 2) }}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div style="border:1px solid #fcd34d; border-radius:20px; background:#fffbeb; padding:18px 20px; margin-bottom:20px;">
+                    <p style="margin:0; font-size:13px; line-height:1.8; color:#92400e;">
+                        If payment was already made, please allow 5 to 7 business days for refund handling when applicable.
+                        Contact support if you need help reviewing the cancellation.
+                    </p>
+                </div>
+
+                <div style="border:1px solid #e5e7eb; border-radius:20px; background:#ffffff; padding:18px 20px;">
+                    <p style="margin:0 0 10px; font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:#94a3b8;">
+                        Status Guide
+                    </p>
+                    @foreach ($statusLegend as $legend)
+                        <div style="margin-top:{{ $loop->first ? '0' : '10px' }};">
+                            <span style="display:inline-block; padding:5px 10px; border:1px solid {{ $legend['colors']['border'] }}; border-radius:999px; background:{{ $legend['colors']['background'] }}; color:{{ $legend['colors']['text'] }}; font-size:10px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase;">
+                                {{ $legend['label'] }}
+                            </span>
+                            <p style="margin:6px 0 0; font-size:12px; line-height:1.7; color:#6b7280;">
+                                {{ $legend['description'] }}
+                            </p>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <div style="padding:18px 28px 24px; border-top:1px solid #f1f5f9; text-align:center; font-size:12px; line-height:1.7; color:#94a3b8;">
+                This message was sent to {{ $user->email }} by Petal Express PH.
+            </div>
+        </div>
     </div>
-
-    <div class="body">
-      <p class="greeting">Hi <strong>{{ $user->first_name }}</strong>, your order has been successfully cancelled. Here are the details for your reference.</p>
-
-      <div class="meta-grid">
-        <div class="meta-box">
-          <div class="label">Order ID</div>
-          <div class="value">{{ $order->order_id }}</div>
-        </div>
-        <div class="meta-box">
-          <div class="label">Event Date</div>
-          <div class="value">{{ \Carbon\Carbon::parse($schedule->event_date)->format('M j, Y') }}</div>
-        </div>
-        <div class="meta-box">
-          <div class="label">Delivery</div>
-          <div class="value" style="text-transform:capitalize;">{{ $order->delivery_method }}</div>
-        </div>
-      </div>
-
-      <div class="section-title">Cancelled Order Summary</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Detail</th>
-            <th class="right">Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><div class="item-name">Order Date</div></td>
-            <td class="price">{{ \Carbon\Carbon::parse($order->order_date)->format('M j, Y') }}</td>
-          </tr>
-          <tr>
-            <td><div class="item-name">Event</div></td>
-            <td class="price">{{ $schedule->schedule_name }}</td>
-          </tr>
-          <tr>
-            <td><div class="item-name">Status</div></td>
-            <td class="price" style="color:#dc2626;">Cancelled</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="totals">
-        <div class="row">
-          <span>Order Total</span>
-          <span>₱{{ number_format($order->total_amount, 2) }}</span>
-        </div>
-        <div class="total-row">
-          <span>Refund Amount</span>
-          <span>₱{{ number_format($order->total_amount, 2) }}</span>
-        </div>
-      </div>
-
-      <div class="notice">
-        <strong>Refund Notice:</strong> If a payment was made for this order, please allow 5–7 business days for any applicable refund to be processed. Contact our support team if you have any concerns.
-      </div>
-
-      <p style="font-size:13px; color:#6b7280; line-height:1.7;">
-        If you did not request this cancellation, please contact us immediately at
-        <a href="mailto:support@petalexpress.ph" style="color:#0f1b2d; font-weight:600;">support@petalexpress.ph</a>.
-      </p>
-    </div>
-
-    <div class="footer">
-      <p>This email was sent to <strong>{{ $user->email }}</strong></p>
-      <p style="margin-top:6px;">© {{ date('Y') }} Petal Express PH · All rights reserved.</p>
-    </div>
-
-  </div>
 </body>
 </html>

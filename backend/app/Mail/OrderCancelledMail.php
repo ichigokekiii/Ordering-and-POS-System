@@ -5,6 +5,7 @@ namespace App\Mail;
 
 use App\Models\Order;
 use App\Models\Schedule;
+use App\Support\LookupCatalog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -18,12 +19,16 @@ class OrderCancelledMail extends Mailable
     public Order    $order;
     public object   $user;
     public Schedule $schedule;
+    public array    $statusMeta;
+    public array    $statusLegend;
 
     public function __construct(Order $order, object $user, Schedule $schedule)
     {
         $this->order    = $order;
         $this->user     = $user;
         $this->schedule = $schedule;
+        $this->statusMeta = LookupCatalog::orderStatusMeta('cancelled');
+        $this->statusLegend = LookupCatalog::orderStatusLegend();
     }
 
     public function envelope(): Envelope

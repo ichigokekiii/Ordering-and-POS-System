@@ -11,13 +11,73 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 
 use App\Mail\OrderStatusUpdated;
 use App\Support\ScheduleService;
+use App\Support\LookupCatalog;
+use App\Support\ValidationRules;
 
 class OrderController extends Controller
 {
+    private function normalizeOrderInput(Request $request): void
+    {
+        $normalizedInput = [];
+
+        if ($request->has('address')) {
+            $normalizedInput['address'] = ValidationRules::normalizeMultiLine((string) $request->input('address'), 255);
+        }
+
+        if ($request->has('delivery_method')) {
+            $normalizedInput['delivery_method'] = LookupCatalog::normalizeDeliveryOptionCode((string) $request->input('delivery_method'));
+        }
+
+        if ($request->has('delivery_zone')) {
+            $normalizedInput['delivery_zone'] = LookupCatalog::normalizeDeliveryZoneCode((string) $request->input('delivery_zone'));
+        }
+
+        if ($request->has('delivery_zone_other')) {
+            $normalizedInput['delivery_zone_other'] = ValidationRules::normalizeSingleLine((string) $request->input('delivery_zone_other'), 150);
+        }
+
+        if ($request->has('payment_method')) {
+            $normalizedInput['payment_method'] = ValidationRules::normalizeSingleLine((string) $request->input('payment_method'));
+        }
+
+        if ($request->has('reference_number')) {
+            $normalizedInput['reference_number'] = strtoupper((string) ValidationRules::normalizeSingleLine((string) $request->input('reference_number'), 30));
+        }
+
+        if ($request->has('special_message')) {
+            $normalizedInput['special_message'] = ValidationRules::normalizeMultiLine((string) $request->input('special_message'));
+        }
+
+        if ($request->has('tracking_number')) {
+            $normalizedInput['tracking_number'] = ValidationRules::normalizeSingleLine((string) $request->input('tracking_number'), 100);
+        }
+
+        if ($request->has('total_amount')) {
+            $normalizedInput['total_amount'] = ValidationRules::normalizeMoneyString($request->input('total_amount'));
+        }
+
+        if ($request->has('amount_paid')) {
+            $normalizedInput['amount_paid'] = ValidationRules::normalizeMoneyString($request->input('amount_paid'));
+        }
+
+        if (!$request->has('amount_paid') && $request->has('total_amount')) {
+            $normalizedInput['amount_paid'] = ValidationRules::normalizeMoneyString($request->input('total_amount'));
+        }
+
+        if (!$request->has('privacy_accepted') && $request->has('terms_accepted')) {
+            $normalizedInput['privacy_accepted'] = $request->input('terms_accepted');
+        }
+
+        if (!empty($normalizedInput)) {
+            $request->merge($normalizedInput);
+        }
+    }
+
     private function canManageOrders(?User $user): bool
     {
         return $user && in_array(strtolower((string) $user->role), ['admin', 'owner', 'staff'], true);
@@ -55,6 +115,9 @@ class OrderController extends Controller
                     'user',
                     'payment',
                     'schedule',
+                    'orderStatusRecord',
+                    'deliveryOption',
+                    'deliveryZone',
                     'orderItems.product',
                 ])
                 ->orderByRaw('COALESCE(users.priority, 0) asc')
@@ -76,6 +139,9 @@ class OrderController extends Controller
                 'user',
                 'payment',
                 'schedule',
+                'orderStatusRecord',
+                'deliveryOption',
+                'deliveryZone',
                 'orderItems.product',
             ])->where('order_id', $id)->firstOrFail();
 
@@ -112,6 +178,9 @@ class OrderController extends Controller
                 'user',
                 'payment',
                 'schedule',
+                'orderStatusRecord',
+                'deliveryOption',
+                'deliveryZone',
                 'orderItems.product',
             ])
                 ->where('user_id', $userId)
@@ -128,21 +197,27 @@ class OrderController extends Controller
 
     public function store(Request $request)
     {
+        $this->normalizeOrderInput($request);
+
         $validator = Validator::make($request->all(), [
             'user_id'          => 'nullable|integer|exists:users,id',
             'schedule_id'      => 'required|integer|exists:schedules,id',
-            'address'          => 'required|string|max:200',
-            'delivery_method'  => 'required|in:pickup,delivery',
+            'address'          => 'required|string|max:255',
+            'delivery_method'  => ['required', Rule::in(['pickup', 'delivery'])],
+            'delivery_zone'    => ['nullable', 'string', Rule::in(['southern_luzon', 'other'])],
+            'delivery_zone_other' => 'nullable|string|max:150',
             'payment_method'   => 'required|string|max:50',
             'reference_number' => ['required', 'string', 'regex:/^[A-Za-z0-9]{4,30}$/'],
             'reference_image'  => 'required|image|mimes:jpeg,png,jpg|max:2048',
-            'total_amount'     => 'required|numeric',
+            'total_amount'     => ['required', 'string', 'regex:' . ValidationRules::MONEY_REGEX],
+            'amount_paid'      => ['required', 'string', 'regex:' . ValidationRules::MONEY_REGEX],
             'special_message'  => 'nullable|string|max:150',
+            'privacy_accepted' => 'accepted',
             'terms_accepted'   => 'accepted',
             'terms_scope'      => 'required|string|in:customer,internal',
         ], [
             'address.required' => 'Delivery address is required.',
-            'address.max' => 'Delivery address must not exceed 200 characters.',
+            'address.max' => 'Delivery address must not exceed 255 characters.',
             'payment_method.required' => 'Payment method is required.',
             'payment_method.max' => 'Payment method must not exceed 50 characters.',
             'reference_number.required' => 'Reference code is required.',
@@ -152,7 +227,10 @@ class OrderController extends Controller
             'reference_image.mimes' => 'Payment proof must be a JPG or PNG image.',
             'reference_image.max' => 'Payment proof image must be 2MB or smaller.',
             'special_message.max' => 'Greeting card message must not exceed 150 characters.',
+            'privacy_accepted.accepted' => 'Please review and acknowledge the Data Privacy Notice.',
             'terms_accepted.accepted' => 'Please review and accept the Customer Terms & Conditions.',
+            'total_amount.regex' => 'Total amount must be a valid price.',
+            'amount_paid.regex' => 'Amount must be a valid price.',
         ]);
 
         $validator->after(function ($validator) use ($request) {
@@ -162,6 +240,18 @@ class OrderController extends Controller
                 if (mb_strlen($address) < 10) {
                     $validator->errors()->add('address', 'Delivery address must be at least 10 characters.');
                 }
+
+                if (!$request->filled('delivery_zone')) {
+                    $validator->errors()->add('delivery_zone', 'Please select a delivery location.');
+                }
+            }
+
+            if ($request->input('delivery_zone') === 'other' && !$request->filled('delivery_zone_other')) {
+                $validator->errors()->add('delivery_zone_other', 'Please enter your delivery location details.');
+            }
+
+            if ($request->input('amount_paid') !== $request->input('total_amount')) {
+                $validator->errors()->add('amount_paid', 'Amount must match the order total for proof-based checkout.');
             }
         });
 
@@ -214,6 +304,11 @@ class OrderController extends Controller
 
         try {
             DB::transaction(function () use ($request, $now, $orderId, $paymentId, $imagePath, $schedule, $resolvedUserId) {
+                $totalAmountValue = (string) $request->input('total_amount');
+                $deliveryMethod = LookupCatalog::normalizeDeliveryOptionCode($request->input('delivery_method'));
+                $deliveryZone = $deliveryMethod === 'delivery'
+                    ? LookupCatalog::normalizeDeliveryZoneCode($request->input('delivery_zone'))
+                    : null;
 
                 // 1. Create order with payment_id null
                 $order = new Order();
@@ -222,11 +317,16 @@ class OrderController extends Controller
                 $order->schedule_id     = $schedule->id;
                 $order->payment_id      = null;
                 $order->order_date      = $now->toDateTimeString();
-                $order->total_amount    = $request->total_amount;
-                $order->order_status    = 'pending';
+                $order->total_amount    = (float) $totalAmountValue;
+                $order->total_amount_value = $totalAmountValue;
+                $order->order_status    = LookupCatalog::DEFAULT_ORDER_STATUS;
+                $order->order_status_id = LookupCatalog::orderStatusIdFor(LookupCatalog::DEFAULT_ORDER_STATUS);
                 $order->special_message = $request->special_message;
                 $order->address         = $request->address;
-                $order->delivery_method = $request->delivery_method;
+                $order->delivery_method = $deliveryMethod;
+                $order->delivery_option_id = LookupCatalog::deliveryOptionIdFor($deliveryMethod);
+                $order->delivery_zone_id = $deliveryZone ? LookupCatalog::deliveryZoneIdFor($deliveryZone) : null;
+                $order->delivery_zone_other = $deliveryZone === 'other' ? $request->input('delivery_zone_other') : null;
                 $order->save();
 
                 // 2. Create payment
@@ -235,8 +335,10 @@ class OrderController extends Controller
                 $payment->order_id             = $orderId;
                 $payment->payment_method       = $request->payment_method;
                 $payment->payment_date         = $now->toDateString();
-                $payment->payment_status       = 'pending';
+                $payment->payment_status       = LookupCatalog::DEFAULT_PAYMENT_STATUS;
+                $payment->payment_status_id    = LookupCatalog::paymentStatusIdFor(LookupCatalog::DEFAULT_PAYMENT_STATUS);
                 $payment->reference_number     = $request->reference_number;
+                $payment->amount_paid          = $request->input('amount_paid');
                 $payment->reference_image_path = Storage::url($imagePath);
                 $payment->save();
 
@@ -262,6 +364,7 @@ class OrderController extends Controller
     {
         try {
             $actorRole = strtolower((string) optional($request->user())->role);
+            $this->normalizeOrderInput($request);
 
             if (!in_array($actorRole, ['admin', 'owner', 'staff'], true)) {
                 return response()->json(['error' => 'Unauthorized'], 403);
@@ -271,16 +374,39 @@ class OrderController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
-            $request->validate([
-                'order_status' => 'nullable|string',
-                'status'       => 'nullable|string',
+            $validator = Validator::make($request->all(), [
+                'order_status' => ['nullable', 'string', Rule::in(['pending', 'processing', 'confirmed', 'shipped', 'delivered', 'completed', 'cancelled', 'canceled'])],
+                'status'       => ['nullable', 'string', Rule::in(['pending', 'processing', 'confirmed', 'shipped', 'delivered', 'completed', 'cancelled', 'canceled'])],
+                'tracking_number' => ['nullable', 'string', 'max:100', 'regex:/^[A-Za-z0-9\-]+$/'],
                 'isArchived'   => 'sometimes|boolean',
+            ], [
+                'tracking_number.regex' => 'Tracking number may only contain letters, numbers, and hyphens.',
             ]);
 
             $order = Order::where('order_id', $id)->firstOrFail();
             $previousStatus = strtolower((string) $order->order_status);
 
-            $status = $request->input('status') ?? $request->input('order_status');
+            $status = $request->filled('status') || $request->filled('order_status')
+                ? LookupCatalog::normalizeOrderStatusCode($request->input('status') ?? $request->input('order_status'))
+                : null;
+
+            $effectiveStatus = $status ?? LookupCatalog::normalizeOrderStatusCode($order->order_status);
+
+            $validator->after(function ($validator) use ($request, $effectiveStatus, $order) {
+                $trackingNumber = trim((string) $request->input('tracking_number'));
+
+                if ($effectiveStatus === 'shipped' && $trackingNumber === '' && blank($order->tracking_number)) {
+                    $validator->errors()->add('tracking_number', 'Tracking number is required when the order is shipped.');
+                }
+
+                if ($request->filled('tracking_number') && !in_array($effectiveStatus, ['shipped', 'delivered'], true)) {
+                    $validator->errors()->add('tracking_number', 'Tracking number can only be updated when the order is shipped or delivered.');
+                }
+            });
+
+            if ($validator->fails()) {
+                return $this->validationErrorResponse($validator->errors());
+            }
 
             if (!$status && !$request->has('isArchived')) {
                 return response()->json([
@@ -291,6 +417,19 @@ class OrderController extends Controller
 
             if ($status) {
                 $order->order_status = $status;
+                $order->order_status_id = LookupCatalog::orderStatusIdFor($status);
+            }
+
+            if ($effectiveStatus === 'shipped') {
+                if ($request->filled('tracking_number')) {
+                    $order->tracking_number = $request->input('tracking_number');
+                }
+            } elseif ($effectiveStatus === 'delivered') {
+                if ($request->filled('tracking_number')) {
+                    $order->tracking_number = $request->input('tracking_number');
+                }
+            } elseif ($status && !in_array($status, ['shipped', 'delivered'], true)) {
+                $order->tracking_number = null;
             }
 
             if ($request->has('isArchived')) {
@@ -299,14 +438,14 @@ class OrderController extends Controller
 
             $order->save();
 
-            if ($status && in_array(strtolower($status), ['delivered', 'completed'], true) && !in_array($previousStatus, ['delivered', 'completed'], true)) {
+            if ($status && $status === 'delivered' && !in_array($previousStatus, ['delivered', 'completed'], true)) {
                 User::query()
                     ->whereKey($order->user_id)
                     ->update(['consecutive_cancellations' => 0]);
             }
 
             // Reload relationships so frontend receives full order data
-            $order->load(['user', 'payment', 'schedule', 'orderItems.product']);
+            $order->load(['user', 'payment', 'schedule', 'orderStatusRecord', 'deliveryOption', 'deliveryZone', 'orderItems.product']);
             $this->normalizeOrderForResponse($order);
 
             if ($status) {
@@ -325,6 +464,7 @@ class OrderController extends Controller
                             newStatus:      $status,
                             totalAmount:    (float) $order->total_amount,
                             deliveryMethod: $order->delivery_method,
+                            trackingNumber: $order->tracking_number,
                             userName:       trim(($order->user->first_name ?? '') . ' ' . ($order->user->last_name ?? '')),
                             userEmail:      $order->user->email,
                             items:          $items,

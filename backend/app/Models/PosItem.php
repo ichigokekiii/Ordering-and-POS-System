@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class PosItem extends Model
 {
-    protected $fillable = ['pos_id', 'product_id', 'source_product_id', 'product_name', 'price', 'quantity'];
+    protected $fillable = ['pos_id', 'product_id', 'source_product_id', 'product_name', 'price', 'price_value', 'quantity', 'quantity_value'];
 
     public function transaction()
     {

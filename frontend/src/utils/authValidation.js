@@ -2,7 +2,7 @@ export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const NAME_REGEX = /^[A-Za-z]+(?:[ '-][A-Za-z]+)*$/;
 export const PHONE_REGEX = /^\d{11}$/;
 export const OTP_REGEX = /^\d{6}$/;
-export const PASSWORD_MIN_LENGTH = 6;
+export const PASSWORD_MIN_LENGTH = 8;
 export const NAME_MAX_LENGTH = 50;
 export const EMAIL_MAX_LENGTH = 255;
 export const PHONE_MAX_LENGTH = 11;
@@ -18,6 +18,8 @@ export const REFERENCE_CODE_REGEX = /^[A-Za-z0-9]{4,30}$/;
 export const ADDRESS_TEXT_REGEX = /^[a-zA-Z0-9\s\-,.#+]+$/;
 export const CITY_REGEX = /^[a-zA-Z\s'-]+$/;
 export const HOUSE_NUMBER_REGEX = /^\d+$/;
+export const MONEY_INPUT_REGEX = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
+export const TRACKING_NUMBER_REGEX = /^[A-Za-z0-9-]{4,40}$/;
 
 export const hasNonWhitespace = (value = "") => /\S/.test(value);
 
@@ -34,6 +36,15 @@ export const normalizeOtp = (value = "") => value.replace(/\D+/g, "").slice(0, 6
 
 export const normalizeReferenceCode = (value = "") =>
   value.replace(/[^a-zA-Z0-9]/g, "").slice(0, REFERENCE_CODE_MAX_LENGTH);
+
+export const normalizeMoneyInput = (value = "") =>
+  value
+    .replace(/[^\d.]/g, "")
+    .replace(/(\..*)\./g, "$1")
+    .slice(0, 20);
+
+export const normalizeTrackingNumber = (value = "") =>
+  value.replace(/[^A-Za-z0-9-]/g, "").slice(0, 40);
 
 export const normalizeSearchInput = (value = "", maxLength = 100) =>
   value.replace(/\s+/g, " ").slice(0, maxLength);
@@ -102,6 +113,14 @@ export const validatePassword = (value = "", { label = "Password", required = tr
 
   if (value.length < PASSWORD_MIN_LENGTH) {
     return `${label} must be at least ${PASSWORD_MIN_LENGTH} characters.`;
+  }
+
+  if (!/[A-Z]/.test(value)) {
+    return `${label} must include at least one uppercase letter.`;
+  }
+
+  if (!/[0-9]/.test(value)) {
+    return `${label} must include at least one number.`;
   }
 
   return "";
@@ -183,6 +202,76 @@ export const validateReferenceCode = (value = "") => {
   if (!REFERENCE_CODE_REGEX.test(normalizedValue)) {
     return "Reference code must be 4-30 alphanumeric characters.";
   }
+  return "";
+};
+
+export const validateAmountInput = (value = "", { label = "Amount", required = true } = {}) => {
+  const normalizedValue = normalizeMoneyInput(value);
+
+  if (!normalizedValue) {
+    return required ? `${label} is required.` : "";
+  }
+
+  if (!MONEY_INPUT_REGEX.test(normalizedValue)) {
+    return `${label} must be a valid amount with up to 2 decimal places.`;
+  }
+
+  return "";
+};
+
+export const validateAmountMatch = (value = "", expectedAmount = 0, label = "Amount") => {
+  const normalizedValue = normalizeMoneyInput(value);
+  const amountError = validateAmountInput(normalizedValue, { label });
+
+  if (amountError) {
+    return amountError;
+  }
+
+  const actualAmount = Number(normalizedValue || 0).toFixed(2);
+  const expected = Number(expectedAmount || 0).toFixed(2);
+
+  if (actualAmount !== expected) {
+    return `${label} must match the order total of ₱${Number(expectedAmount || 0).toFixed(2)}.`;
+  }
+
+  return "";
+};
+
+export const validateDeliveryZone = (value = "") => {
+  if (!value.trim()) {
+    return "Delivery zone is required.";
+  }
+
+  return "";
+};
+
+export const validateDeliveryZoneOther = (zone = "", value = "") => {
+  if (zone !== "other") {
+    return "";
+  }
+
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return "Please provide the delivery area details.";
+  }
+  if (trimmedValue.length > 120) {
+    return "Delivery area details must not exceed 120 characters.";
+  }
+
+  return "";
+};
+
+export const validateTrackingNumber = (value = "", { required = false } = {}) => {
+  const normalizedValue = normalizeTrackingNumber(value);
+
+  if (!normalizedValue) {
+    return required ? "Tracking number is required for shipped orders." : "";
+  }
+
+  if (!TRACKING_NUMBER_REGEX.test(normalizedValue)) {
+    return "Tracking number must be 4-40 characters using letters, numbers, or dashes.";
+  }
+
   return "";
 };
 

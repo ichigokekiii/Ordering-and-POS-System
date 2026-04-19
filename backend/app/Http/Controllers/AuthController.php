@@ -8,24 +8,55 @@ use App\Models\Otp;
 use App\Models\Log;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
 use App\Mail\SendOtpMail;
+use App\Support\ValidationRules;
 
 class AuthController extends Controller
 {
+    private function isLegacyBcryptHash(?string $hashedValue): bool
+    {
+        $hash = (string) $hashedValue;
+
+        return str_starts_with($hash, '$2y$')
+            || str_starts_with($hash, '$2a$')
+            || str_starts_with($hash, '$2b$');
+    }
+
+    private function checkPasswordAgainstStoredHash(User $user, string $plainPassword): bool
+    {
+        $storedHash = (string) $user->password;
+
+        if ($this->isLegacyBcryptHash($storedHash)) {
+            return Hash::driver('bcrypt')->check($plainPassword, $storedHash);
+        }
+
+        return Hash::check($plainPassword, $storedHash);
+    }
+
     private function normalizeAuthInput(Request $request): void
     {
         $normalizedInput = [];
 
         if ($request->has('email')) {
-            $normalizedInput['email'] = trim((string) $request->input('email'));
+            $normalizedInput['email'] = ValidationRules::normalizeSingleLine((string) $request->input('email'));
         }
 
         if ($request->has('otp')) {
-            $normalizedInput['otp'] = trim((string) $request->input('otp'));
+            $normalizedInput['otp'] = ValidationRules::normalizeSingleLine((string) $request->input('otp'));
         }
 
         if (!empty($normalizedInput)) {
             $request->merge($normalizedInput);
+        }
+    }
+
+    private function rehashPasswordIfNeeded(User $user, string $plainPassword): void
+    {
+        if ($this->checkPasswordAgainstStoredHash($user, $plainPassword) && Hash::needsRehash($user->password)) {
+            $user->forceFill([
+                'password' => Hash::make($plainPassword),
+            ])->save();
         }
     }
 
@@ -111,7 +142,7 @@ public function login(Request $request)
         }
 
         // ── PASSWORD CHECK ────────────────────────────────────────────────────
-        if (!Hash::check($request->password, $user->password)) {
+        if (!$this->checkPasswordAgainstStoredHash($user, (string) $request->password)) {
             $newCount = $count + 1;
             $user->failed_attempt_count = $newCount;
             $user->last_failed_attempt_at = now();
@@ -168,6 +199,7 @@ public function login(Request $request)
         }
 
         // ── SUCCESS: reset lockout counters and require OTP verification ─────
+        $this->rehashPasswordIfNeeded($user, (string) $request->password);
         $user->failed_attempt_count = 0;
         $user->last_failed_attempt_at = null;
         $user->save();
@@ -335,16 +367,11 @@ public function login(Request $request)
     $request->validate([
         'email' => 'required|email',
         'otp' => 'required|digits:6',
-        'password' => ['required', 'string', 'min:8', 'confirmed', 'not_regex:/^\s*$/'],
     ], [
         'email.required' => 'Email is required.',
         'email.email' => 'Please enter a valid email address.',
         'otp.required' => 'OTP is required.',
         'otp.digits' => 'OTP must be exactly 6 digits.',
-        'password.required' => 'Password is required.',
-        'password.min' => 'Password must be at least 8 characters.',  // Changed from 6 to 8 to match your frontend
-        'password.confirmed' => 'Password confirmation does not match.',
-        'password.not_regex' => 'Password is required.',
     ]);
 
     $user = User::where('email', $request->email)->first();
@@ -374,8 +401,25 @@ public function login(Request $request)
         }
         
         return response()->json([
-            'message' => 'Invalid OTP. Please verify your OTP code.'
-        ], 400);
+            'message' => 'Invalid or expired OTP',
+            'errors' => [
+                'otp' => ['Invalid or expired OTP'],
+            ],
+        ], 422);
+    }
+
+    $passwordValidator = Validator::make($request->all(), [
+        'password' => ValidationRules::passwordRules(true),
+    ], [
+        'password.required' => 'Password is required.',
+        'password.min' => 'Password must be at least 8 characters.',
+        'password.confirmed' => 'Password confirmation does not match.',
+        'password.not_regex' => 'Password is required.',
+        'password.regex' => 'Password must include at least one uppercase letter and one number.',
+    ]);
+
+    if ($passwordValidator->fails()) {
+        return $this->validationErrorResponse($passwordValidator->errors());
     }
 
     // Update password

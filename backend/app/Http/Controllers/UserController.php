@@ -7,13 +7,21 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Otp;
 use App\Mail\SendOtpMail;
+use App\Support\LookupCatalog;
+use App\Support\ValidationRules;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
+    private function legacyUserStatusLabel(string $code): string
+    {
+        return $code === 'inactive' ? 'Inactive' : 'Active';
+    }
+
     private function canViewUsers(): bool
     {
         return Auth::check()
@@ -25,19 +33,27 @@ class UserController extends Controller
         $normalizedInput = [];
 
         if ($request->has('first_name')) {
-            $normalizedInput['first_name'] = trim((string) $request->input('first_name'));
+            $normalizedInput['first_name'] = ValidationRules::normalizeSingleLine((string) $request->input('first_name'), 50);
         }
 
         if ($request->has('last_name')) {
-            $normalizedInput['last_name'] = trim((string) $request->input('last_name'));
+            $normalizedInput['last_name'] = ValidationRules::normalizeSingleLine((string) $request->input('last_name'), 50);
         }
 
         if ($request->has('email')) {
-            $normalizedInput['email'] = trim((string) $request->input('email'));
+            $normalizedInput['email'] = ValidationRules::normalizeSingleLine((string) $request->input('email'), 255);
         }
 
         if ($request->has('phone_number')) {
-            $normalizedInput['phone_number'] = preg_replace('/\D+/', '', (string) $request->input('phone_number'));
+            $normalizedInput['phone_number'] = ValidationRules::normalizePhone((string) $request->input('phone_number'));
+        }
+
+        if ($request->has('role')) {
+            $normalizedInput['role'] = LookupCatalog::normalizeRoleCode((string) $request->input('role'));
+        }
+
+        if ($request->has('status')) {
+            $normalizedInput['status'] = LookupCatalog::normalizeUserStatusCode((string) $request->input('status'));
         }
 
         if (!empty($normalizedInput)) {
@@ -63,11 +79,11 @@ class UserController extends Controller
         $this->normalizeUserInput($request);
 
         $validator = Validator::make($request->all(), [
-            'first_name'   => ['required', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
-            'last_name'    => ['required', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
+            'first_name'   => ['required', 'string', 'min:2', 'max:50', 'regex:' . ValidationRules::NAME_REGEX],
+            'last_name'    => ['required', 'string', 'min:2', 'max:50', 'regex:' . ValidationRules::NAME_REGEX],
             'email'        => 'required|string|email|max:255|unique:users,email',
-            'password'     => ['required', 'string', 'min:6', 'not_regex:/^\s*$/'],
-            'phone_number' => ['required', 'string', 'regex:/^\d{11}$/'],
+            'password'     => ValidationRules::passwordRules(),
+            'phone_number' => ['required', 'string', 'regex:' . ValidationRules::PHONE_REGEX],
             'terms_accepted' => 'accepted',
             'terms_scope'    => 'required|string|in:customer',
         ], [
@@ -75,6 +91,7 @@ class UserController extends Controller
             'last_name.regex'    => 'Last name can only contain letters and spaces.',
             'password.required'  => 'Password is required.',
             'password.not_regex' => 'Password is required.',
+            'password.regex' => 'Password must include at least one uppercase letter and one number.',
             'phone_number.regex' => 'Phone number must be exactly 11 digits.',
             'terms_accepted.accepted' => 'Please review and accept the Customer Terms & Conditions.',
         ]);
@@ -88,8 +105,10 @@ class UserController extends Controller
         $user->last_name = $request->input('last_name');
         $user->email = $request->input('email');
         $user->password = Hash::make($request->input('password'));
-        $user->role = 'user';
+        $user->role = LookupCatalog::CUSTOMER_ROLE_CODE;
+        $user->role_id = LookupCatalog::roleIdFor(LookupCatalog::CUSTOMER_ROLE_CODE);
         $user->status = 'Active';
+        $user->user_status_id = LookupCatalog::userStatusIdFor('active');
         $user->phone_number = $request->input('phone_number');
         $user->failed_attempt_count = 0;
         $user->is_locked = false;
@@ -122,13 +141,13 @@ class UserController extends Controller
         $this->normalizeUserInput($request);
 
         $validator = Validator::make($request->all(), [
-            'first_name'   => ['required', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
-            'last_name'    => ['required', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
+            'first_name'   => ['required', 'string', 'min:2', 'max:50', 'regex:' . ValidationRules::NAME_REGEX],
+            'last_name'    => ['required', 'string', 'min:2', 'max:50', 'regex:' . ValidationRules::NAME_REGEX],
             'email'        => 'required|string|email|max:255|unique:users,email',
-            'password'     => ['required', 'string', 'min:6', 'not_regex:/^\s*$/'],
-            'phone_number' => ['required', 'string', 'regex:/^\d{11}$/'],
+            'password'     => ValidationRules::passwordRules(),
+            'phone_number' => ['required', 'string', 'regex:' . ValidationRules::PHONE_REGEX],
             'role'         => 'nullable|string|in:user,staff,admin,owner',
-            'status'       => 'nullable|string',
+            'status'       => 'nullable|string|in:active,inactive',
             'terms_accepted' => 'accepted',
             'terms_scope'    => 'required|string|in:customer,internal',
         ], [
@@ -136,6 +155,7 @@ class UserController extends Controller
             'last_name.regex'    => 'Last name can only contain letters and spaces.',
             'password.required'  => 'Password is required.',
             'password.not_regex' => 'Password is required.',
+            'password.regex' => 'Password must include at least one uppercase letter and one number.',
             'phone_number.regex' => 'Phone number must be exactly 11 digits.',
             'terms_accepted.accepted' => 'Please review and accept the applicable Terms & Conditions.',
         ]);
@@ -144,7 +164,8 @@ class UserController extends Controller
             return $this->validationErrorResponse($validator->errors());
         }
 
-        $expectedTermsScope = in_array(Auth::user()->role, ['admin', 'owner', 'staff'], true)
+        $assignedRole = LookupCatalog::normalizeRoleCode($request->input('role', 'user'));
+        $expectedTermsScope = in_array($assignedRole, ['admin', 'owner', 'staff'], true)
             ? 'internal'
             : 'customer';
 
@@ -157,8 +178,11 @@ class UserController extends Controller
         $user->last_name = $request->input('last_name');
         $user->email = $request->input('email');
         $user->password = Hash::make($request->input('password'));
-        $user->role = $request->input('role', 'user');
-        $user->status = $request->input('status', 'active');
+        $user->role = $assignedRole;
+        $user->role_id = LookupCatalog::roleIdFor($assignedRole);
+        $statusCode = LookupCatalog::normalizeUserStatusCode($request->input('status', 'active'));
+        $user->status = $this->legacyUserStatusLabel($statusCode);
+        $user->user_status_id = LookupCatalog::userStatusIdFor($statusCode);
         $user->phone_number = $request->input('phone_number');
         $user->is_verified = true;
         $user->failed_attempt_count = 0;
@@ -222,14 +246,21 @@ class UserController extends Controller
 
         // Validate incoming data safely
         $validator = Validator::make($request->all(), [
-            'first_name'   => ['sometimes', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
-            'last_name'    => ['sometimes', 'string', 'min:2', 'max:50', 'regex:/^[a-zA-Z\s\-\']+$/'],
-            'phone_number' => ['sometimes', 'string', 'regex:/^\d{11}$/'],
+            'first_name'   => ['sometimes', 'string', 'min:2', 'max:50', 'regex:' . ValidationRules::NAME_REGEX],
+            'last_name'    => ['sometimes', 'string', 'min:2', 'max:50', 'regex:' . ValidationRules::NAME_REGEX],
+            'email'        => ['sometimes', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'password'     => ['sometimes', 'string', 'min:' . ValidationRules::PASSWORD_MIN_LENGTH, 'not_regex:/^\s*$/', 'regex:/[A-Z]/', 'regex:/[0-9]/'],
+            'phone_number' => ['sometimes', 'string', 'regex:' . ValidationRules::PHONE_REGEX],
+            'role'         => 'sometimes|string|in:user,staff,admin,owner',
+            'status'       => 'sometimes|string|in:active,inactive',
+            'priority'     => 'sometimes|integer|min:0|max:3',
+            'is_locked'    => 'sometimes|boolean',
             'isArchived'   => 'sometimes|boolean',
         ], [
             'first_name.regex'   => 'First name can only contain letters and spaces.',
             'last_name.regex'    => 'Last name can only contain letters and spaces.',
             'phone_number.regex' => 'Phone number must be exactly 11 digits.',
+            'password.regex' => 'Password must include at least one uppercase letter and one number.',
         ]);
 
         if ($validator->fails()) {
@@ -297,11 +328,15 @@ class UserController extends Controller
                 return response()->json(['error' => 'Owner cannot change roles'], 403);
             }
 
-            $user->role = $request->input('role');
+            $normalizedRole = LookupCatalog::normalizeRoleCode($request->input('role'));
+            $user->role = $normalizedRole;
+            $user->role_id = LookupCatalog::roleIdFor($normalizedRole);
         }
 
         if ($request->filled('status')) {
-            $user->status = $request->input('status');
+            $statusCode = LookupCatalog::normalizeUserStatusCode($request->input('status'));
+            $user->status = $this->legacyUserStatusLabel($statusCode);
+            $user->user_status_id = LookupCatalog::userStatusIdFor($statusCode);
         }
 
         if ($request->filled('phone_number')) {
@@ -319,6 +354,10 @@ class UserController extends Controller
                 $user->priority = 0;
                 $user->consecutive_cancellations = 0;
                 $user->status = 'Active';
+                $user->user_status_id = LookupCatalog::userStatusIdFor('active');
+            } elseif ($isLocked === true) {
+                $user->status = 'Inactive';
+                $user->user_status_id = LookupCatalog::userStatusIdFor('inactive');
             }
         }
 
@@ -372,9 +411,17 @@ class UserController extends Controller
             return response()->json(['error' => 'User not found'], 404);
         }
 
-        $email = $request->input('email');
+        $email = ValidationRules::normalizeSingleLine((string) $request->input('email'));
         if (empty($email)) {
             return $this->fieldErrorResponse('email', 'Email is required');
+        }
+
+        $emailValidator = Validator::make(['email' => $email], [
+            'email' => 'required|email|max:255',
+        ]);
+
+        if ($emailValidator->fails()) {
+            return $this->validationErrorResponse($emailValidator->errors());
         }
 
         if (User::where('email', $email)->where('id', '!=', $id)->exists()) {

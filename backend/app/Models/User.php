@@ -15,7 +15,9 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'role_id',
         'status',
+        'user_status_id',
         'isArchived',
         'first_name',
         'last_name',
@@ -38,7 +40,6 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
             'failed_attempt_count' => 'integer',
             'last_failed_attempt_at' => 'datetime',
             'is_locked' => 'boolean',
@@ -53,6 +54,16 @@ class User extends Authenticatable
     public function orders()
     {
         return $this->hasMany(Order::class, 'user_id', 'id');
+    }
+
+    public function roleRecord()
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    public function userStatusRecord()
+    {
+        return $this->belongsTo(UserStatus::class, 'user_status_id');
     }
 
     // This MUST be inside the class brackets

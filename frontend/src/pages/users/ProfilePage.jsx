@@ -6,6 +6,7 @@ import { MapPin, Package, Plus, CheckCircle2, X, Loader2, Trash2 } from "lucide-
 import { motion, AnimatePresence } from "framer-motion";
 import { getAssetUrl } from "../../utils/assetUrl";
 import FormFieldHeader from "../../components/form/FormFieldHeader";
+import OrderStatusLegend from "../../components/orders/OrderStatusLegend";
 import { getValidationInputClassName } from "../../components/form/fieldStyles";
 import {
   EMAIL_MAX_LENGTH,
@@ -19,6 +20,13 @@ import {
   validatePasswordConfirmation,
   normalizePhoneNumber,
 } from "../../utils/authValidation";
+import {
+  formatOrderStatus,
+  getFallbackOrderStatuses,
+  getOrderStatusPillStyle,
+  normalizeOrderStatus,
+} from "../../utils/orderStatus";
+import { fetchLookups } from "../../utils/lookups";
 import { clearFieldError, normalizeApiValidationErrors } from "../../utils/formValidation";
 
 const MotionDiv = motion.div;
@@ -30,6 +38,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState(null);
   const [addresses, setAddresses] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [orderStatuses, setOrderStatuses] = useState(getFallbackOrderStatuses());
   const [loading, setLoading] = useState(true);
   const [accountDisabledModal, setAccountDisabledModal] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -79,6 +88,9 @@ export default function ProfilePage() {
 
   useEffect(() => {
     fetchProfile();
+    fetchLookups().then((lookups) => {
+      setOrderStatuses(lookups.order_statuses || getFallbackOrderStatuses());
+    });
   }, []);
 
   const fetchProfile = async () => {
@@ -98,7 +110,7 @@ export default function ProfilePage() {
   // CANCEL ORDER LOGIC
   // -------------------------------------------------------------
   const canCancelOrder = (order) => {
-    const status = order.order_status?.toLowerCase();
+    const status = normalizeOrderStatus(order.order_status);
     if (!["pending", "processing"].includes(status)) return false;
     if (!order.event_date) return false;
 
@@ -459,16 +471,6 @@ const sendPasswordOtp = async () => {
     );
   }
 
-  const getStatusStyle = (status) => {
-    const s = status?.toLowerCase();
-    if (s === "pending")        return "bg-amber-100 text-amber-700 border-amber-200";
-    if (s === "processing")     return "bg-blue-100 text-blue-700 border-blue-200";
-    if (s === "shipped")        return "bg-purple-100 text-purple-700 border-purple-200";
-    if (s === "delivered" || s === "completed") return "bg-emerald-100 text-emerald-700 border-emerald-200";
-    if (s === "cancelled")      return "bg-rose-100 text-rose-700 border-rose-200";
-    return "bg-gray-100 text-gray-600 border-gray-200";
-  };
-
   return (
     <div className="min-h-screen bg-[#fcfaf9] text-gray-900 font-sans pt-0 pb-0">
       <div className="w-full">
@@ -776,6 +778,7 @@ const sendPasswordOtp = async () => {
                         </div>
                       ) : (
                         <div className="space-y-4">
+                          <OrderStatusLegend statuses={orderStatuses} className="mb-2" />
                           {orders.map((order) => (
                             <div
                               key={order.order_id || order.id}
@@ -793,9 +796,17 @@ const sendPasswordOtp = async () => {
                                     {order.event_date ? new Date(order.event_date).toLocaleDateString() : "No linked event date"}
                                   </p>
                                 </div>
-                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${getStatusStyle(order.order_status)}`}>
-                                  {order.order_status || "Pending"}
+                                <span
+                                  className="inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest"
+                                  style={getOrderStatusPillStyle(order.order_status, orderStatuses)}
+                                >
+                                  {formatOrderStatus(order.order_status, orderStatuses)}
                                 </span>
+                                {order.tracking_number ? (
+                                  <p className="mt-3 text-xs text-gray-500">
+                                    Tracking Number: <span className="font-semibold text-gray-800">{order.tracking_number}</span>
+                                  </p>
+                                ) : null}
                               </div>
                               <div className="text-left md:text-right flex flex-col justify-between gap-3">
                                 <div>

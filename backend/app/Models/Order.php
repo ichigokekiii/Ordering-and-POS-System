@@ -22,10 +22,16 @@ class Order extends Model
         'payment_id',
         'order_date',
         'total_amount',
+        'total_amount_value',
         'order_status',
+        'order_status_id',
         'isArchived',
         'special_message',
         'delivery_method',
+        'delivery_option_id',
+        'delivery_zone_id',
+        'delivery_zone_other',
+        'tracking_number',
         'address',
     ];
 
@@ -48,6 +54,21 @@ class Order extends Model
     public function schedule()
     {
         return $this->belongsTo(Schedule::class, 'schedule_id');
+    }
+
+    public function orderStatusRecord()
+    {
+        return $this->belongsTo(OrderStatus::class, 'order_status_id');
+    }
+
+    public function deliveryOption()
+    {
+        return $this->belongsTo(DeliveryOption::class, 'delivery_option_id');
+    }
+
+    public function deliveryZone()
+    {
+        return $this->belongsTo(DeliveryZone::class, 'delivery_zone_id');
     }
 
     // Relationship: An Order has many OrderItems

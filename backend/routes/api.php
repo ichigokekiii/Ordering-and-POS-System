@@ -17,6 +17,7 @@ use App\Http\Controllers\PosTransactionsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContentController;
 use App\Http\Controllers\LogController;
+use App\Http\Controllers\LookupController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\OrderCancellationController;
 use App\Http\Controllers\FeedbackController;
@@ -36,6 +37,8 @@ Route::get('/landing', function () {
         'subtitle' => 'Laravel API is Connected',
     ]);
 });
+
+Route::get('/lookups', [LookupController::class, 'index']);
 
 //feedback routes
 Route::middleware('auth:sanctum')->group(function () {

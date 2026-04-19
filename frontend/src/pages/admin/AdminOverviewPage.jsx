@@ -2,7 +2,8 @@ import { useEffect, useState, useMemo } from "react";
 import api from "../../services/api";
 import {
   formatOrderStatus,
-  getOrderStatusPillClasses,
+  getFallbackOrderStatuses,
+  getOrderStatusPillStyle,
   isActionRequiredOrderStatus,
   normalizeOrderStatus,
 } from "../../utils/orderStatus";
@@ -28,8 +29,11 @@ import { getAssetUrl } from "../../utils/assetUrl";
 // Reusable Status Pill
 const OrderStatusPill = ({ status }) => {
   return (
-    <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border ${getOrderStatusPillClasses(status)}`}>
-      {formatOrderStatus(status)}
+    <span
+      className="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border"
+      style={getOrderStatusPillStyle(status, getFallbackOrderStatuses())}
+    >
+      {formatOrderStatus(status, getFallbackOrderStatuses())}
     </span>
   );
 };

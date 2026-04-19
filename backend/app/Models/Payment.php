@@ -20,7 +20,9 @@ class Payment extends Model
         'payment_method',
         'payment_date',
         'payment_status',
+        'payment_status_id',
         'reference_number',
+        'amount_paid',
         'reference_image_path',
         'confirmed_by',
     ];
@@ -28,5 +30,10 @@ class Payment extends Model
     public function order()
     {
         return $this->belongsTo(Order::class, 'order_id', 'order_id');
+    }
+
+    public function paymentStatusRecord()
+    {
+        return $this->belongsTo(PaymentStatus::class, 'payment_status_id');
     }
 }

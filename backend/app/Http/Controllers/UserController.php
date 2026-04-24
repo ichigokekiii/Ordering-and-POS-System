@@ -84,6 +84,7 @@ class UserController extends Controller
             'email'        => 'required|string|email|max:255|unique:users,email',
             'password'     => ValidationRules::passwordRules(),
             'phone_number' => ['required', 'string', 'regex:' . ValidationRules::PHONE_REGEX],
+            'privacy_accepted' => 'accepted',
             'terms_accepted' => 'accepted',
             'terms_scope'    => 'required|string|in:customer',
         ], [
@@ -93,6 +94,7 @@ class UserController extends Controller
             'password.not_regex' => 'Password is required.',
             'password.regex' => 'Password must include at least one uppercase letter and one number.',
             'phone_number.regex' => 'Phone number must be exactly 11 digits.',
+            'privacy_accepted.accepted' => 'Please review and acknowledge the Data Privacy Notice.',
             'terms_accepted.accepted' => 'Please review and accept the Customer Terms & Conditions.',
         ]);
 
@@ -140,6 +142,12 @@ class UserController extends Controller
 
         $this->normalizeUserInput($request);
 
+        $assignedRole = LookupCatalog::normalizeRoleCode($request->input('role', 'user'));
+        $expectedTermsScope = in_array($assignedRole, ['admin', 'owner', 'staff'], true)
+            ? 'internal'
+            : 'customer';
+        $requiresPrivacyNotice = $expectedTermsScope === 'customer';
+
         $validator = Validator::make($request->all(), [
             'first_name'   => ['required', 'string', 'min:2', 'max:50', 'regex:' . ValidationRules::NAME_REGEX],
             'last_name'    => ['required', 'string', 'min:2', 'max:50', 'regex:' . ValidationRules::NAME_REGEX],
@@ -148,6 +156,7 @@ class UserController extends Controller
             'phone_number' => ['required', 'string', 'regex:' . ValidationRules::PHONE_REGEX],
             'role'         => 'nullable|string|in:user,staff,admin,owner',
             'status'       => 'nullable|string|in:active,inactive',
+            'privacy_accepted' => $requiresPrivacyNotice ? 'accepted' : 'nullable',
             'terms_accepted' => 'accepted',
             'terms_scope'    => 'required|string|in:customer,internal',
         ], [
@@ -157,17 +166,13 @@ class UserController extends Controller
             'password.not_regex' => 'Password is required.',
             'password.regex' => 'Password must include at least one uppercase letter and one number.',
             'phone_number.regex' => 'Phone number must be exactly 11 digits.',
+            'privacy_accepted.accepted' => 'Please review and acknowledge the Data Privacy Notice.',
             'terms_accepted.accepted' => 'Please review and accept the applicable Terms & Conditions.',
         ]);
 
         if ($validator->fails()) {
             return $this->validationErrorResponse($validator->errors());
         }
-
-        $assignedRole = LookupCatalog::normalizeRoleCode($request->input('role', 'user'));
-        $expectedTermsScope = in_array($assignedRole, ['admin', 'owner', 'staff'], true)
-            ? 'internal'
-            : 'customer';
 
         if ($request->input('terms_scope') !== $expectedTermsScope) {
             return $this->fieldErrorResponse('terms_scope', 'The selected terms do not match the assigned role.');

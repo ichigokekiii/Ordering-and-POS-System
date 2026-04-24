@@ -1,4 +1,3 @@
-/* eslint-disable no-undef */
 /* eslint-disable no-unused-vars */
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -7,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import api from "../../services/api";
 import TermsAndConditionsModal from "../../components/TermsAndConditionsModal";
 import TermsConsentField from "../../components/TermsConsentField";
+import DataPrivacyNotice from "../../components/privacy/DataPrivacyNotice";
 import FormFieldHeader from "../../components/form/FormFieldHeader";
 import { getValidationInputClassName } from "../../components/form/fieldStyles";
 import { TERMS_SCOPE } from "../../utils/termsAndConditions";
@@ -72,6 +72,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
   const [showTerms, setShowTerms] = useState(false);
   const [regTermsAcknowledged, setRegTermsAcknowledged] = useState(false);
   const [regTermsAccepted, setRegTermsAccepted] = useState(false);
+  const [regPrivacyAccepted, setRegPrivacyAccepted] = useState(false);
   const [regFormError, setRegFormError] = useState("");
   const [regPhoneError, setRegPhoneError] = useState("");
   const [regFieldErrors, setRegFieldErrors] = useState({
@@ -81,6 +82,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
     phone_number: "",
     password: "",
     confirmPassword: "",
+    privacy: "",
     terms: "",
   });
   const [regLoading, setRegLoading] = useState(false);
@@ -205,7 +207,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
     e.preventDefault();
     if (cmsPreview?.enabled) return;
     setRegFormError("");
-    setRegFieldErrors((prev) => ({ ...prev, terms: "" }));
+    setRegFieldErrors((prev) => ({ ...prev, privacy: "", terms: "" }));
 
     const normalizedFirstName = normalizeName(regFirstName);
     const normalizedLastName = normalizeName(regLastName);
@@ -245,6 +247,14 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
       return;
     }
 
+    if (!regPrivacyAccepted) {
+      setRegFieldErrors((prev) => ({
+        ...prev,
+        privacy: "Please acknowledge the Data Privacy Notice before continuing.",
+      }));
+      return;
+    }
+
     if (!regTermsAcknowledged || !regTermsAccepted) {
       setRegFieldErrors((prev) => ({ ...prev, terms: "Please review and accept the Customer Terms & Conditions before continuing." }));
       return;
@@ -263,6 +273,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
         email: normalizedEmail,
         password: regPassword,
         phone_number: normalizedPhone,
+        privacy_accepted: true,
         terms_accepted: true,
         terms_scope: TERMS_SCOPE.CUSTOMER,
       });
@@ -270,6 +281,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
       navigate("/verify-otp", { state: { email: normalizedEmail, from: 'register' } });
     } catch (err) {
       const normalizedError = normalizeApiValidationErrors(err, {
+        privacy_accepted: "privacy",
         terms_accepted: "terms",
       });
 
@@ -461,6 +473,15 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
                 </ul>
               )}
 
+              <DataPrivacyNotice
+                checked={regPrivacyAccepted}
+                onToggle={(checked) => {
+                  setRegPrivacyAccepted(checked);
+                  clearFieldError(setRegFieldErrors, "privacy");
+                }}
+                error={regFieldErrors.privacy}
+              />
+
               <TermsConsentField
                 scope={TERMS_SCOPE.CUSTOMER}
                 checked={regTermsAccepted}
@@ -474,7 +495,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
               />
 
               <button
-                disabled={regLoading || !regTermsAccepted}
+                disabled={regLoading || !regTermsAccepted || !regPrivacyAccepted}
                 className="w-full mt-2 rounded-lg bg-[#4f6fa5] py-2.5 text-sm text-white font-semibold transition-all hover:bg-[#3f5b89] hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {regLoading && <Loader2 className="h-4 w-4 animate-spin" />}

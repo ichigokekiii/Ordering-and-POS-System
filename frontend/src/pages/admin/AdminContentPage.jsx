@@ -378,7 +378,7 @@ function AdminContentPage({ user }) {
   return (
     <div className="relative min-h-screen isolate rounded-lg bg-white px-8 py-8 flex flex-col">
       
-      <div className="relative z-[70] mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="relative z-10 mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-3xl font-playfair font-bold text-gray-900">Content Manager</h2>
           <p className="mt-1 text-sm text-gray-500">
@@ -390,7 +390,7 @@ function AdminContentPage({ user }) {
 
         <div className="flex items-center gap-4 self-start lg:self-auto">
           {/* Dropdown Navigation */}
-          <div className="relative z-[80]" ref={dropdownRef}>
+          <div className="relative z-20" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="flex w-64 items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-900 hover:border-gray-900 hover:bg-white transition-all focus:outline-none focus:ring-2 focus:ring-[#eaf2ff]"
@@ -403,7 +403,7 @@ function AdminContentPage({ user }) {
             </button>
 
             {isDropdownOpen && (
-              <div className="absolute right-0 top-full z-[90] mt-2 w-64 rounded-xl border border-gray-100 bg-white p-2 shadow-xl">
+              <div className="absolute right-0 top-full z-30 mt-2 w-64 rounded-xl border border-gray-100 bg-white p-2 shadow-xl">
                 <div className="mb-2 px-3 pb-2 pt-1 text-xs font-bold uppercase tracking-widest text-gray-400 border-b border-gray-50">
                   Pages & Components
                 </div>

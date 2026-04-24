@@ -475,7 +475,7 @@ function AdminProductPage({ user }) {
     <div className="min-h-screen flex flex-col px-8 py-8 bg-white rounded-lg relative font-sans">
       
       {/* HEADER AREA */}
-      <div className="mb-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between relative z-[160]">
+      <div className="relative z-10 mb-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-3xl font-playfair font-bold text-gray-900 tracking-tight">Product Management</h1>
           <p className="mt-1.5 max-w-2xl text-sm font-medium text-gray-500">
@@ -509,7 +509,7 @@ function AdminProductPage({ user }) {
             </button>
 
             {isDropdownOpen && (
-              <div className="absolute right-0 top-full z-[170] mt-2 w-full rounded-2xl border border-gray-100 bg-white p-2 shadow-xl animate-in fade-in zoom-in duration-100">
+              <div className="absolute right-0 top-full z-20 mt-2 w-full rounded-2xl border border-gray-100 bg-white p-2 shadow-xl animate-in fade-in zoom-in duration-100">
                 <div className="mb-1 border-b border-gray-50 px-3 pb-2 pt-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
                   Views
                 </div>

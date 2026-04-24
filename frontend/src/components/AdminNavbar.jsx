@@ -1,4 +1,5 @@
 /* eslint-disable react-hooks/set-state-in-effect */
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, ChevronDown, Search, User, LogOut } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -19,6 +20,11 @@ const ADMIN_ROUTES = [
 const NOTIFICATION_STORAGE_PREFIX = "admin-navbar-notifications";
 const NOTIFICATION_FETCH_LIMIT = 10;
 const NOTIFICATION_POLL_INTERVAL = 15000;
+const POPOVER_GAP = 16;
+const POPOVER_EDGE_PADDING = 16;
+const NAVBAR_POPOVER_Z_INDEX = 260;
+const NOTIFICATIONS_PANEL_WIDTH = 320;
+const PROFILE_PANEL_WIDTH = 224;
 
 const getDisplayName = (user) => {
   const fullName = `${user?.first_name || ""} ${user?.last_name || ""}`.trim();
@@ -122,16 +128,46 @@ const buildNotificationDescription = (log) => {
     .join(" • ");
 };
 
+const getPopoverPosition = (triggerElement, panelWidth) => {
+  if (!triggerElement || typeof window === "undefined") {
+    return {
+      left: POPOVER_EDGE_PADDING,
+      top: POPOVER_GAP,
+      width: panelWidth,
+    };
+  }
+
+  const rect = triggerElement.getBoundingClientRect();
+  const maxLeft = Math.max(
+    POPOVER_EDGE_PADDING,
+    window.innerWidth - panelWidth - POPOVER_EDGE_PADDING
+  );
+
+  return {
+    left: Math.min(Math.max(rect.right - panelWidth, POPOVER_EDGE_PADDING), maxLeft),
+    top: rect.bottom + POPOVER_GAP,
+    width: panelWidth,
+  };
+};
+
 function AdminNavbar({ user, onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const profileRef = useRef(null);
-  const notificationsRef = useRef(null);
+  const notificationButtonRef = useRef(null);
+  const notificationPanelRef = useRef(null);
+  const profileButtonRef = useRef(null);
+  const profilePanelRef = useRef(null);
   const notificationStorageKey = `${NOTIFICATION_STORAGE_PREFIX}:${user?.id || "guest"}`;
   const [searchTerm, setSearchTerm] = useState("");
   const [searchMessage, setSearchMessage] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [notificationPanelStyle, setNotificationPanelStyle] = useState(() =>
+    getPopoverPosition(null, NOTIFICATIONS_PANEL_WIDTH)
+  );
+  const [profilePanelStyle, setProfilePanelStyle] = useState(() =>
+    getPopoverPosition(null, PROFILE_PANEL_WIDTH)
+  );
   const [recentLogs, setRecentLogs] = useState([]);
   const [notificationState, setNotificationState] = useState({
     seenLogId: 0,
@@ -224,14 +260,17 @@ function AdminNavbar({ user, onLogout }) {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (profileRef.current && !profileRef.current.contains(event.target)) {
+      const clickedProfileTrigger = profileButtonRef.current?.contains(event.target);
+      const clickedProfilePanel = profilePanelRef.current?.contains(event.target);
+
+      if (!clickedProfileTrigger && !clickedProfilePanel) {
         setShowProfileMenu(false);
       }
 
-      if (
-        notificationsRef.current &&
-        !notificationsRef.current.contains(event.target)
-      ) {
+      const clickedNotificationTrigger = notificationButtonRef.current?.contains(event.target);
+      const clickedNotificationPanel = notificationPanelRef.current?.contains(event.target);
+
+      if (!clickedNotificationTrigger && !clickedNotificationPanel) {
         setShowNotifications(false);
       }
     };
@@ -239,6 +278,36 @@ function AdminNavbar({ user, onLogout }) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!showNotifications && !showProfileMenu) {
+      return undefined;
+    }
+
+    const syncPopoverPositions = () => {
+      if (showNotifications) {
+        setNotificationPanelStyle(
+          getPopoverPosition(notificationButtonRef.current, NOTIFICATIONS_PANEL_WIDTH)
+        );
+      }
+
+      if (showProfileMenu) {
+        setProfilePanelStyle(
+          getPopoverPosition(profileButtonRef.current, PROFILE_PANEL_WIDTH)
+        );
+      }
+    };
+
+    syncPopoverPositions();
+
+    window.addEventListener("resize", syncPopoverPositions);
+    window.addEventListener("scroll", syncPopoverPositions, true);
+
+    return () => {
+      window.removeEventListener("resize", syncPopoverPositions);
+      window.removeEventListener("scroll", syncPopoverPositions, true);
+    };
+  }, [showNotifications, showProfileMenu]);
 
   const updateNotificationState = (updater) => {
     setNotificationState((currentState) => {
@@ -327,69 +396,96 @@ function AdminNavbar({ user, onLogout }) {
   };
 
   return (
-    <header className="sticky top-0 z-[80] flex h-16 items-center justify-between border-b border-gray-100 bg-white px-8 isolate">
-      {/* Left side - Search */}
-      <div className="w-full max-w-md">
-        <form onSubmit={handleSearchSubmit} className="relative">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(sanitizeSearchTerm(event.target.value))}
-            maxLength={100}
-            placeholder="What do you want to find?"
-            className="w-full rounded-full bg-gray-100 py-2.5 pl-11 pr-4 text-sm text-gray-700 outline-none transition-all border border-gray-100 focus:bg-white focus:ring-2 focus:ring-[#eaf2ff] focus:border-[#4f6fa5]"
-          />
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        </form>
-        {searchMessage && (
-          <p className="absolute mt-1 text-xs text-red-500">{searchMessage}</p>
-        )}
-      </div>
+    <>
+      <header className="sticky top-0 z-[80] flex h-16 items-center justify-between border-b border-gray-100 bg-white px-8 isolate">
+        {/* Left side - Search */}
+        <div className="w-full max-w-md">
+          <form onSubmit={handleSearchSubmit} className="relative">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(sanitizeSearchTerm(event.target.value))}
+              maxLength={100}
+              placeholder="What do you want to find?"
+              className="w-full rounded-full bg-gray-100 py-2.5 pl-11 pr-4 text-sm text-gray-700 outline-none transition-all border border-gray-100 focus:bg-white focus:ring-2 focus:ring-[#eaf2ff] focus:border-[#4f6fa5]"
+            />
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          </form>
+          {searchMessage && (
+            <p className="absolute mt-1 text-xs text-red-500">{searchMessage}</p>
+          )}
+        </div>
 
-      {/* Right side - Actions & Profile */}
-      <div className="flex items-center gap-6">
-        
-        {/* Notifications */}
-        <div className="relative flex items-center" ref={notificationsRef}>
-          <button
-            type="button"
-            onClick={handleNotificationsToggle}
-            className="relative text-gray-400 transition-colors hover:text-[#4f6fa5]"
-            aria-label="Notifications"
-          >
-            <Bell className="h-5 w-5" />
-            {unreadNotificationCount > 0 && (
-              <span className="absolute -right-2.5 -top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
-                {unreadNotificationLabel}
-              </span>
-            )}
-          </button>
+        {/* Right side - Actions & Profile */}
+        <div className="flex items-center gap-6">
+          <div className="flex items-center">
+            <button
+              ref={notificationButtonRef}
+              type="button"
+              onClick={handleNotificationsToggle}
+              className="relative text-gray-400 transition-colors hover:text-[#4f6fa5]"
+              aria-label="Notifications"
+            >
+              <Bell className="h-5 w-5" />
+              {unreadNotificationCount > 0 && (
+                <span className="absolute -right-2.5 -top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                  {unreadNotificationLabel}
+                </span>
+              )}
+            </button>
+          </div>
 
-          {showNotifications && (
-            <div className="absolute right-0 top-full z-[90] mt-4 w-80 rounded-[1.5rem] border border-gray-100 bg-white p-4 shadow-xl">
+          <div className="border-l border-gray-100 pl-6">
+            <button
+              ref={profileButtonRef}
+              type="button"
+              onClick={() => setShowProfileMenu((prev) => !prev)}
+              className="flex items-center gap-3 text-left transition-opacity hover:opacity-80"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#eaf2ff] text-sm font-bold text-[#4f6fa5]">
+                {getInitials(displayName)}
+              </div>
+
+              <div className="hidden md:block">
+                <p className="text-sm font-semibold text-gray-900">{displayName}</p>
+                <p className="text-xs text-gray-500">{roleLabel}</p>
+              </div>
+
+              <ChevronDown className="h-4 w-4 text-gray-400" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {typeof document !== "undefined" && showNotifications
+        ? createPortal(
+            <div
+              ref={notificationPanelRef}
+              className="fixed rounded-[1.5rem] border border-gray-100 bg-white p-4 shadow-xl"
+              style={{ ...notificationPanelStyle, zIndex: NAVBAR_POPOVER_Z_INDEX }}
+            >
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-bold text-gray-900">Notifications</h2>
                 {notifications.length > 0 && (
                   <button
                     type="button"
                     onClick={handleClearNotifications}
-                    className="text-xs font-bold text-[#4f6fa5] hover:text-[#2a4475] transition-colors"
+                    className="text-xs font-bold text-[#4f6fa5] transition-colors hover:text-[#2a4475]"
                   >
                     Clear all
                   </button>
                 )}
               </div>
 
-            {notifications.length === 0 ? (
+              {notifications.length === 0 ? (
                 <p className="py-4 text-center text-sm text-gray-500">No new notifications.</p>
               ) : (
-                /* Added max-height, overflow, padding, and custom scrollbar class here */
-                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                <div className="custom-scrollbar max-h-[400px] space-y-2 overflow-y-auto pr-2">
                   {notifications.map((notification) => (
                     <div
                       key={notification.id}
                       onClick={handleNotificationClick}
-                      className="rounded-xl bg-[#fcfaf9] p-3 text-sm transition-colors hover:bg-[#eaf2ff]/50 cursor-pointer border border-transparent hover:border-[#eaf2ff]"
+                      className="cursor-pointer rounded-xl border border-transparent bg-[#fcfaf9] p-3 text-sm transition-colors hover:border-[#eaf2ff] hover:bg-[#eaf2ff]/50"
                     >
                       <p className="font-semibold text-gray-900">{notification.title}</p>
                       <p className="mt-0.5 text-xs text-gray-500">
@@ -399,35 +495,21 @@ function AdminNavbar({ user, onLogout }) {
                   ))}
                 </div>
               )}
-            </div>
-          )}
-        </div>
+            </div>,
+            document.body
+          )
+        : null}
 
-        {/* User Profile */}
-        <div className="relative border-l border-gray-100 pl-6" ref={profileRef}>
-          <button
-            type="button"
-            onClick={() => setShowProfileMenu((prev) => !prev)}
-            className="flex items-center gap-3 text-left transition-opacity hover:opacity-80"
-          >
-            {/* Using your brand tint and color for the avatar */}
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#eaf2ff] text-sm font-bold text-[#4f6fa5]">
-              {getInitials(displayName)}
-            </div>
-
-            <div className="hidden md:block">
-              <p className="text-sm font-semibold text-gray-900">{displayName}</p>
-              <p className="text-xs text-gray-500">{roleLabel}</p>
-            </div>
-
-            <ChevronDown className="h-4 w-4 text-gray-400" />
-          </button>
-
-          {showProfileMenu && (
-            <div className="absolute right-0 top-full z-[90] mt-4 w-56 overflow-hidden rounded-[1.5rem] border border-gray-100 bg-white shadow-xl">
+      {typeof document !== "undefined" && showProfileMenu
+        ? createPortal(
+            <div
+              ref={profilePanelRef}
+              className="fixed overflow-hidden rounded-[1.5rem] border border-gray-100 bg-white shadow-xl"
+              style={{ ...profilePanelStyle, zIndex: NAVBAR_POPOVER_Z_INDEX }}
+            >
               <div className="border-b border-gray-50 bg-[#fcfaf9] px-4 py-4">
                 <p className="text-sm font-bold text-gray-900">{displayName}</p>
-                <p className="truncate text-xs text-gray-500 mt-0.5">{user?.email || roleLabel}</p>
+                <p className="mt-0.5 truncate text-xs text-gray-500">{user?.email || roleLabel}</p>
               </div>
 
               <div className="p-2">
@@ -452,11 +534,11 @@ function AdminNavbar({ user, onLogout }) {
                   Logout
                 </button>
               </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </header>
+            </div>,
+            document.body
+          )
+        : null}
+    </>
   );
 }
 

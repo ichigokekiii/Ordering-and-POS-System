@@ -989,7 +989,7 @@ function AdminAnalyticsPage() {
     <div className="min-h-screen flex flex-col px-8 py-8 bg-white rounded-lg relative font-sans">
       
       {/* HEADER AREA */}
-      <div className="relative z-[160] mb-8 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="relative z-10 mb-8 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-3xl font-playfair font-bold text-gray-900 tracking-tight">Analytics</h1>
           <p className="mt-1.5 max-w-2xl text-sm font-medium text-gray-500">Workspace for revenue, orders, products, and operations.</p>
@@ -1007,13 +1007,13 @@ function AdminAnalyticsPage() {
           <Mail className="w-4 h-4" />
           Email Report
         </button>
-          <div className="relative z-[170] w-[180px]" ref={dropdownRef}>
+          <div className="relative z-20 w-[180px]" ref={dropdownRef}>
             <button type="button" onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 hover:border-gray-900 transition-all">
               <div className="flex items-center gap-2"><activeOption.icon className="h-4 w-4 text-[#4f6fa5]" />{activeOption.label}</div>
               <ChevronDown size={16} />
             </button>
             {isDropdownOpen && (
-              <div className="absolute right-0 top-full z-[180] mt-2 w-full rounded-2xl border border-gray-100 bg-white p-2 shadow-xl">
+              <div className="absolute right-0 top-full z-30 mt-2 w-full rounded-2xl border border-gray-100 bg-white p-2 shadow-xl">
                 {SECTION_OPTIONS.map((option) => (
                   <button key={option.id} onClick={() => { setActiveSection(option.id); setIsDropdownOpen(false); }} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${activeSection === option.id ? "bg-[#eaf2ff] text-[#4f6fa5]" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}>
                     <option.icon className="h-4 w-4 shrink-0" /><span className="text-sm font-bold tracking-tight">{option.label}</span>

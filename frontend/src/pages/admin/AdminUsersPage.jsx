@@ -20,9 +20,10 @@ import {
 } from "lucide-react";
 import api from "../../services/api";
 import { canManageUsersAdmin } from "../../utils/adminAccess";
+import DataPrivacyNotice from "../../components/privacy/DataPrivacyNotice";
 import TermsAndConditionsModal from "../../components/TermsAndConditionsModal";
 import TermsConsentField from "../../components/TermsConsentField";
-import { resolveTermsScopeFromRole } from "../../utils/termsAndConditions";
+import { resolveTermsScopeFromRole, TERMS_SCOPE } from "../../utils/termsAndConditions";
 import FormFieldHeader from "../../components/form/FormFieldHeader";
 import { getValidationInputClassName } from "../../components/form/fieldStyles";
 import {
@@ -93,7 +94,7 @@ function AdminUsersPage({ user }) {
   const [showCreateTerms, setShowCreateTerms] = useState(false);
   const [createTermsAcknowledged, setCreateTermsAcknowledged] = useState(false);
   const [createTermsAccepted, setCreateTermsAccepted] = useState(false);
-  const [createTermsError, setCreateTermsError] = useState("");
+  const [createPrivacyAccepted, setCreatePrivacyAccepted] = useState(false);
   const [createFieldErrors, setCreateFieldErrors] = useState({
     first_name: "",
     last_name: "",
@@ -101,6 +102,8 @@ function AdminUsersPage({ user }) {
     phone_number: "",
     password: "",
     confirmPassword: "",
+    privacy: "",
+    terms: "",
   });
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -112,9 +115,10 @@ function AdminUsersPage({ user }) {
   const canArchiveUsers = ["admin", "owner"].includes(userRole);
   const canDeleteUsers = userRole === "admin";
   const createTermsScope = useMemo(
-    () => resolveTermsScopeFromRole(user?.role),
-    [user?.role]
+    () => resolveTermsScopeFromRole(newUser.role),
+    [newUser.role]
   );
+  const requiresCreatePrivacy = createTermsScope === TERMS_SCOPE.CUSTOMER;
 
   const [selectedUser, setSelectedUser] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -156,10 +160,15 @@ function AdminUsersPage({ user }) {
   }, []);
 
   useEffect(() => {
+    setCreatePrivacyAccepted(false);
     setCreateTermsAcknowledged(false);
     setCreateTermsAccepted(false);
-    setCreateTermsError("");
-  }, [createTermsScope]);
+    setCreateFieldErrors((prev) => ({
+      ...prev,
+      privacy: "",
+      terms: "",
+    }));
+  }, [newUser.role]);
 
   // Helper to trigger status modal
   const showModalAlert = (type, message) => {
@@ -176,9 +185,9 @@ function AdminUsersPage({ user }) {
       phone_number: "",
       role: "customer",
     });
+    setCreatePrivacyAccepted(false);
     setCreateTermsAcknowledged(false);
     setCreateTermsAccepted(false);
-    setCreateTermsError("");
     setCreateFieldErrors({
       first_name: "",
       last_name: "",
@@ -186,6 +195,8 @@ function AdminUsersPage({ user }) {
       phone_number: "",
       password: "",
       confirmPassword: "",
+      privacy: "",
+      terms: "",
     });
   };
 
@@ -205,7 +216,11 @@ function AdminUsersPage({ user }) {
     }
 
     setNewUser((prev) => ({ ...prev, [field]: nextValue }));
-    setCreateFieldErrors((prev) => ({ ...prev, [field]: "" }));
+    setCreateFieldErrors((prev) => ({
+      ...prev,
+      [field]: "",
+      ...(field === "role" ? { privacy: "", terms: "" } : {}),
+    }));
   };
 
   const handleEditFieldChange = (field, value) => {
@@ -361,8 +376,19 @@ function AdminUsersPage({ user }) {
   };
 
   const handleCreateUser = () => {
+    if (requiresCreatePrivacy && !createPrivacyAccepted) {
+      setCreateFieldErrors((prev) => ({
+        ...prev,
+        privacy: "Please acknowledge the Data Privacy Notice before creating this customer account.",
+      }));
+      return;
+    }
+
     if (!createTermsAcknowledged || !createTermsAccepted) {
-      setCreateTermsError("Please review and accept the applicable Terms & Conditions before creating this account.");
+      setCreateFieldErrors((prev) => ({
+        ...prev,
+        terms: "Please review and accept the applicable Terms & Conditions before creating this account.",
+      }));
       return;
     }
 
@@ -374,15 +400,16 @@ function AdminUsersPage({ user }) {
       phone_number: sanitizePhoneNumber(newUser.phone_number),
     };
 
-    const createValidationError =
-      {
-        first_name: validateNameField(normalizedNewUser.first_name, "First name"),
-        last_name: validateNameField(normalizedNewUser.last_name, "Last name"),
-        email: validateEmailField(normalizedNewUser.email),
-        phone_number: validatePhoneNumber(normalizedNewUser.phone_number),
-        password: "",
-        confirmPassword: "",
-      };
+    const createValidationError = {
+      first_name: validateNameField(normalizedNewUser.first_name, "First name"),
+      last_name: validateNameField(normalizedNewUser.last_name, "Last name"),
+      email: validateEmailField(normalizedNewUser.email),
+      phone_number: validatePhoneNumber(normalizedNewUser.phone_number),
+      password: "",
+      confirmPassword: "",
+      privacy: "",
+      terms: "",
+    };
 
     createValidationError.password = validatePassword(normalizedNewUser.password);
     createValidationError.confirmPassword = validatePasswordConfirmation(
@@ -404,6 +431,7 @@ function AdminUsersPage({ user }) {
       phone_number: normalizedNewUser.phone_number,
       role: roleToBackend(normalizedNewUser.role),
       status: "Active",
+      ...(requiresCreatePrivacy ? { privacy_accepted: true } : {}),
       terms_accepted: true,
       terms_scope: createTermsScope,
     })
@@ -414,7 +442,10 @@ function AdminUsersPage({ user }) {
         resetCreateForm();
       })
       .catch((err) => {
-        const normalizedError = normalizeApiValidationErrors(err, { terms_accepted: "terms" });
+        const normalizedError = normalizeApiValidationErrors(err, {
+          privacy_accepted: "privacy",
+          terms_accepted: "terms",
+        });
         setCreateFieldErrors((prev) => ({ ...prev, ...normalizedError.fieldErrors }));
         showModalAlert("error", normalizedError.formError || "Failed to create user");
       });
@@ -851,7 +882,7 @@ function AdminUsersPage({ user }) {
                         name="role"
                         value={role}
                         checked={newUser.role === role}
-                        onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                        onChange={(e) => handleNewUserFieldChange("role", e.target.value)}
                         className="w-4 h-4 text-[#4f6fa5] bg-gray-100 border-gray-300 focus:ring-[#eaf2ff] focus:ring-2"
                       />
                       <span className="font-semibold text-gray-700 capitalize">{role}</span>
@@ -860,16 +891,27 @@ function AdminUsersPage({ user }) {
                 </div>
               </div>
 
+              {requiresCreatePrivacy && (
+                <DataPrivacyNotice
+                  checked={createPrivacyAccepted}
+                  onToggle={(checked) => {
+                    setCreatePrivacyAccepted(checked);
+                    setCreateFieldErrors((prev) => ({ ...prev, privacy: "" }));
+                  }}
+                  error={createFieldErrors.privacy}
+                />
+              )}
+
               <TermsConsentField
                 scope={createTermsScope}
                 checked={createTermsAccepted}
                 acknowledged={createTermsAcknowledged}
                 onToggle={(checked) => {
                   setCreateTermsAccepted(checked);
-                  setCreateTermsError("");
+                  setCreateFieldErrors((prev) => ({ ...prev, terms: "" }));
                 }}
                 onOpen={() => setShowCreateTerms(true)}
-                error={createTermsError}
+                error={createFieldErrors.terms}
               />
             </div>
 
@@ -885,7 +927,7 @@ function AdminUsersPage({ user }) {
               </button>
               <button
                 onClick={handleCreateUser}
-                disabled={!createTermsAccepted}
+                disabled={!createTermsAccepted || (requiresCreatePrivacy && !createPrivacyAccepted)}
                 className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-200 disabled:text-gray-400"
               >
                 Create Account
@@ -902,7 +944,7 @@ function AdminUsersPage({ user }) {
         onAcknowledge={() => {
           setCreateTermsAcknowledged(true);
           setCreateTermsAccepted(true);
-          setCreateTermsError("");
+          setCreateFieldErrors((prev) => ({ ...prev, terms: "" }));
           setShowCreateTerms(false);
         }}
       />

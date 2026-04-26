@@ -33,6 +33,28 @@ function SchedulePage() {
   const [orderMessage, setOrderMessage] = useState("");
   const [showNotification, setShowNotification] = useState(false);
 
+  const isOrderable = (eventDate) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const event = new Date(eventDate);
+  event.setHours(0, 0, 0, 0);
+  const daysUntil = (event - today) / (1000 * 60 * 60 * 24);
+  return daysUntil <= 7 && daysUntil > 3;
+};
+
+const getOrderLabel = (eventDate) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const event = new Date(eventDate);
+  event.setHours(0, 0, 0, 0);
+  const daysUntil = (event - today) / (1000 * 60 * 60 * 24);
+
+  if (daysUntil < 0) return "This Event Has Passed";
+  if (daysUntil <= 3) return "Pre-orders Closed";
+  if (daysUntil <= 7) return "Order Flowers for This Event";
+  return "Pre-order Opens in " + Math.ceil(daysUntil - 7) + " Day(s)";
+};
+
   // Smooth fade-out logic
   useEffect(() => {
     if (bookingStatus || orderStatus) {
@@ -394,11 +416,16 @@ function SchedulePage() {
                         </button>
 
                         <button
-                          onClick={handleOrderNow}
-                          className="w-full border border-gray-200 text-gray-900 rounded-full py-4 text-xs font-bold tracking-widest uppercase hover:border-gray-900 hover:bg-gray-50 transition-all hover:-translate-y-1"
-                        >
-                          Order Flowers for This Event
-                        </button>
+  onClick={isOrderable(selectedSchedule.event_date) ? handleOrderNow : undefined}
+  disabled={!isOrderable(selectedSchedule.event_date)}
+  className={`w-full border rounded-full py-4 text-xs font-bold tracking-widest uppercase transition-all ${
+    isOrderable(selectedSchedule.event_date)
+      ? "border-gray-200 text-gray-900 hover:border-gray-900 hover:bg-gray-50 hover:-translate-y-1 cursor-pointer"
+      : "border-gray-100 text-gray-300 cursor-not-allowed"
+  }`}
+>
+  {getOrderLabel(selectedSchedule.event_date)}
+</button>
                       </div>
                     </motion.div>
                   )}

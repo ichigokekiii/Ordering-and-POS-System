@@ -2,17 +2,6 @@
 
 return [
 
-    /*
-    |--------------------------------------------------------------------------
-    | Default Hash Driver
-    |--------------------------------------------------------------------------
-    |
-    | New passwords should be written with Argon2id. Existing bcrypt hashes
-    | remain valid because verification still goes through Laravel's Hash
-    | facade and rehashing can happen on successful authentication flows.
-    |
-    */
-
     'driver' => env('HASH_DRIVER', 'argon2id'),
 
     'bcrypt' => [

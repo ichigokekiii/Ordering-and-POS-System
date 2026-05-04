@@ -116,6 +116,10 @@ export const CMS_FIELDS = [
   { page: "auth", identifier: "auth_reset_title", label: "Reset Password Title", type: "text", input: "text", previewEnabled: true },
   { page: "auth", identifier: "auth_reset_subtitle", label: "Reset Password Subtitle", type: "text", input: "textarea", previewEnabled: true },
 
+  // --- CHECKOUT PAGE ---
+  { page: "checkout", identifier: "checkout_qr_gcash", label: "GCash QR Code", type: "image", input: "image", previewEnabled: true },
+  { page: "checkout", identifier: "checkout_qr_non_gcash", label: "Non-GCash QR Code", type: "image", input: "image", previewEnabled: true },
+
   // --- FOOTER ---
   { page: "footer", identifier: "footer_brand", label: "Footer Brand Name", type: "text", input: "text", previewEnabled: true },
   { page: "footer", identifier: "footer_bg_color", label: "Footer Background Color", type: "text", input: "color", previewEnabled: true },
@@ -135,6 +139,7 @@ export const CMS_PAGES = [
   { id: "products", label: "Showcase" },
   { id: "schedule", label: "Schedule" },
   { id: "auth", label: "Login/Register" },
+  { id: "checkout", label: "Checkout" },
   { id: "navbar", label: "Navbar" },
   { id: "footer", label: "Footer" },
 ];

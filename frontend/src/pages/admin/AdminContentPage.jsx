@@ -12,8 +12,14 @@ import LandingPage from "../users/LandingPage";
 import AboutPage from "../users/AboutPage";
 import ProductPage from "../users/ProductPage";
 import SchedulePage from "../users/SchedulePage";
+import CmsEditableRegion from "../../components/admin/CmsEditableRegion";
 import { useContents } from "../../contexts/ContentContext";
-import { CMS_PAGES, getCmsAssetUrl } from "../../cms/cmsRegistry";
+import {
+  CMS_PAGES,
+  getCmsAssetUrl,
+  getCmsField,
+  getContentValue as getCmsContentValue,
+} from "../../cms/cmsRegistry";
 import { ChevronDown, Monitor, LayoutTemplate, Layers, ArchiveRestore, Trash2, Archive, CheckCircle2, X } from "lucide-react";
 import {
   canManageAdminDashboard,
@@ -27,6 +33,7 @@ const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
 const ALLOWED_IMAGE_NAME_REGEX = /\.(jpe?g|png)$/i;
 const ADMIN_IMAGE_ACCEPT = ".jpg,.jpeg,.png,image/jpeg,image/png";
 const MAX_IMAGE_SIZE_LABEL = "2MB";
+const LEGACY_CHECKOUT_QR_PATH = "/storage/qr_payment.jpg";
 
 const getContentRequestErrorMessage = (error, fallbackMessage) => {
   if (error?.response?.status === 422) {
@@ -128,6 +135,104 @@ function AdminModalPortal({ children }) {
   return createPortal(children, document.body);
 }
 
+function CheckoutCmsPreview({ cmsPreview }) {
+  const { contents } = useContents();
+
+  const getCheckoutContentValue = (identifier, fallback = "") =>
+    getCmsContentValue(contents, "checkout", identifier, fallback);
+
+  const gcashQr = getCmsAssetUrl(
+    getCheckoutContentValue("checkout_qr_gcash", LEGACY_CHECKOUT_QR_PATH)
+  );
+  const nonGcashQr = getCmsAssetUrl(
+    getCheckoutContentValue("checkout_qr_non_gcash", LEGACY_CHECKOUT_QR_PATH)
+  );
+
+  return (
+    <div className="min-h-full bg-gray-100 py-12">
+      <div className="flex min-h-full flex-col gap-12">
+        <div>
+          <p className="mb-4 text-center text-xs font-semibold uppercase tracking-widest text-gray-400">GCash Checkout View</p>
+          <div className="mx-8 rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm md:mx-10 md:p-8">
+            <div className="grid gap-8">
+              <div className="rounded-[2rem] border border-gray-100 bg-gradient-to-br from-white via-[#f7f9fc] to-[#eef4ff] p-6 shadow-sm">
+                <div className="mb-6 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Live Checkout Card</p>
+                    <h4 className="mt-2 text-2xl font-playfair font-bold text-gray-900">GCash QR</h4>
+                  </div>
+                  <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5]">
+                    GCash Selected
+                  </span>
+                </div>
+
+                <CmsEditableRegion
+                  cmsPreview={cmsPreview}
+                  field={getCmsField("checkout", "checkout_qr_gcash")}
+                  className="mx-auto block w-fit rounded-[2rem]"
+                  overlayClassName="rounded-[inherit]"
+                >
+                  <div className="mx-auto flex h-72 w-72 items-center justify-center overflow-hidden rounded-[2rem] border border-gray-100 bg-white p-5 shadow-md">
+                    <img
+                      src={gcashQr}
+                      alt="GCash QR preview"
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                </CmsEditableRegion>
+
+                <p className="mt-4 text-center text-[11px] font-bold uppercase tracking-widest text-[#4f6fa5]">
+                  Click the QR to edit this checkout image
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t-4 border-dashed border-gray-300 w-full my-4"></div>
+
+        <div>
+          <p className="mb-4 text-center text-xs font-semibold uppercase tracking-widest text-gray-400">Other Bank / Provider Checkout View</p>
+          <div className="mx-8 rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm md:mx-10 md:p-8">
+            <div className="grid gap-8">
+              <div className="rounded-[2rem] border border-gray-100 bg-gradient-to-br from-white via-[#f7f9fc] to-[#eef4ff] p-6 shadow-sm">
+                <div className="mb-6 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Live Checkout Card</p>
+                    <h4 className="mt-2 text-2xl font-playfair font-bold text-gray-900">Other Provider QR</h4>
+                  </div>
+                  <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5]">
+                    Non-GCash Selected
+                  </span>
+                </div>
+
+                <CmsEditableRegion
+                  cmsPreview={cmsPreview}
+                  field={getCmsField("checkout", "checkout_qr_non_gcash")}
+                  className="mx-auto block w-fit rounded-[2rem]"
+                  overlayClassName="rounded-[inherit]"
+                >
+                  <div className="mx-auto flex h-72 w-72 items-center justify-center overflow-hidden rounded-[2rem] border border-gray-100 bg-white p-5 shadow-md">
+                    <img
+                      src={nonGcashQr}
+                      alt="Non-GCash QR preview"
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                </CmsEditableRegion>
+
+                <p className="mt-4 text-center text-[11px] font-bold uppercase tracking-widest text-[#4f6fa5]">
+                  Click the QR to edit this checkout image
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ISOLATED PREVIEWS
 function PreviewScene({ activePage, cmsPreview }) {
   if (activePage === "home") {
@@ -196,6 +301,10 @@ function PreviewScene({ activePage, cmsPreview }) {
          </div>
       </div>
     );
+  }
+
+  if (activePage === "checkout") {
+    return <CheckoutCmsPreview cmsPreview={cmsPreview} />;
   }
 
   if (activePage === "navbar") {

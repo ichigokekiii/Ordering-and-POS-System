@@ -304,15 +304,14 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#fcfaf9] flex items-start justify-center pt-10 pb-4">
-      {/* Reduced min-height slightly to make it feel more compact */}
-      <div className="relative overflow-hidden w-full max-w-4xl min-h-[500px] md:min-h-[560px] bg-white rounded-3xl shadow-2xl flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[#fcfaf9] flex items-start justify-center px-4 py-6 md:px-6 md:py-10">
+      <div className="relative flex w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl md:h-[min(720px,calc(100vh-5rem))] md:min-h-[620px] md:flex-row">
         
         {/* REGISTER FORM */}
         {/* Reduced vertical padding (py-10 -> py-6) */}
-        <div className="w-full md:w-1/2 flex flex-col justify-center px-8 sm:px-12 py-6 order-2 md:order-none z-0 mt-16 md:mt-0 relative">
+        <div className={`${isSignIn ? "hidden" : "flex"} relative z-0 order-2 w-full flex-col justify-start px-6 py-6 sm:px-8 md:order-none md:flex md:w-1/2 md:px-10 md:py-8 md:overflow-y-auto`}>
           <div className={`md:hidden ${!isSignIn ? 'block' : 'hidden'}`}></div>
-          <div className="w-full pt-2 pb-6 md:pt-0" style={{ pointerEvents: !isSignIn ? 'auto' : 'none' }}>
+          <div className="mx-auto w-full max-w-md pt-2 pb-6 md:pt-0" style={{ pointerEvents: !isSignIn ? 'auto' : 'none' }}>
             {/* Reduced margin bottom on title */}
             <h2 className="text-3xl font-bold mb-4 text-gray-800">Create Account</h2>
             {regFormError && <p className="mb-4 text-xs font-semibold text-red-500 bg-red-50 py-2 px-3 rounded border border-red-200">{regFormError}</p>}
@@ -510,8 +509,8 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
         </div>
 
         {/* LOGIN FORM */}
-        <div className="absolute top-0 right-0 w-full md:w-1/2 h-full flex flex-col justify-center px-8 sm:px-12 py-6 bg-white z-0 mt-16 md:mt-0" style={{ opacity: (!isSignIn && window.innerWidth < 768) ? 0 : 1, pointerEvents: isSignIn ? 'auto' : 'none' }}>
-          <div className="w-full pt-8 pb-6 text-center md:pt-0">
+        <div className={`${isSignIn ? "flex" : "hidden"} z-0 w-full flex-col justify-center bg-white px-6 py-6 sm:px-8 md:absolute md:top-0 md:right-0 md:flex md:h-full md:w-1/2 md:px-10 md:py-8 md:overflow-y-auto`} style={{ pointerEvents: isSignIn ? 'auto' : 'none' }}>
+          <div className="mx-auto w-full max-w-md pt-8 pb-6 text-center md:pt-0">
             <h2 className="text-3xl font-bold mb-4 text-gray-800">Login to Account</h2>
 
             {isLocked && (
@@ -545,7 +544,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
                   type="email"
                   className={getValidationInputClassName({
                     hasError: !!loginFieldErrors.email,
-                    baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:bg-gray-100",
+                    baseClassName: "w-full rounded-lg border px-4 py-3 text-base focus:bg-white focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:bg-gray-100",
                   })}
                   placeholder="Email Address"
                   value={loginEmail}
@@ -566,7 +565,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
                   type="password"
                   className={getValidationInputClassName({
                     hasError: !!loginFieldErrors.password,
-                    baseClassName: "w-full rounded-lg border px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:bg-gray-100",
+                    baseClassName: "w-full rounded-lg border px-4 py-3 text-base focus:bg-white focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:bg-gray-100",
                   })}
                   placeholder="Password"
                   value={loginPassword}
@@ -588,7 +587,7 @@ function AuthPage({ onLogin, initialView = "login", cmsPreview }) {
 
               <button
                 disabled={loginFormDisabled}
-                className="w-full mt-4 rounded-lg bg-[#4f6fa5] py-4 text-lg text-white font-semibold transition-all hover:bg-[#3f5b89] hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4f6fa5] py-3 text-base font-semibold text-white transition-all hover:bg-[#3f5b89] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {loginLoading && <Loader2 className="h-5 w-5 animate-spin" />}
                 {isCoolingDown ? `Wait ${formatCountdown(countdown)}` : "Login"}

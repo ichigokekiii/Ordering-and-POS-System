@@ -2,7 +2,7 @@ import { getOrderStatusLegend, getOrderStatusPillStyle } from "../../utils/order
 
 function OrderStatusLegend({
   statuses = [],
-  title = "Status Legend",
+  title = "Status",
   className = "",
 }) {
   const legendItems = getOrderStatusLegend(statuses);

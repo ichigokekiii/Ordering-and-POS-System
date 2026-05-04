@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../contexts/CartContext";
+import { useContents } from "../../contexts/ContentContext";
 import api from "../../services/api";
 import { useSchedules } from "../../contexts/ScheduleContext";
 import TermsAndConditionsModal from "../../components/TermsAndConditionsModal";
@@ -27,12 +28,17 @@ import {
 } from "../../utils/authValidation";
 import { normalizeApiValidationErrors } from "../../utils/formValidation";
 import { getAssetUrl } from "../../utils/assetUrl";
+import { getCmsAssetUrl, getContentValue as getCmsContentValue } from "../../cms/cmsRegistry";
 import { FALLBACK_DELIVERY_OPTIONS, FALLBACK_DELIVERY_ZONES, fetchLookups } from "../../utils/lookups";
+
+const LEGACY_CHECKOUT_QR_PATH = "/storage/qr_payment.jpg";
 
 function CheckoutPage() {
   const navigate = useNavigate();
   const { cartItems, totalPrice, clearCart, selectedScheduleId } = useCart();
   const { schedules } = useSchedules();
+  const contentContext = useContents();
+  const contents = contentContext?.contents || [];
   const fileInputRef = useRef(null);
   const selectedSchedule = schedules.find((schedule) => schedule.id === selectedScheduleId);
 
@@ -78,7 +84,7 @@ function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState("");
   const [referenceCode, setReferenceCode] = useState("");
   const [isManualPayment, setIsManualPayment] = useState(false);
-const [manualPaymentMethod, setManualPaymentMethod] = useState("");
+  const [manualPaymentMethod, setManualPaymentMethod] = useState("");
 
   // Validation errors
   const [errors, setErrors] = useState({
@@ -96,6 +102,21 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
 
   const GRAND_TOTAL = totalPrice;
   const termsScope = resolveTermsScopeFromRole(userRole);
+  const getCheckoutContentValue = (identifier, fallback = "") =>
+    getCmsContentValue(contents, "checkout", identifier, fallback);
+  const gcashQrImage = getCmsAssetUrl(
+    getCheckoutContentValue("checkout_qr_gcash", LEGACY_CHECKOUT_QR_PATH)
+  ) || getAssetUrl(LEGACY_CHECKOUT_QR_PATH);
+  const nonGcashQrImage = getCmsAssetUrl(
+    getCheckoutContentValue("checkout_qr_non_gcash", LEGACY_CHECKOUT_QR_PATH)
+  ) || getAssetUrl(LEGACY_CHECKOUT_QR_PATH);
+  const normalizedPaymentMethod = paymentMethod.trim().toLowerCase();
+  const hasManualPaymentSelection = isManualPayment && manualPaymentMethod.trim().length > 0;
+  const shouldUseNonGcashQr = hasManualPaymentSelection
+    ? true
+    : normalizedPaymentMethod.length > 0 && normalizedPaymentMethod !== "gcash";
+  const activeQrImage = shouldUseNonGcashQr ? nonGcashQrImage : gcashQrImage;
+  const activeQrAlt = shouldUseNonGcashQr ? "Non-GCash payment QR" : "GCash QR";
 
   useEffect(() => {
     setTermsAcknowledged(false);
@@ -616,8 +637,8 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
                   <div className="relative group cursor-pointer" onClick={() => setShowQRModal(true)}>
                     <div className="h-40 w-40 overflow-hidden rounded-2xl border-2 border-gray-100 bg-white p-3 shadow-sm hover:shadow transition-shadow group-hover:border-[#4f6fa5]/30">
                       <img
-                        src={getAssetUrl("/storage/qr_payment.jpg")}
-                        alt="GCash QR"
+                        src={activeQrImage}
+                        alt={activeQrAlt}
                         className="h-full w-full object-contain"
                       />
                       <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
@@ -985,17 +1006,24 @@ const [manualPaymentMethod, setManualPaymentMethod] = useState("");
       {showQRModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowQRModal(false)}>
            <div className="relative max-w-2xl w-full p-4" onClick={e => e.stopPropagation()}>
-              <button
-                className="absolute -top-12 right-0 text-white flex gap-2 items-center text-sm uppercase tracking-widest font-bold hover:text-[#4f6fa5] transition"
-                onClick={() => setShowQRModal(false)}
-              >
-                Close ✕
-              </button>
-              <img
-                 src={getAssetUrl("/storage/qr_payment.jpg")}
-                 alt="GCash QR Zoom"
-                 className="w-full h-auto rounded-3xl shadow-2xl object-contain bg-white p-4"
-              />
+              <div className="overflow-hidden rounded-3xl bg-white shadow-2xl">
+                <div className="flex items-center justify-end border-b border-gray-100 px-4 py-3">
+                  <button
+                    className="flex items-center gap-2 rounded-full px-3 py-2 text-sm font-bold uppercase tracking-widest text-gray-500 transition hover:bg-red-50 hover:text-red-600"
+                    onClick={() => setShowQRModal(false)}
+                    aria-label="Close QR preview"
+                  >
+                    Close ✕
+                  </button>
+                </div>
+                <div className="max-h-[72vh] overflow-y-auto overscroll-contain p-4">
+                  <img
+                     src={activeQrImage}
+                     alt={`${activeQrAlt} Zoom`}
+                     className="w-full h-auto rounded-3xl object-contain bg-white"
+                  />
+                </div>
+              </div>
            </div>
         </div>
       )}

@@ -182,9 +182,7 @@ export default function ProfilePage() {
     setProfileFieldErrors((prev) => ({ ...prev, profile_picture: "" }));
 
     try {
-      const res = await api.post("/profile/photo", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await api.post("/profile/photo", formData);
       if (res.data?.user) {
         updateUser(res.data.user);
         setProfile((currentProfile) => ({ ...(currentProfile || {}), ...res.data.user }));
@@ -477,15 +475,15 @@ const sendPasswordOtp = async () => {
         <div className="flex flex-col md:flex-row min-h-[calc(100vh-80px)]">
 
           {/* ================= SIDEBAR ================= */}
-          <div className="md:w-[260px] flex-shrink-0">
-            <div className="bg-white border-r border-gray-100 shadow-sm p-6 h-full w-full">
-              <h1 className="text-2xl font-playfair font-bold text-gray-900 mb-6">My Account</h1>
-              <nav className="flex flex-col gap-2 mt-4">
+          <div className="w-full flex-shrink-0 md:w-[260px]">
+            <div className="h-full w-full border-b border-gray-100 bg-white p-4 shadow-sm md:border-b-0 md:border-r md:p-6">
+              <h1 className="mb-4 text-xl font-playfair font-bold text-gray-900 md:mb-6 md:text-2xl">My Account</h1>
+              <nav className="mt-2 flex gap-2 overflow-x-auto pb-1 md:mt-4 md:flex-col md:overflow-visible md:pb-0">
                 {["profile", "addresses", "orders", "settings"].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`text-left px-4 py-2.5 text-sm font-medium transition-all duration-200 rounded-lg w-full ${
+                    className={`shrink-0 px-4 py-2.5 text-left text-sm font-medium transition-all duration-200 rounded-lg md:w-full ${
                       activeTab === tab
                         ? "bg-[#0f1b2d] text-white"
                         : "text-gray-500 hover:bg-gray-100 hover:text-[#0f1b2d]"
@@ -502,7 +500,7 @@ const sendPasswordOtp = async () => {
           </div>
 
           {/* ================= MAIN CONTENT ================= */}
-          <div className="flex-grow px-6 md:px-12 pt-24 pb-16">
+          <div className="min-w-0 flex-grow px-4 pb-16 pt-20 md:px-12 md:pt-24">
             <AnimatePresence mode="wait">
 
               {/* --- MY PROFILE VIEW --- */}

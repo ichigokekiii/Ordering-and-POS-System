@@ -26,11 +26,7 @@ export function ScheduleProvider({ children }) {
   // Add schedule
   const addSchedule = async (scheduleData) => {
     try {
-      const res = await api.post("/schedules", scheduleData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const res = await api.post("/schedules", scheduleData);
       await fetchSchedules();
       return res.data;
     } catch (error) {
@@ -59,11 +55,7 @@ export function ScheduleProvider({ children }) {
         payload.append("_method", "PUT");
       }
 
-      const res = await api.post(`/schedules/${id}`, payload, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const res = await api.post(`/schedules/${id}`, payload);
 
       await fetchSchedules();
       return res.data;

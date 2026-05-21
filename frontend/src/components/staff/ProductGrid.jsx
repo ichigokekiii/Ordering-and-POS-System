@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { ShoppingCart } from "lucide-react";
 
 function ProductGrid({
   categories,
@@ -15,6 +16,8 @@ function ProductGrid({
   dm,
   isSidebarOpen,
   setIsSidebarOpen,
+  cartItemCount = 0,
+  onCartToggle,
 }) {
   const searchInputRef = useRef(null);
 
@@ -57,7 +60,7 @@ function ProductGrid({
             )}
           </button>
           <button
-            className={`p-2 rounded transition ${
+            className={`rounded p-2 transition ${
               dm
                 ? "text-gray-300 hover:bg-gray-700"
                 : "text-gray-600 hover:bg-gray-100"
@@ -75,6 +78,25 @@ function ProductGrid({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </button>
+          {onCartToggle && (
+            <button
+              type="button"
+              onClick={onCartToggle}
+              className={`relative flex min-h-11 min-w-11 items-center justify-center rounded transition lg:hidden ${
+                dm
+                  ? "text-gray-300 hover:bg-gray-700"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+              aria-label="Open cart"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {cartItemCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                  {cartItemCount > 9 ? "9+" : cartItemCount}
+                </span>
+              )}
+            </button>
+          )}
         </div>
 
         <div className="flex flex-1 items-center h-full px-2 gap-1">

@@ -23,8 +23,8 @@ class SecurityHardeningTest extends TestCase
         $this->postJson('/api/reset-password', [
             'email' => $user->email,
             'otp' => '123456',
-            'password' => 'new-password',
-            'password_confirmation' => 'new-password',
+            'password' => 'New-password1',
+            'password_confirmation' => 'New-password1',
         ])->assertStatus(422)
             ->assertJson([
                 'message' => 'Invalid or expired OTP',
@@ -40,11 +40,11 @@ class SecurityHardeningTest extends TestCase
         $this->postJson('/api/reset-password', [
             'email' => $user->email,
             'otp' => '654321',
-            'password' => 'new-password',
-            'password_confirmation' => 'new-password',
+            'password' => 'New-password1',
+            'password_confirmation' => 'New-password1',
         ])->assertOk();
 
-        $this->assertTrue(Hash::check('new-password', $user->fresh()->password));
+        $this->assertTrue(Hash::check('New-password1', $user->fresh()->password));
         $this->assertDatabaseMissing('otps', [
             'user_id' => $user->id,
             'code' => '654321',

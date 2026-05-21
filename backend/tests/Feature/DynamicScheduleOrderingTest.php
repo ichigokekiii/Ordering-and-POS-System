@@ -198,13 +198,13 @@ class DynamicScheduleOrderingTest extends TestCase
         $this->assertDatabaseHas('orders', [
             'order_id' => 'ORD-CANCEL-1',
             'schedule_id' => $linkedSchedule->id,
-            'order_status' => 'Cancelled',
+            'order_status' => 'cancelled',
         ]);
 
         $this->assertDatabaseHas('orders', [
             'order_id' => 'ORD-CANCEL-2',
             'schedule_id' => $linkedSchedule->id,
-            'order_status' => 'Cancelled',
+            'order_status' => 'cancelled',
         ]);
 
         $this->assertDatabaseHas('users', [

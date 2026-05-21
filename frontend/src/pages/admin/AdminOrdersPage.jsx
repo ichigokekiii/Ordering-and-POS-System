@@ -548,7 +548,7 @@ function AdminOrdersPage({ user }) {
           />
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {/* SORT DROPDOWN */}
           <div className="relative" ref={sortRef}>
             <button
@@ -732,9 +732,10 @@ function AdminOrdersPage({ user }) {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="hidden overflow-x-auto lg:block">
             {activeView === "preorder" ? (
-              <table className="w-full text-left border-collapse min-w-[900px]">
+              <table className="w-full min-w-[900px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-gray-50 bg-[#f8fafc]">
                     <th className="w-2"></th>
@@ -970,6 +971,84 @@ function AdminOrdersPage({ user }) {
               </table>
             )}
           </div>
+
+          <div className="space-y-3 p-4 lg:hidden">
+            {activeView === "preorder"
+              ? filteredOrders.map((order) => {
+                  const orderId = order.order_id || order.id;
+                  const isArchivedOrder = Boolean(order.isArchived);
+                  return (
+                    <div
+                      key={orderId}
+                      onClick={() =>
+                        canUpdateOrderStatus
+                          ? openEditModal(order)
+                          : setViewingOrder(order)
+                      }
+                      className={`cursor-pointer rounded-2xl border p-4 transition-colors ${
+                        isArchivedOrder
+                          ? "border-gray-200 bg-gray-50"
+                          : "border-gray-100 bg-white hover:border-gray-200"
+                      }`}
+                    >
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <span className="font-bold text-gray-900">#{orderId}</span>
+                        <OrderStatusPill status={order.order_status} statuses={orderStatuses} />
+                      </div>
+                      <p className="truncate text-sm font-semibold text-gray-800">
+                        {order.user?.first_name
+                          ? `${order.user.first_name} ${order.user.last_name}`
+                          : `User ID: ${order.user_id}`}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-400">
+                        {order.schedule?.schedule_name || "Legacy / Unlinked"}
+                      </p>
+                      <div className="mt-3 flex items-center justify-between border-t border-gray-50 pt-3">
+                        <span className="text-xs text-gray-500">
+                          {new Date(order.created_at).toLocaleDateString()}
+                        </span>
+                        <span className="font-bold text-[#4f6fa5]">₱{order.total_amount}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              : filteredPosTransactions.map((transaction) => {
+                  const isArchivedTransaction = Boolean(transaction.isArchived);
+                  const paidAmount =
+                    transaction.payment_method === "CASH"
+                      ? transaction.cash_received || transaction.total_amount
+                      : transaction.total_amount;
+
+                  return (
+                    <div
+                      key={transaction.id}
+                      onClick={() => setViewingPosTransaction(transaction)}
+                      className={`cursor-pointer rounded-2xl border p-4 transition-colors ${
+                        isArchivedTransaction
+                          ? "border-gray-200 bg-gray-50"
+                          : "border-gray-100 bg-white hover:border-gray-200"
+                      }`}
+                    >
+                      <div className="mb-2 flex items-start justify-between gap-3">
+                        <span className="font-bold text-gray-900">POS #{transaction.id}</span>
+                        <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase text-violet-600">
+                          {transaction.payment_method}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        {new Date(transaction.created_at).toLocaleString()}
+                      </p>
+                      <div className="mt-3 flex items-center justify-between border-t border-gray-50 pt-3">
+                        <span className="text-sm text-gray-600">Paid ₱{paidAmount.toLocaleString()}</span>
+                        <span className="font-bold text-[#4f6fa5]">
+                          ₱{transaction.total_amount.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+          </div>
+          </>
         )}
       </div>
 

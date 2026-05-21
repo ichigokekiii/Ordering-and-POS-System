@@ -1,6 +1,11 @@
 export const getApiOrigin = () =>
-  import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ||
-  `${window.location.protocol}//${window.location.hostname}:8000`;
+  (
+    import.meta.env.VITE_BACKEND_URL ||
+    import.meta.env.VITE_API_URL ||
+    "http://localhost:8000"
+  )
+    .replace(/\/api\/?$/, "")
+    .replace(/\/+$/, "");
 
 export function getAssetUrl(value) {
   if (!value) return "";

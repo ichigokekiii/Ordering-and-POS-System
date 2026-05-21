@@ -61,9 +61,9 @@ function CartPage() {
           </button>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-10 lg:gap-16">
+        <div className="flex min-w-0 flex-col gap-10 lg:flex-row lg:gap-16">
           {/* Left Column: Cart Items */}
-          <div className="flex-1 space-y-6">
+          <div className="min-w-0 flex-1 space-y-6">
             <h3 className="text-xs uppercase tracking-widest font-bold text-gray-500 mb-2">{totalItems} Item{totalItems !== 1 ? "s" : ""} selected</h3>
             {cartItems.map((item) => {
               const customSummary =
@@ -211,8 +211,8 @@ function CartPage() {
           </div>
 
           {/* Right Column: Order Summary */}
-          <div className="lg:w-[400px]">
-             <div className="sticky top-10 rounded-3xl bg-white p-8 shadow-sm border border-gray-100">
+          <div className="w-full lg:w-[400px] lg:flex-shrink-0">
+             <div className="sticky top-20 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8 lg:top-10">
                 <h3 className="mb-6 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-4">
                   Summary
                 </h3>

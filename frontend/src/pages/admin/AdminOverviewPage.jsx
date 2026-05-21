@@ -230,8 +230,9 @@ function AdminOverviewPage({ user }) {
               <p className="text-sm font-semibold">All caught up! No pending orders.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto flex-1">
-              <table className="min-w-full text-left border-collapse">
+            <>
+            <div className="hidden flex-1 overflow-x-auto lg:block">
+              <table className="min-w-full border-collapse text-left">
                 <thead>
                   <tr className="bg-[#f8fafc]">
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Order ID</th>
@@ -257,6 +258,31 @@ function AdminOverviewPage({ user }) {
                 </tbody>
               </table>
             </div>
+
+            <div className="flex-1 space-y-3 overflow-y-auto p-4 lg:hidden">
+              {stats.actionRequiredOrders.map((order) => (
+                <div
+                  key={order.order_id || order.id}
+                  className="rounded-2xl border border-gray-100 bg-white p-4"
+                >
+                  <div className="mb-2 flex items-start justify-between gap-3">
+                    <span className="font-bold text-gray-900">
+                      #{order.order_id || order.id}
+                    </span>
+                    <OrderStatusPill status={order.order_status} />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-800">
+                    {order.user?.first_name
+                      ? `${order.user.first_name} ${order.user.last_name}`
+                      : "Guest"}
+                  </p>
+                  <p className="mt-2 text-xs capitalize text-gray-500">
+                    {order.delivery_method}
+                  </p>
+                </div>
+              ))}
+            </div>
+            </>
           )}
         </div>
 

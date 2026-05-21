@@ -147,7 +147,7 @@ function AdminFeedbacksPage() {
           />
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {/* SORT DROPDOWN */}
           <div className="relative" ref={sortRef}>
             <button
@@ -233,8 +233,9 @@ function AdminFeedbacksPage() {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left border-collapse">
+          <>
+          <div className="hidden overflow-x-auto lg:block">
+            <table className="min-w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-gray-50 bg-[#f8fafc]">
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">Customer</th>
@@ -290,6 +291,30 @@ function AdminFeedbacksPage() {
               </tbody>
             </table>
           </div>
+
+          <div className="space-y-3 p-4 lg:hidden">
+            {filteredFeedbacks.map((f) => (
+              <div
+                key={f.feedback_id}
+                onClick={() => setViewingFeedback(f)}
+                className="cursor-pointer rounded-2xl border border-gray-100 bg-white p-4 transition-colors hover:border-gray-200"
+              >
+                <div className="mb-2 flex items-start justify-between gap-3">
+                  <p className="font-bold text-gray-900">
+                    {f.user?.first_name
+                      ? `${f.user.first_name} ${f.user.last_name}`
+                      : "Anonymous"}
+                  </p>
+                  <RatingPill rating={f.feedback_rating} />
+                </div>
+                <p className="line-clamp-3 text-sm text-gray-600">{f.feedback_text}</p>
+                <p className="mt-3 text-xs text-gray-400">
+                  {new Date(f.created_at).toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
 

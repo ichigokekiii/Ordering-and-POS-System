@@ -28,7 +28,7 @@ function Footer({ cmsPreview }) {
 
   return (
     <footer
-      className="mt-12 px-8 py-10"
+      className="mt-12 px-4 py-10 md:px-8"
       style={{
         backgroundColor: isDarkMode
           ? "#08111f"

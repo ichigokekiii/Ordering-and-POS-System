@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps */
+ 
 /* eslint-disable no-unused-vars */
 import { useEffect, useState } from "react";
 import api from "../../services/api";
@@ -188,7 +188,7 @@ function LandingPage({ cmsPreview }) {
               </CmsEditableRegion>
 
               <div className="mt-8">
-                <Link to="/products" onClick={preventPreviewNavigation} className="group relative flex h-14 w-[200px] items-center rounded-full bg-gray-900 p-1 shadow-lg transition-all duration-300 hover:shadow-xl">
+                <Link to="/products" onClick={preventPreviewNavigation} className="group relative flex h-14 w-full max-w-xs items-center rounded-full bg-gray-900 p-1 shadow-lg transition-all duration-300 hover:shadow-xl sm:max-w-[200px]">
                   <div className="pointer-events-none absolute left-1 top-1 flex h-12 w-[192px] items-center justify-center pl-6 transition-transform duration-[600ms] ease-[cubic-bezier(0.5,1,0.89,1)] group-hover:-translate-x-4">
                     <CmsEditableRegion cmsPreview={cmsPreview} field={getCmsField("home", "home_hero_button_text")} className="inline-block pointer-events-auto">
                       <span className="text-sm font-semibold tracking-wide text-white">{getContentValue("home_hero_button_text", "Shop Now")}</span>
@@ -232,7 +232,7 @@ function LandingPage({ cmsPreview }) {
                 <div className={`pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-black/90 via-black/30 to-transparent transition-opacity duration-700 ease-out ${isActive ? "opacity-100" : "opacity-60"}`}></div>
 
                 <div className={`relative z-30 w-full h-full p-6 md:p-10 text-white flex flex-col justify-end pointer-events-none`}>
-                  <div className={`w-[80vw] md:w-[40vw] transition-opacity duration-700 ease-out ${isActive ? "opacity-100 delay-100" : "opacity-0 md:opacity-100"} ${!isActive && "md:hidden"}`}>
+                  <div className={`w-full max-w-[80vw] md:max-w-[40vw] transition-opacity duration-700 ease-out ${isActive ? "opacity-100 delay-100" : "opacity-0 md:opacity-100"} ${!isActive && "md:hidden"}`}>
                     <AnimatePresence mode="popLayout">
                       {isActive && (
                         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10, transition: { duration: 0.2 } }} transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }} className="pointer-events-auto">

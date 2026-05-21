@@ -15,6 +15,7 @@ import Footer from "./components/Footer";
 import OrderLayout from "./components/OrderLayout";
 import AdminQuickActions from "./components/AdminQuickActions";
 import { getPostLoginPath, hasAdminDashboardAccess } from "./utils/adminAccess";
+import usePageTitle from "./hooks/usePageTitle";
 
 // USER PAGES
 import LandingPage from "./pages/users/LandingPage";
@@ -48,6 +49,11 @@ import AdminFeedbacksPage from "./pages/admin/AdminFeedbacksPage";
 
 import StaffCustomPage from "./pages/staff/StaffCustomPage";
 import StaffPremadePage from "./pages/staff/StaffPremadePage";
+
+function RouteTitle({ title, children }) {
+  usePageTitle(title);
+  return children;
+}
 
 function App() {
   const navigate = useNavigate();
@@ -86,6 +92,9 @@ function App() {
   // Helper variable to clean up the long condition
   const hasAdminAccess = hasAdminDashboardAccess(user);
   const canAccessPos = user && (user.role === "admin" || user.role === "owner" || user.role === "staff");
+  const withTitle = (title, element) => (
+    <RouteTitle title={title}>{element}</RouteTitle>
+  );
 
   const renderAdminPage = (page, allowAccess = hasAdminAccess) => {
     if (!user) return <Navigate to="/login" replace />;
@@ -104,77 +113,77 @@ function App() {
       {!isAdminRoute && <Navbar user={user} onLogout={handleLogout} />}
 
       <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/about" element={<AboutPage />} />
-        <Route path="/products" element={<ProductPage />} />
-        <Route path="/schedule" element={<SchedulePage />} />
-        <Route path="/feedback" element={<Feedback />} />
-        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/" element={withTitle(undefined, <LandingPage />)} />
+        <Route path="/about" element={withTitle("About", <AboutPage />)} />
+        <Route path="/products" element={withTitle("Shop", <ProductPage />)} />
+        <Route path="/schedule" element={withTitle("Schedules", <SchedulePage />)} />
+        <Route path="/feedback" element={withTitle("Feedback", <Feedback />)} />
+        <Route path="/profile" element={withTitle("My Profile", <ProfilePage />)} />
 
         <Route element={<OrderLayout />}>
-          <Route path="/order" element={<OrderPage />} />
-          <Route path="/ordercustom" element={<OrderCustom />} />
-          <Route path="/order/custom/additional" element={<OrderCustomAdditional />} />
-          <Route path="/orderpremade" element={<OrderPremade />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/order" element={withTitle("Shop", <OrderPage />)} />
+          <Route path="/ordercustom" element={withTitle("Custom Bouquet", <OrderCustom />)} />
+          <Route path="/order/custom/additional" element={withTitle("Custom Bouquet", <OrderCustomAdditional />)} />
+          <Route path="/orderpremade" element={withTitle("Shop", <OrderPremade />)} />
+          <Route path="/cart" element={withTitle("Cart", <CartPage />)} />
+          <Route path="/checkout" element={withTitle("Checkout", <CheckoutPage />)} />
         </Route>
 
-        <Route path="/login" element={<AuthPage onLogin={handleLogin} initialView="login" />} />
-        <Route path="/register" element={<AuthPage onLogin={handleLogin} initialView="register" />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/verify-otp" element={<VerifyOtpPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/login" element={withTitle("Login", <AuthPage onLogin={handleLogin} initialView="login" />)} />
+        <Route path="/register" element={withTitle("Sign Up", <AuthPage onLogin={handleLogin} initialView="register" />)} />
+        <Route path="/reset-password" element={withTitle("Reset Password", <ResetPasswordPage />)} />
+        <Route path="/verify-otp" element={withTitle("Verify OTP", <VerifyOtpPage />)} />
+        <Route path="/forgot-password" element={withTitle("Forgot Password", <ForgotPasswordPage />)} />
+        <Route path="/reset-password" element={withTitle("Reset Password", <ResetPasswordPage />)} />
 
         {/* Admin Routes */}
         <>
           <Route
             path="/admin"
-            element={renderAdminPage(<AdminOverviewPage user={user} />)}
+            element={renderAdminPage(withTitle("Admin Dashboard", <AdminOverviewPage user={user} />))}
           />
 
           <Route
             path="/admin/analytics"
-            element={renderAdminPage(<AdminAnalyticsPage user={user} />)}
+            element={renderAdminPage(withTitle("Reports", <AdminAnalyticsPage user={user} />))}
           />
 
           <Route
             path="/admin/products"
-            element={renderAdminPage(<AdminProductPage user={user} />)}
+            element={renderAdminPage(withTitle("Admin Products", <AdminProductPage user={user} />))}
           />
 
     <Route
       path="/admin/content"
       element={renderAdminPage(
-        <AdminContentPage user={user} />,
+        withTitle("Content Management", <AdminContentPage user={user} />),
         hasAdminAccess
       )}
     />
 
           <Route
             path="/admin/orders"
-            element={renderAdminPage(<AdminOrdersPage user={user} />)}
+            element={renderAdminPage(withTitle("Admin Orders", <AdminOrdersPage user={user} />))}
           />
 
           <Route
             path="/admin/schedule"
-            element={renderAdminPage(<AdminSchedulePage user={user} />)}
+            element={renderAdminPage(withTitle("Schedules", <AdminSchedulePage user={user} />))}
           />
 
           <Route
             path="/admin/users"
-            element={renderAdminPage(<AdminUsersPage user={user} />)}
+            element={renderAdminPage(withTitle("Admin Users", <AdminUsersPage user={user} />))}
           />
 
           <Route
             path="/admin/logs"
-            element={renderAdminPage(<AdminLogsPage />)}
+            element={renderAdminPage(withTitle("Audit Logs", <AdminLogsPage />))}
           />
 
           <Route
   path="/admin/feedbacks"
-  element={renderAdminPage(<AdminFeedbacksPage user={user} />)}
+  element={renderAdminPage(withTitle("Feedback", <AdminFeedbacksPage user={user} />))}
 />
         </>
 
@@ -192,7 +201,7 @@ function App() {
           path="/staff/ordercustom"
           element={
             !user ? <Navigate to="/login" replace /> : canAccessPos ? (
-              <StaffCustomPage />
+              withTitle("Custom Bouquet", <StaffCustomPage />)
             ) : (
               <Navigate to="/" />
             )
@@ -202,7 +211,7 @@ function App() {
           path="/staff/orderpremade"
           element={
             !user ? <Navigate to="/login" replace /> : canAccessPos ? (
-              <StaffPremadePage />
+              withTitle("Shop", <StaffPremadePage />)
             ) : (
               <Navigate to="/" />
             )

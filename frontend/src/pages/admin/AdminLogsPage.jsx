@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars */
+ 
 import { useEffect, useMemo, useState, useRef } from "react";
 import { ChevronDown, Search, Filter, Loader2, CalendarClock } from "lucide-react";
 import api from "../../services/api";
@@ -291,8 +291,9 @@ function AdminLogsPage() {
              <button onClick={clearFilters} className="text-xs font-bold text-[#4f6fa5] hover:underline mt-2">Clear Filters</button>
           </div>
         ) : (
-          <div className="flex-1 overflow-auto relative nice-scrollbar">
-            <table className="min-w-full text-left border-collapse">
+          <>
+          <div className="relative hidden flex-1 overflow-auto nice-scrollbar lg:block">
+            <table className="min-w-full border-collapse text-left">
               <thead className="sticky top-0 z-10 bg-[#f8fafc] shadow-sm">
                 <tr className="border-b border-gray-50">
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap w-16">ID</th>
@@ -358,6 +359,33 @@ function AdminLogsPage() {
               </tbody>
             </table>
           </div>
+
+          <div className="flex-1 space-y-3 overflow-y-auto p-4 lg:hidden">
+            {logs.map((log) => (
+              <div
+                key={log.log_id}
+                className="rounded-2xl border border-gray-100 bg-white p-4"
+              >
+                <div className="mb-2 flex items-start justify-between gap-3">
+                  <span className="text-xs font-bold text-gray-400">#{log.log_id}</span>
+                  <ModulePill moduleName={log.module} />
+                </div>
+                <p className="font-bold text-sm text-gray-900">
+                  {log.user_name || "System Automated"}
+                </p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                  {formatRole(log.user_role)}
+                </p>
+                <p className="mt-2 line-clamp-3 text-sm text-gray-700">
+                  {log.event || "No description provided"}
+                </p>
+                <p className="mt-3 text-xs text-gray-500">
+                  {new Date(log.created_at).toLocaleString()} · {log.source || "Application"}
+                </p>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
 

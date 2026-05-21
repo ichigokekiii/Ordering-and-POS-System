@@ -614,7 +614,7 @@ function AdminUsersPage({ user }) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col px-8 py-8 bg-white rounded-lg relative font-sans">
+    <div className="relative flex min-h-screen flex-col rounded-lg bg-white px-4 py-8 font-sans md:px-8">
       
       {/* HEADER AREA */}
       <div className="mb-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -650,7 +650,7 @@ function AdminUsersPage({ user }) {
            />
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {/* SORT DROPDOWN */}
           <div className="relative" ref={sortRef}>
             <button 
@@ -720,8 +720,9 @@ function AdminUsersPage({ user }) {
              <span className="text-xs font-bold uppercase tracking-widest">Loading Database...</span>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left border-collapse">
+          <>
+          <div className="hidden overflow-x-auto lg:block">
+            <table className="min-w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-gray-50 bg-[#f8fafc]">
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 whitespace-nowrap">User Details</th>
@@ -828,6 +829,45 @@ function AdminUsersPage({ user }) {
               </tbody>
             </table>
           </div>
+
+          <div className="space-y-3 p-4 lg:hidden">
+            {filteredUsers.map((u) => {
+              const isArchivedUser = Boolean(u.isArchived);
+
+              return (
+                <div
+                  key={u.id}
+                  onClick={() => openEditModal(u)}
+                  className={`cursor-pointer rounded-2xl border p-4 transition-colors ${
+                    isArchivedUser
+                      ? "border-gray-200 bg-gray-50"
+                      : "border-gray-100 bg-white hover:border-gray-200"
+                  }`}
+                >
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-bold text-gray-900">
+                        {u.first_name} {u.last_name}
+                      </p>
+                      <p className="text-xs text-gray-400">ID: #{u.id}</p>
+                    </div>
+                    <StatusPill u={u} />
+                  </div>
+                  <p className="truncate text-sm text-gray-600">{u.email}</p>
+                  <p className="mt-1 text-xs text-gray-400">{u.phone_number || "No Phone"}</p>
+                  <div className="mt-3 flex items-center justify-between border-t border-gray-50 pt-3">
+                    <span className="text-xs font-bold uppercase text-[#4f6fa5]">
+                      {formatRole(u.role)}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {new Date(u.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          </>
         )}
       </div>
 

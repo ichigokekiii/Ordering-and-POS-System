@@ -20,23 +20,15 @@ function OrderPage() {
     isVisibleForOrdering(product) &&
     (product.name || "").toLowerCase().includes(normalizedSearch);
 
-  const premadeMatches = useMemo(
-    () => (normalizedSearch ? premades.filter(matchProduct) : []),
-    [normalizedSearch, premades]
-  );
+  const premadeMatches = normalizedSearch ? premades.filter(matchProduct) : [];
 
-  const customMatches = useMemo(
-    () => (
-      normalizedSearch
-        ? products.filter(
-            (product) =>
-              matchProduct(product) &&
-              (product.category === "Bouquets" || product.category === "Additional")
-          )
-        : []
-    ),
-    [normalizedSearch, products]
-  );
+  const customMatches = normalizedSearch
+    ? products.filter(
+        (product) =>
+          matchProduct(product) &&
+          (product.category === "Bouquets" || product.category === "Additional")
+      )
+    : [];
 
   const exactPremadeMatch = premadeMatches.some(
     (product) => (product.name || "").toLowerCase() === normalizedSearch
@@ -81,25 +73,7 @@ function OrderPage() {
     }
   }, [navigate, targetRoute]);
 
-  const searchMessage = (() => {
-    if (!normalizedSearch) {
-      return "Search for a bouquet or flower to jump into the right order flow.";
-    }
 
-    if (targetRoute === "/orderpremade") {
-      return `Found ${premadeMatches.length} premade match${premadeMatches.length === 1 ? "" : "es"}. Redirecting you to premade.`;
-    }
-
-    if (targetRoute === "/ordercustom") {
-      return `Found ${customMatches.length} custom match${customMatches.length === 1 ? "" : "es"}. Redirecting you to custom builder.`;
-    }
-
-    if (premadeMatches.length === 0 && customMatches.length === 0) {
-      return `No results found for "${searchTerm}". Try a broader flower or bouquet name.`;
-    }
-
-    return `Your search matches both premade and custom items. Refine it a little more and I’ll route you automatically.`;
-  })();
 
   return (
     <div className="w-full">

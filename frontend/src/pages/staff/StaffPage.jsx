@@ -9,6 +9,7 @@ import ProductGrid from "../../components/staff/ProductGrid";
 import Sidebar from "../../components/staff/Sidebar";
 import CartSection from "../../components/staff/CartSection";
 import PaymentModals from "../../components/staff/PaymentModals";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import {
   resolveAppDarkModePreference,
   STAFF_POS_DARK_MODE_STORAGE_KEY,
@@ -53,6 +54,8 @@ function StaffPage({ children, customCategories }) {
     }
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const isLargeScreen = useMediaQuery("(min-width: 1024px)");
   const [toast, setToast] = useState(null);
   const toastTimeoutRef = useRef(null);
 
@@ -106,6 +109,7 @@ function StaffPage({ children, customCategories }) {
   const hasIncompleteBuilder = Boolean(activePromoBuilder);
 
   const total = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+  const cartItemCount = cart.reduce((sum, item) => sum + item.qty, 0);
 
   // --- LOGOUT FUNCTIONALITY ---
   const handleLogout = async () => {
@@ -534,6 +538,12 @@ function StaffPage({ children, customCategories }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (isLargeScreen) {
+      setIsCartOpen(true);
+    }
+  }, [isLargeScreen]);
+
   if (loading) {
     return (
       <div className={`min-h-screen flex items-center justify-center text-xl font-semibold ${isDarkMode ? "bg-gray-900 text-gray-200" : "bg-gray-50 text-gray-700"}`}>
@@ -552,9 +562,22 @@ function StaffPage({ children, customCategories }) {
         onLogout={handleLogout}
       />
 
+      {isCartOpen && !isLargeScreen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          aria-label="Close cart"
+          onClick={() => setIsCartOpen(false)}
+        />
+      )}
+
       {/* LEFT SIDE (BUILDER) */}
       {/* DYNAMIC CONTENT (Premade / Custom) */}
-      <div className={`flex-1 flex flex-col overflow-hidden min-h-0 transition-[margin] duration-200 ease-out ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+      <div
+        className={`flex min-w-0 flex-1 flex-col overflow-hidden min-h-0 transition-[margin] duration-200 ease-out ${
+          isSidebarOpen ? "lg:ml-64" : ""
+        }`}
+      >
         {/* MAIN CONTENT (POS / Premade / Custom) */}
         <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           <ProductGrid
@@ -572,6 +595,8 @@ function StaffPage({ children, customCategories }) {
             dm={dm}
             isSidebarOpen={isSidebarOpen}
             setIsSidebarOpen={setIsSidebarOpen}
+            cartItemCount={cartItemCount}
+            onCartToggle={() => setIsCartOpen((prev) => !prev)}
           />
         </div>
       </div>
@@ -585,6 +610,8 @@ function StaffPage({ children, customCategories }) {
         removeFromCart={removeFromCart}
         setMethodModal={setMethodModal}
         hasIncompleteBuilder={hasIncompleteBuilder}
+        isOpen={isCartOpen || isLargeScreen}
+        onClose={() => setIsCartOpen(false)}
       />
 
       {toast && (

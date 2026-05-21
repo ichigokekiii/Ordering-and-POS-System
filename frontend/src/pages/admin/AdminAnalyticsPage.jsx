@@ -230,30 +230,70 @@ const StatusPill = ({ status }) => {
 };
 
 const SimpleTable = ({ columns, rows, emptyMessage = "No data available yet." }) => {
-  if (!rows?.length) return <div className="p-10 text-center text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">{emptyMessage}</div>;
+  if (!rows?.length) {
+    return (
+      <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-10 text-center text-gray-400">
+        {emptyMessage}
+      </div>
+    );
+  }
+
   return (
-    <div className="overflow-x-auto w-full">
-      <table className="min-w-full text-left border-collapse">
-        <thead>
-          <tr className="border-b border-gray-100">
-            {columns.map((column) => (
-              <th key={column.key} className="pb-4 pt-2 text-xs font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">{column.label}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-50">
-          {rows.map((row, index) => (
-            <tr key={index} className="hover:bg-[#f8fafc] transition-colors group">
+    <>
+      <div className="hidden w-full overflow-x-auto lg:block">
+        <table className="min-w-full border-collapse text-left">
+          <thead>
+            <tr className="border-b border-gray-100">
               {columns.map((column) => (
-                <td key={column.key} className="py-4 text-sm text-gray-600 whitespace-nowrap pr-4">
-                  <span className={column.className}>{column.render ? column.render(row) : row[column.key]}</span>
-                </td>
+                <th
+                  key={column.key}
+                  className="whitespace-nowrap pb-4 pt-2 text-xs font-bold uppercase tracking-wider text-gray-400"
+                >
+                  {column.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {rows.map((row, index) => (
+              <tr key={index} className="group transition-colors hover:bg-[#f8fafc]">
+                {columns.map((column) => (
+                  <td
+                    key={column.key}
+                    className="whitespace-nowrap py-4 pr-4 text-sm text-gray-600"
+                  >
+                    <span className={column.className}>
+                      {column.render ? column.render(row) : row[column.key]}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="space-y-3 lg:hidden">
+        {rows.map((row, index) => (
+          <div
+            key={index}
+            className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"
+          >
+            {columns.map((column) => (
+              <div
+                key={column.key}
+                className="flex justify-between gap-3 border-b border-gray-50 py-2 text-sm last:border-0"
+              >
+                <span className="font-medium text-gray-400">{column.label}</span>
+                <span className={`text-right font-semibold text-gray-900 ${column.className || ""}`}>
+                  {column.render ? column.render(row) : row[column.key]}
+                </span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </>
   );
 };
 

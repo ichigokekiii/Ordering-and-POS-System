@@ -306,9 +306,7 @@ function CheckoutPage() {
       formData.append("terms_accepted",   "true");
       formData.append("terms_scope",      termsScope);
 
-      const res = await api.post("/orders", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await api.post("/orders", formData);
 
       const orderId = res.data.order_id;
 
@@ -365,10 +363,10 @@ function CheckoutPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-10 lg:gap-16">
+        <form onSubmit={handleSubmit} className="flex min-w-0 flex-col gap-10 lg:flex-row lg:gap-16">
 
           {/* LEFT COLUMN */}
-          <div className="flex-1 space-y-8">
+          <div className="min-w-0 flex-1 space-y-8">
             {formError ? (
               <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
                 {formError}
@@ -515,7 +513,7 @@ function CheckoutPage() {
               <h2 className="mb-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-4">2. Contact Details</h2>
               <div className="space-y-4">
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-[10px] uppercase tracking-widest font-bold text-gray-400">Full Name</label>
                     <input
@@ -635,7 +633,7 @@ function CheckoutPage() {
 
                 <div className="flex flex-col items-center">
                   <div className="relative group cursor-pointer" onClick={() => setShowQRModal(true)}>
-                    <div className="h-40 w-40 overflow-hidden rounded-2xl border-2 border-gray-100 bg-white p-3 shadow-sm hover:shadow transition-shadow group-hover:border-[#4f6fa5]/30">
+                    <div className="h-32 w-32 overflow-hidden rounded-2xl border-2 border-gray-100 bg-white p-3 shadow-sm transition-shadow hover:shadow group-hover:border-[#4f6fa5]/30 sm:h-40 sm:w-40">
                       <img
                         src={activeQrImage}
                         alt={activeQrAlt}
@@ -845,8 +843,8 @@ function CheckoutPage() {
           </div>
 
           {/* RIGHT COLUMN */}
-          <div className="lg:w-[400px]">
-            <div className="sticky top-10 rounded-3xl bg-white p-8 shadow-sm border border-gray-100">
+          <div className="w-full lg:w-[400px] lg:flex-shrink-0">
+            <div className="sticky top-20 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8 lg:top-10">
               <h3 className="mb-6 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-4">
                 Order Summary
               </h3>

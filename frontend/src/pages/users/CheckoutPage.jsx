@@ -230,7 +230,7 @@ function CheckoutPage() {
   /**
    * Builds the order_items rows from the cart.
    */
-  const buildOrderItems = (orderId) => {
+  const buildOrderItems = (orderId = null) => {
     const rows = [];
     let customCounter = 0;
     let premadeCounter = 0;
@@ -244,7 +244,7 @@ function CheckoutPage() {
         for (let i = 0; i < cartItem.items.length; i++) {
           const flower = cartItem.items[i];
           rows.push({
-            order_id:          orderId,
+            ...(orderId ? { order_id: orderId } : {}),
             product_id:        flower.id,
             product_name:      flower.name,
             custom_id:         customId,
@@ -259,7 +259,7 @@ function CheckoutPage() {
       } else {
         premadeCounter += 1;
         rows.push({
-          order_id:          orderId,
+          ...(orderId ? { order_id: orderId } : {}),
           product_id:        cartItem._productId ?? cartItem.id,
           product_name:      cartItem.name,
           custom_id:         null,
@@ -305,13 +305,12 @@ function CheckoutPage() {
       formData.append("privacy_accepted", privacyAccepted ? "true" : "false");
       formData.append("terms_accepted",   "true");
       formData.append("terms_scope",      termsScope);
+      const orderItems = buildOrderItems();
+      formData.append("items", JSON.stringify(orderItems));
 
       const res = await api.post("/orders", formData);
 
       const orderId = res.data.order_id;
-
-      const orderItems = buildOrderItems(orderId);
-      await api.post("/order-items", { items: orderItems });
 
       // ── Show success modal then navigate (same pattern as VerifyOtpPage) ──
       clearCart(selectedScheduleId);

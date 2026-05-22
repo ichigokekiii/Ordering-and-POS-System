@@ -92,6 +92,7 @@ function AdminOrdersPage({ user }) {
   const [viewingOrder, setViewingOrder] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
   const [viewingPayment, setViewingPayment] = useState(null);
+  const [viewingOrderItems, setViewingOrderItems] = useState(null);
   const [viewingPosTransaction, setViewingPosTransaction] = useState(null);
   const [status, setStatus] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
@@ -308,6 +309,7 @@ function AdminOrdersPage({ user }) {
     setViewingOrder(null);
     setEditingOrder(null);
     setViewingPayment(null);
+    setViewingOrderItems(null);
     setViewingPosTransaction(null);
 
     if (nextView === "preorder") {
@@ -368,6 +370,9 @@ function AdminOrdersPage({ user }) {
         }
         if ((editingOrder?.order_id || editingOrder?.id) === deleteConfirm.itemId) {
           setEditingOrder(null);
+        }
+        if ((viewingOrderItems?.order_id || viewingOrderItems?.id) === deleteConfirm.itemId) {
+          setViewingOrderItems(null);
         }
       }
 
@@ -474,6 +479,7 @@ function AdminOrdersPage({ user }) {
 
   const openEditModal = (order) => {
     setEditingOrder(order);
+    setViewingOrderItems(null);
     setStatus(normalizeOrderStatus(order.order_status));
     setTrackingNumber(order.tracking_number || "");
     setTrackingError("");
@@ -483,6 +489,44 @@ function AdminOrdersPage({ user }) {
     if (!imagePath) return "https://via.placeholder.com/150?text=No+Image";
     return getAssetUrl(imagePath);
   };
+
+  const renderPreorderLineItems = (items = [], totalAmount = 0) => (
+    <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm divide-y divide-gray-50">
+      {items.map((item, index) => {
+        const unitPrice = Number(item.price_at_purchase || 0);
+        const quantity = Number(item.quantity || 0);
+        const lineTotal = unitPrice * quantity;
+
+        return (
+          <div key={`${item.product_id || item.product_name || "item"}-${index}`} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden shrink-0">
+                {item.product?.image ? (
+                  <img src={getImageUrl(item.product.image)} alt={item.product?.name || item.product_name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold">Img</div>
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-900 tracking-tight">{item.product?.name || item.product_name}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-0.5">
+                  Qty: {quantity} x ₱{unitPrice.toLocaleString()}
+                </p>
+                {item.special_message && <p className="text-xs text-amber-600 italic mt-1 font-playfair">Note: "{item.special_message}"</p>}
+              </div>
+            </div>
+            <div className="text-right pl-4">
+              <p className="text-sm font-bold text-[#4f6fa5]">₱{lineTotal.toLocaleString()}</p>
+            </div>
+          </div>
+        );
+      })}
+      <div className="bg-gray-50 p-4 flex justify-between items-center">
+        <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Order Total</span>
+        <span className="text-lg font-bold text-gray-900">₱{Number(totalAmount || 0).toLocaleString()}</span>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex flex-col px-8 py-8 bg-white rounded-lg relative font-sans">
@@ -1057,8 +1101,10 @@ function AdminOrdersPage({ user }) {
         const activeOrder = editingOrder || viewingOrder;
         const isEditingMode = !!editingOrder;
         const orderId = activeOrder.order_id || activeOrder.id;
+        const hasPaymentRecord = Boolean(activeOrder.payment);
+        const hasOrderItems = Array.isArray(activeOrder.order_items) && activeOrder.order_items.length > 0;
         return (
-          <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
+          <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4" role="dialog" aria-label={isEditingMode ? "Manage Order Status" : "Order Details"}>
             <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
               <div className="flex justify-between items-start mb-6">
                 <div>
@@ -1130,55 +1176,41 @@ function AdminOrdersPage({ user }) {
                 </div>
               )}
 
-              {/* VIEW PAYMENT BUTTON */}
-              {activeOrder.payment && (
-                <button
-                  onClick={() => setViewingPayment(activeOrder.payment)}
-                  className="mb-6 w-full flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-5 py-4 hover:bg-gray-50 transition-colors group shadow-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
-                      <CreditCard className="w-4 h-4 text-gray-600" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Payment Record</p>
-                    </div>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-gray-400 -rotate-90 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              )}
-
-
-              {activeOrder.order_items && activeOrder.order_items.length > 0 && (
-                <div className="mb-8">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 ml-1 block">Line Items</h3>
-                  <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm divide-y divide-gray-50">
-                    {activeOrder.order_items.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden shrink-0">
-                            {item.product?.image ? (
-                              <img src={getImageUrl(item.product.image)} alt={item.product?.name || item.product_name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold">Img</div>
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-gray-900 tracking-tight">{item.product?.name || item.product_name}</p>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-0.5">Qty: {item.quantity} x ₱{item.price_at_purchase}</p>
-                            {item.special_message && <p className="text-xs text-amber-600 italic mt-1 font-playfair">Note: "{item.special_message}"</p>}
-                          </div>
+              {(hasPaymentRecord || hasOrderItems) && (
+                <div className="mb-6 grid gap-3 sm:grid-cols-2">
+                  {hasPaymentRecord && (
+                    <button
+                      onClick={() => setViewingPayment(activeOrder.payment)}
+                      className="w-full flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-5 py-4 hover:bg-gray-50 transition-colors group shadow-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+                          <CreditCard className="w-4 h-4 text-gray-600" />
                         </div>
-                        <div className="text-right pl-4">
-                          <p className="text-sm font-bold text-[#4f6fa5]">₱{item.quantity * item.price_at_purchase}</p>
+                        <div className="text-left">
+                          <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Payment Record</p>
                         </div>
                       </div>
-                    ))}
-                    <div className="bg-gray-50 p-4 flex justify-between items-center">
-                      <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Order Total</span>
-                      <span className="text-lg font-bold text-gray-900">₱{activeOrder.total_amount}</span>
-                    </div>
-                  </div>
+                      <ChevronDown className="w-4 h-4 text-gray-400 -rotate-90 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
+                  {hasOrderItems && (
+                    <button
+                      onClick={() => setViewingOrderItems(activeOrder)}
+                      className="w-full flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-5 py-4 hover:bg-gray-50 transition-colors group shadow-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+                          <PackageSearch className="w-4 h-4 text-gray-600" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Items Ordered</p>
+                        </div>
+                      </div>
+                      <ChevronDown className="w-4 h-4 text-gray-400 -rotate-90 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -1261,7 +1293,12 @@ function AdminOrdersPage({ user }) {
                 </div>
                 <div className="flex items-center gap-3">
                   <button
-                    onClick={() => { setEditingOrder(null); setViewingOrder(null); }}
+                    onClick={() => {
+                      setEditingOrder(null);
+                      setViewingOrder(null);
+                      setViewingPayment(null);
+                      setViewingOrderItems(null);
+                    }}
                     className="rounded-lg px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
                   >
                     {isEditingMode ? "Cancel" : "Close Window"}
@@ -1439,7 +1476,7 @@ function AdminOrdersPage({ user }) {
 
       {/* PAYMENT DETAILS MODAL */}
 {viewingPayment && (
-  <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[600] p-4">
+  <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[600] p-4" role="dialog" aria-label="Payment Details">
     <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
       
       <div className="flex justify-between items-start mb-6">
@@ -1514,6 +1551,41 @@ function AdminOrdersPage({ user }) {
     </div>
   </div>
 )}
+
+      {viewingOrderItems && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[610] p-4" role="dialog" aria-label="Items Ordered">
+          <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#4f6fa5] mb-3 inline-block">
+                  Order #{viewingOrderItems.order_id || viewingOrderItems.id}
+                </span>
+                <h2 className="text-2xl font-playfair font-bold text-gray-900">Items Ordered</h2>
+              </div>
+              <button
+                onClick={() => setViewingOrderItems(null)}
+                className="rounded-full p-2 hover:bg-gray-100 transition-colors text-gray-400"
+                aria-label="Close items ordered"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-8">
+              {renderPreorderLineItems(viewingOrderItems.order_items || [], viewingOrderItems.total_amount)}
+            </div>
+
+            <div className="flex justify-end mt-8 pt-4 border-t border-gray-100">
+              <button
+                onClick={() => setViewingOrderItems(null)}
+                className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white border-2 border-gray-900 hover:bg-transparent hover:text-gray-900 transition-all duration-300 shadow-sm"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CONFIRM DELETE MODAL */}
       {deleteConfirm.isOpen && (

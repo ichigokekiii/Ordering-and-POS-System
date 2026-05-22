@@ -61,6 +61,151 @@ class DynamicScheduleOrderingTest extends TestCase
         ]);
     }
 
+    public function test_order_creation_can_persist_checkout_line_items_in_the_same_request(): void
+    {
+        Storage::fake('public');
+
+        $user = User::query()->create([
+            'first_name' => 'Atomic',
+            'last_name' => 'Customer',
+            'email' => 'atomic-checkout@example.com',
+            'password' => bcrypt('secret123'),
+            'role' => 'user',
+            'is_verified' => true,
+        ]);
+
+        $schedule = Schedule::query()->create([
+            'schedule_name' => 'Atomic Checkout Event',
+            'location' => 'Main Branch',
+            'event_date' => now()->addDays(8),
+            'isAvailable' => true,
+            'isArchived' => false,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->post('/api/orders', [
+            'user_id' => $user->id,
+            'schedule_id' => $schedule->id,
+            'address' => 'Pickup',
+            'delivery_method' => 'pickup',
+            'payment_method' => 'GCash',
+            'reference_number' => 'ATOMIC123',
+            'reference_image' => UploadedFile::fake()->image('proof.jpg'),
+            'total_amount' => '1200.00',
+            'amount_paid' => '1200.00',
+            'special_message' => '',
+            'privacy_accepted' => true,
+            'terms_accepted' => true,
+            'terms_scope' => 'customer',
+            'items' => json_encode([
+                [
+                    'product_id' => 101,
+                    'product_name' => 'Blush Bouquet',
+                    'custom_id' => null,
+                    'premade_id' => 1,
+                    'quantity' => 2,
+                    'price_at_purchase' => '600.00',
+                    'special_message' => 'Happy anniversary',
+                ],
+            ], JSON_THROW_ON_ERROR),
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonStructure([
+                'message',
+                'order_id',
+                'payment_id',
+                'item_count',
+            ])
+            ->assertJsonPath('item_count', 1);
+
+        $orderId = $response->json('order_id');
+        $paymentId = $response->json('payment_id');
+
+        $this->assertDatabaseHas('orders', [
+            'order_id' => $orderId,
+            'schedule_id' => $schedule->id,
+            'user_id' => $user->id,
+            'payment_id' => $paymentId,
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'payment_id' => $paymentId,
+            'order_id' => $orderId,
+            'reference_number' => 'ATOMIC123',
+            'amount_paid' => '1200.00',
+        ]);
+
+        $this->assertDatabaseHas('order_items', [
+            'order_id' => $orderId,
+            'product_id' => 101,
+            'product_name' => 'Blush Bouquet',
+            'quantity' => 2,
+            'quantity_value' => '2',
+            'price_at_purchase_value' => '600.00',
+            'special_message' => 'Happy anniversary',
+        ]);
+    }
+
+    public function test_order_creation_with_invalid_checkout_line_items_does_not_persist_partial_records(): void
+    {
+        Storage::fake('public');
+
+        $user = User::query()->create([
+            'first_name' => 'Rollback',
+            'last_name' => 'Customer',
+            'email' => 'rollback-checkout@example.com',
+            'password' => bcrypt('secret123'),
+            'role' => 'user',
+            'is_verified' => true,
+        ]);
+
+        $schedule = Schedule::query()->create([
+            'schedule_name' => 'Rollback Checkout Event',
+            'location' => 'Main Branch',
+            'event_date' => now()->addDays(9),
+            'isAvailable' => true,
+            'isArchived' => false,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->post('/api/orders', [
+            'user_id' => $user->id,
+            'schedule_id' => $schedule->id,
+            'address' => 'Pickup',
+            'delivery_method' => 'pickup',
+            'payment_method' => 'GCash',
+            'reference_number' => 'ROLLBACK1',
+            'reference_image' => UploadedFile::fake()->image('proof.jpg'),
+            'total_amount' => '1200.00',
+            'amount_paid' => '1200.00',
+            'special_message' => '',
+            'privacy_accepted' => true,
+            'terms_accepted' => true,
+            'terms_scope' => 'customer',
+            'items' => json_encode([
+                [
+                    'product_id' => 101,
+                    'product_name' => 'Blush Bouquet',
+                    'custom_id' => null,
+                    'premade_id' => 1,
+                    'quantity' => 0,
+                    'price_at_purchase' => '600.00',
+                    'special_message' => null,
+                ],
+            ], JSON_THROW_ON_ERROR),
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['items.0.quantity']);
+
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertDatabaseCount('order_items', 0);
+    }
+
     public function test_order_creation_rejects_inactive_schedule(): void
     {
         Storage::fake('public');

@@ -13,8 +13,10 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
+use Throwable;
 
 use App\Mail\OrderStatusUpdated;
+use App\Mail\OrderReceipt;
 use App\Support\ScheduleService;
 use App\Support\LookupCatalog;
 use App\Support\ValidationRules;
@@ -99,6 +101,76 @@ class OrderController extends Controller
         }
 
         return $order;
+    }
+
+    private function decodeCheckoutItems(Request $request): array
+    {
+        if (!$request->has('items')) {
+            return [null, null];
+        }
+
+        $rawItems = $request->input('items');
+
+        if (is_array($rawItems)) {
+            return [$rawItems, null];
+        }
+
+        if (!is_string($rawItems) || trim($rawItems) === '') {
+            return [null, 'The items field must be a valid JSON array.'];
+        }
+
+        try {
+            $decodedItems = json_decode($rawItems, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return [null, 'The items field must be a valid JSON array.'];
+        }
+
+        if (!is_array($decodedItems)) {
+            return [null, 'The items field must be a valid JSON array.'];
+        }
+
+        return [$decodedItems, null];
+    }
+
+    private function prepareCheckoutItemRows(array $items, string $orderId): array
+    {
+        return collect($items)
+            ->map(fn (array $item) => [
+                'order_id' => $orderId,
+                'product_id' => (int) $item['product_id'],
+                'product_name' => ValidationRules::normalizeSingleLine((string) $item['product_name'], 255),
+                'custom_id' => isset($item['custom_id']) ? (int) $item['custom_id'] : null,
+                'premade_id' => isset($item['premade_id']) ? (int) $item['premade_id'] : null,
+                'quantity' => (int) $item['quantity'],
+                'quantity_value' => ValidationRules::normalizeIntegerString($item['quantity']),
+                'price_at_purchase' => (float) $item['price_at_purchase'],
+                'price_at_purchase_value' => ValidationRules::normalizeMoneyString($item['price_at_purchase']),
+                'special_message' => ValidationRules::normalizeMultiLine($item['special_message'] ?? null, 150),
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function sendOrderReceiptIfPossible(Order $order, array $items): void
+    {
+        if (empty($items) || !$order->relationLoaded('user') || !$order->user?->email) {
+            return;
+        }
+
+        try {
+            Mail::to($order->user->email)->send(new OrderReceipt(
+                orderId: $order->order_id,
+                paymentId: $order->payment_id ?? '—',
+                totalAmount: (float) $order->total_amount,
+                deliveryMethod: $order->delivery_method,
+                trackingNumber: $order->tracking_number,
+                userName: trim(($order->user->first_name ?? '') . ' ' . ($order->user->last_name ?? '')),
+                userEmail: $order->user->email,
+                items: $items,
+            ));
+        } catch (Throwable $e) {
+            Log::warning("Order receipt email failed for order {$order->order_id}: {$e->getMessage()}");
+        }
     }
 
     public function index()
@@ -197,6 +269,12 @@ class OrderController extends Controller
 
     public function store(Request $request)
     {
+        [$decodedItems, $itemsDecodeError] = $this->decodeCheckoutItems($request);
+
+        if ($decodedItems !== null) {
+            $request->merge(['items' => $decodedItems]);
+        }
+
         $this->normalizeOrderInput($request);
 
         $validator = Validator::make($request->all(), [
@@ -215,6 +293,14 @@ class OrderController extends Controller
             'privacy_accepted' => 'accepted',
             'terms_accepted'   => 'accepted',
             'terms_scope'      => 'required|string|in:customer,internal',
+            'items'            => 'nullable|array|min:1',
+            'items.*.product_id' => 'required|integer|min:1',
+            'items.*.product_name' => 'required|string|max:255',
+            'items.*.custom_id' => 'nullable|integer|min:1',
+            'items.*.premade_id' => 'nullable|integer|min:1',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.price_at_purchase' => 'required|numeric|min:0',
+            'items.*.special_message' => 'nullable|string|max:150',
         ], [
             'address.required' => 'Delivery address is required.',
             'address.max' => 'Delivery address must not exceed 255 characters.',
@@ -231,9 +317,16 @@ class OrderController extends Controller
             'terms_accepted.accepted' => 'Please review and accept the Customer Terms & Conditions.',
             'total_amount.regex' => 'Total amount must be a valid price.',
             'amount_paid.regex' => 'Amount must be a valid price.',
+            'items.array' => 'The items field must be a valid JSON array.',
         ]);
 
         $validator->after(function ($validator) use ($request) {
+            $itemsDecodeError = $request->attributes->get('checkout_items_decode_error');
+
+            if ($itemsDecodeError) {
+                $validator->errors()->add('items', $itemsDecodeError);
+            }
+
             if ($request->input('delivery_method') === 'delivery') {
                 $address = trim((string) $request->input('address'));
 
@@ -255,7 +348,17 @@ class OrderController extends Controller
             }
         });
 
+        if ($itemsDecodeError) {
+            $request->attributes->set('checkout_items_decode_error', $itemsDecodeError);
+        }
+
         if ($validator->fails()) {
+            Log::warning('Checkout validation failed.', [
+                'user_id' => optional($request->user())->id,
+                'schedule_id' => $request->input('schedule_id'),
+                'has_items' => $request->has('items'),
+                'error_fields' => array_keys($validator->errors()->toArray()),
+            ]);
             return $this->validationErrorResponse($validator->errors());
         }
 
@@ -298,12 +401,21 @@ class OrderController extends Controller
 
         $orderId   = 'ORD-' . $datePart . '-' . strtoupper(substr(uniqid(), -4));
         $paymentId = 'PAY-' . $datePart . '-' . strtoupper(substr(uniqid(), -4));
+        $checkoutItemRows = $this->prepareCheckoutItemRows($request->input('items', []), $orderId);
 
         // Store image before transaction to avoid doing I/O inside DB transaction
         $imagePath = $request->file('reference_image')->store('payments', 'public');
+        $createdOrder = null;
+
+        Log::info('Checkout transaction starting.', [
+            'order_id' => $orderId,
+            'user_id' => $resolvedUserId,
+            'schedule_id' => $schedule->id,
+            'item_count' => count($checkoutItemRows),
+        ]);
 
         try {
-            DB::transaction(function () use ($request, $now, $orderId, $paymentId, $imagePath, $schedule, $resolvedUserId) {
+            DB::transaction(function () use ($request, $now, $orderId, $paymentId, $imagePath, $schedule, $resolvedUserId, $checkoutItemRows, &$createdOrder) {
                 $totalAmountValue = (string) $request->input('total_amount');
                 $deliveryMethod = LookupCatalog::normalizeDeliveryOptionCode($request->input('delivery_method'));
                 $deliveryZone = $deliveryMethod === 'delivery'
@@ -345,16 +457,43 @@ class OrderController extends Controller
                 // 3. Link payment to order
                 $order->payment_id = $paymentId;
                 $order->save();
+
+                if (!empty($checkoutItemRows)) {
+                    $order->orderItems()->createMany($checkoutItemRows);
+                }
+
+                $order->load('user');
+                $createdOrder = $order;
             });
+
+            if ($createdOrder) {
+                $this->sendOrderReceiptIfPossible($createdOrder, $checkoutItemRows);
+            }
+
+            Log::info('Checkout transaction committed successfully.', [
+                'order_id' => $orderId,
+                'payment_id' => $paymentId,
+                'user_id' => $resolvedUserId,
+                'item_count' => count($checkoutItemRows),
+            ]);
 
             return response()->json([
                 'message'    => 'Order placed successfully',
                 'order_id'   => $orderId,
                 'payment_id' => $paymentId,
+                'item_count' => count($checkoutItemRows),
             ], 201);
 
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             Storage::disk('public')->delete($imagePath);
+
+            Log::error('Checkout transaction rolled back.', [
+                'order_id' => $orderId,
+                'payment_id' => $paymentId,
+                'user_id' => $resolvedUserId,
+                'item_count' => count($checkoutItemRows),
+                'error' => $e->getMessage(),
+            ]);
 
             return $this->serverErrorResponse('Order could not be placed. Please try again.', $e);
         }

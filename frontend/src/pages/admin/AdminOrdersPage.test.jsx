@@ -119,4 +119,129 @@ describe("AdminOrdersPage", () => {
     expect(screen.getByText("Payment Details")).toBeInTheDocument();
     expect(screen.getByText("REF12345")).toBeInTheDocument();
   });
+
+  it("shows items ordered for legacy preorders by loading the order details on demand", async () => {
+    api.get.mockImplementation((path) => {
+      if (path === "/orders") {
+        return Promise.resolve({
+          data: [
+            {
+              order_id: "ORD-2002",
+              user_id: 11,
+              order_status: "pending",
+              delivery_method: "delivery",
+              total_amount: 900,
+              created_at: "2026-05-20T08:00:00.000Z",
+              isArchived: false,
+              address: "123 Sampaguita St",
+              schedule: {
+                schedule_name: "Legacy Mothers Day",
+                event_date: "2026-05-25T00:00:00.000Z",
+              },
+              user: {
+                id: 11,
+                first_name: "Taylor",
+                last_name: "Legacy",
+                email: "taylor@example.com",
+                phone_number: "09999888777",
+                priority: 1,
+              },
+              payment: {
+                payment_id: "PAY-2002",
+                payment_method: "GCash",
+                reference_number: "LEGACYREF",
+                payment_date: "2026-05-20T08:00:00.000Z",
+              },
+              order_items: [],
+            },
+          ],
+        });
+      }
+
+      if (path === "/orders/ORD-2002") {
+        return Promise.resolve({
+          data: {
+            order_id: "ORD-2002",
+            user_id: 11,
+            order_status: "pending",
+            delivery_method: "delivery",
+            total_amount: 900,
+            created_at: "2026-05-20T08:00:00.000Z",
+            isArchived: false,
+            address: "123 Sampaguita St",
+            schedule: {
+              schedule_name: "Legacy Mothers Day",
+              event_date: "2026-05-25T00:00:00.000Z",
+            },
+            user: {
+              id: 11,
+              first_name: "Taylor",
+              last_name: "Legacy",
+              email: "taylor@example.com",
+              phone_number: "09999888777",
+              priority: 1,
+            },
+            payment: {
+              payment_id: "PAY-2002",
+              payment_method: "GCash",
+              reference_number: "LEGACYREF",
+              payment_date: "2026-05-20T08:00:00.000Z",
+            },
+            order_items: [
+              {
+                product_id: 202,
+                product_name: "Sunrise Tulips",
+                quantity: 1,
+                price_at_purchase: 900,
+                special_message: "For mom",
+              },
+            ],
+          },
+        });
+      }
+
+      if (path === "/pos-transactions") {
+        return Promise.resolve({ data: [] });
+      }
+
+      return Promise.resolve({ data: [] });
+    });
+
+    const user = userEvent.setup();
+
+    render(<AdminOrdersPage user={{ role: "admin" }} />);
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith("/orders");
+    });
+
+    await user.click(screen.getAllByText("#ORD-2002")[0]);
+
+    const orderModal = screen
+      .getAllByRole("dialog", { name: /manage order status/i })
+      .find((dialog) => within(dialog).queryByText(/ORD-2002/i));
+
+    expect(orderModal).toBeTruthy();
+
+    const itemsButton = within(orderModal).getByRole("button", { name: /items ordered/i });
+    expect(itemsButton).toBeInTheDocument();
+
+    await user.click(itemsButton);
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith("/orders/ORD-2002");
+    });
+
+    const itemsModal = await waitFor(() => {
+      const matchingModal = screen
+        .getAllByRole("dialog", { name: /items ordered/i })
+        .find((dialog) => within(dialog).queryByText(/ORD-2002/i));
+
+      expect(matchingModal).toBeTruthy();
+      return matchingModal;
+    });
+
+    expect(within(itemsModal).getByText("Sunrise Tulips")).toBeInTheDocument();
+    expect(within(itemsModal).getByText("For mom", { exact: false })).toBeInTheDocument();
+  });
 });

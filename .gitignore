@@ -18,6 +18,12 @@ node_modules
 .env.development.local
 .env.test.local
 .env.production.local
+# agent / cursor skills (local workspace)
+.agents/
+**/.agents/
+skills/
+**/skills/
+skills-lock.json
 backend/.env
 
 npm-debug.log*

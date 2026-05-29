@@ -94,6 +94,7 @@ function AdminOrdersPage({ user }) {
   const [viewingPayment, setViewingPayment] = useState(null);
   const [viewingOrderItems, setViewingOrderItems] = useState(null);
   const [viewingPosTransaction, setViewingPosTransaction] = useState(null);
+  const [loadingOrderItemsId, setLoadingOrderItemsId] = useState(null);
   const [status, setStatus] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
   const [trackingError, setTrackingError] = useState("");
@@ -125,16 +126,18 @@ function AdminOrdersPage({ user }) {
 
   const showModalAlert = (type, message) => setStatusModal({ isOpen: true, type, message });
 
+  const normalizeOrderRecord = (order) => ({
+    ...order,
+    user: order.user
+      ? { ...order.user, priority: normalizePriority(order.user.priority) }
+      : order.user,
+    order_items: order.order_items || order.orderItems || [],
+  });
+
   const fetchOrders = async () => {
     try {
       const res = await api.get("/orders");
-      const data = (Array.isArray(res.data) ? res.data : res.data.orders ?? res.data.data ?? []).map((order) => ({
-        ...order,
-        user: order.user
-          ? { ...order.user, priority: normalizePriority(order.user.priority) }
-          : order.user,
-        order_items: order.order_items || order.orderItems || [],
-      }));
+      const data = (Array.isArray(res.data) ? res.data : res.data.orders ?? res.data.data ?? []).map(normalizeOrderRecord);
       setOrders(data);
     } catch (err) {
       console.error("Failed to fetch orders:", err);
@@ -485,6 +488,43 @@ function AdminOrdersPage({ user }) {
     setTrackingError("");
   };
 
+  const openOrderItemsModal = async (order) => {
+    const orderId = order?.order_id || order?.id;
+    if (!orderId) return;
+
+    const hasLoadedItems = Array.isArray(order.order_items) && order.order_items.length > 0;
+    if (hasLoadedItems) {
+      setViewingOrderItems(order);
+      return;
+    }
+
+    setLoadingOrderItemsId(orderId);
+
+    try {
+      const res = await api.get(`/orders/${orderId}`);
+      const detailedOrder = normalizeOrderRecord(res.data);
+
+      setOrders((prev) => prev.map((currentOrder) => (
+        (currentOrder.order_id || currentOrder.id) === orderId ? detailedOrder : currentOrder
+      )));
+
+      if ((viewingOrder?.order_id || viewingOrder?.id) === orderId) {
+        setViewingOrder(detailedOrder);
+      }
+
+      if ((editingOrder?.order_id || editingOrder?.id) === orderId) {
+        setEditingOrder(detailedOrder);
+      }
+
+      setViewingOrderItems(detailedOrder);
+    } catch (err) {
+      console.error("Failed to load order items:", err.response?.data || err.message);
+      showModalAlert("error", "Failed to load ordered items.");
+    } finally {
+      setLoadingOrderItemsId(null);
+    }
+  };
+
   const getImageUrl = (imagePath) => {
     if (!imagePath) return "https://via.placeholder.com/150?text=No+Image";
     return getAssetUrl(imagePath);
@@ -492,6 +532,12 @@ function AdminOrdersPage({ user }) {
 
   const renderPreorderLineItems = (items = [], totalAmount = 0) => (
     <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm divide-y divide-gray-50">
+      {items.length === 0 && (
+        <div className="px-4 py-8 text-center">
+          <p className="text-sm font-semibold text-gray-600">No line items were returned for this order yet.</p>
+          <p className="mt-1 text-xs text-gray-400">If this is a legacy record, double-check that its order items still exist in the database.</p>
+        </div>
+      )}
       {items.map((item, index) => {
         const unitPrice = Number(item.price_at_purchase || 0);
         const quantity = Number(item.quantity || 0);
@@ -1102,7 +1148,8 @@ function AdminOrdersPage({ user }) {
         const isEditingMode = !!editingOrder;
         const orderId = activeOrder.order_id || activeOrder.id;
         const hasPaymentRecord = Boolean(activeOrder.payment);
-        const hasOrderItems = Array.isArray(activeOrder.order_items) && activeOrder.order_items.length > 0;
+        const hasOrderItemsButton = Boolean(orderId);
+        const isLoadingOrderItems = loadingOrderItemsId === orderId;
         return (
           <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4" role="dialog" aria-label={isEditingMode ? "Manage Order Status" : "Order Details"}>
             <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
@@ -1176,7 +1223,7 @@ function AdminOrdersPage({ user }) {
                 </div>
               )}
 
-              {(hasPaymentRecord || hasOrderItems) && (
+              {(hasPaymentRecord || hasOrderItemsButton) && (
                 <div className="mb-6 grid gap-3 sm:grid-cols-2">
                   {hasPaymentRecord && (
                     <button
@@ -1195,17 +1242,25 @@ function AdminOrdersPage({ user }) {
                     </button>
                   )}
 
-                  {hasOrderItems && (
+                  {hasOrderItemsButton && (
                     <button
-                      onClick={() => setViewingOrderItems(activeOrder)}
+                      onClick={() => openOrderItemsModal(activeOrder)}
+                      disabled={isLoadingOrderItems}
                       className="w-full flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-5 py-4 hover:bg-gray-50 transition-colors group shadow-sm"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
-                          <PackageSearch className="w-4 h-4 text-gray-600" />
+                          {isLoadingOrderItems ? (
+                            <Loader2 className="w-4 h-4 text-gray-600 animate-spin" />
+                          ) : (
+                            <PackageSearch className="w-4 h-4 text-gray-600" />
+                          )}
                         </div>
                         <div className="text-left">
                           <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Items Ordered</p>
+                          {isLoadingOrderItems && (
+                            <p className="mt-1 text-[11px] font-medium text-gray-400">Loading full order details...</p>
+                          )}
                         </div>
                       </div>
                       <ChevronDown className="w-4 h-4 text-gray-400 -rotate-90 group-hover:translate-x-0.5 transition-transform" />
